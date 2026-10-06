@@ -17,7 +17,7 @@ No build needed. Either:
 
 ```bash
 # option A: just open the file
-open index.html          # macOS   (use `xdg-open` on Linux)
+open heartland.html        # macOS   (use `xdg-open` on Linux)
 
 # option B: serve it (nicer for smooth-scroll + relative paths)
 python3 -m http.server 8000
@@ -28,7 +28,8 @@ python3 -m http.server 8000
 
 ```
 .
-├── index.html            # all markup / page structure
+├── index.html            # Dubai × Riyadh trip itinerary (site homepage)
+├── heartland.html        # Heartland Mutual demo (served at /heartland)
 ├── assets/
 │   ├── css/styles.css    # design tokens + components + responsive rules
 │   ├── js/app.js         # all interactivity (commented by section)
