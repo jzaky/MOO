@@ -62,23 +62,37 @@ export function useOutbox() {
   );
 }
 
-export function flush(): Promise<void> {
-  flushing ??= (async () => {
+/** Sends queued ops in order. Returns false if it stopped on a retryable failure. */
+async function drain(): Promise<boolean> {
+  for (const op of [...queue].sort((a, b) => a.createdAt - b.createdAt)) {
+    if (op.failed) continue;
     try {
-      for (const op of [...queue].sort((a, b) => a.createdAt - b.createdAt)) {
-        if (op.failed) continue;
-        try {
-          await api(op.path, { method: op.method, body: op.body, query: op.query });
-          queue = queue.filter((q) => !(q.id === op.id && q.createdAt === op.createdAt));
-          persist();
-          onApplied?.(op);
-        } catch (e) {
-          const err = e instanceof ApiError ? e : new ApiError(0, "network", String(e));
-          queue = queue.map((q) => (q.id === op.id && q.createdAt === op.createdAt ? { ...q, attempts: q.attempts + 1, lastError: err.message, failed: !err.retryable && err.status !== 401 } : q));
-          persist();
-          if (err.retryable) break; // offline or server trouble: stop and retry later, preserving order
-        }
-      }
+      await api(op.path, { method: op.method, body: op.body, query: op.query });
+      queue = queue.filter((q) => !(q.id === op.id && q.createdAt === op.createdAt));
+      persist();
+      onApplied?.(op);
+    } catch (e) {
+      const err = e instanceof ApiError ? e : new ApiError(0, "network", String(e));
+      queue = queue.map((q) => (q.id === op.id && q.createdAt === op.createdAt ? { ...q, attempts: q.attempts + 1, lastError: err.message, failed: !err.retryable && err.status !== 401 } : q));
+      persist();
+      if (err.retryable) return false; // offline or server trouble: stop and retry later, preserving order
+    }
+  }
+  return true;
+}
+
+let rerun = false;
+
+export function flush(): Promise<void> {
+  if (flushing) {
+    // Work enqueued during a flush is sent in the same flush, not on the next timer tick.
+    rerun = true;
+    return flushing;
+  }
+  flushing = (async () => {
+    try {
+      do rerun = false;
+      while ((await drain()) && rerun);
     } finally {
       flushing = null;
     }
