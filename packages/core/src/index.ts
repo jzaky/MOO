@@ -24,3 +24,4 @@ export * from "./notifications/planner";
 export * from "./movement/repCounter";
 export * from "./import/csv";
 export * from "./import/formats";
+export * from "./body/composition";

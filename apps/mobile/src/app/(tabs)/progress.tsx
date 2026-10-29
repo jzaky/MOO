@@ -1,4 +1,4 @@
-import { displayBodyWeight, kgToLb, round } from "@stoke/core";
+import { displayBodyWeight, kgToLb, navyBodyFat, round } from "@stoke/core";
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -41,6 +41,11 @@ export default function Progress() {
   const analytics = useQuery({ queryKey: qk.analytics, queryFn: () => api<{ strengthTrends: { exerciseId: string; name: string; points: { day: string; e1rmKg: number }[] }[] }>("/v1/training/analytics", { query: { weeks: 12 } }) });
 
   const w = weight.data;
+  // Body-fat estimate from the latest circumferences (US Navy method), computed on device.
+  const latest = (kind: string) => measurements.data?.items.find((m) => m.kind === kind)?.latest?.value ?? null;
+  const p = profile.data;
+  const bf = p?.sex && p.heightCm && latest("waist") && latest("neck") ? navyBodyFat({ sex: p.sex, heightCm: p.heightCm, waistCm: latest("waist")!, neckCm: latest("neck")!, hipCm: latest("hips") }) : null;
+  const bfMissing = !p?.sex || !p?.heightCm ? "height and sex in your profile" : [!latest("waist") && "waist", !latest("neck") && "neck", p.sex === "female" && !latest("hips") && "hips"].filter(Boolean).join(", ");
   const conv = (kg: number) => (units === "imperial" ? round(kgToLb(kg), 1) : round(kg, 1));
   const unit = units === "imperial" ? "lb" : "kg";
   const cutoff = toX(todayKey()) - Number(range);
@@ -119,6 +124,20 @@ export default function Progress() {
           </Stack>
         ) : (
           <EmptyState icon="edit" title="No measurements yet" body="Waist every couple of weeks is a useful companion to the scale." />
+        )}
+      </Card>
+
+      <Card>
+        {bf ? (
+          <Stack gap={4}>
+            <Row justify="space-between">
+              <T variant="headline">Body fat ≈ {bf.percent}%</T>
+              <Badge label="estimate" tone="info" />
+            </Row>
+            <T variant="footnote" color="textSecondary">US Navy method from your latest waist, neck{p?.sex === "female" ? ", hips" : ""} and height. Typically within ±{bf.typicalErrorPct} points of lab methods; use it to see a trend, not as an exact number.</T>
+          </Stack>
+        ) : (
+          <T variant="footnote" color="textSecondary">Add {bfMissing || "measurements"} to see a body-fat estimate (US Navy method).</T>
         )}
       </Card>
 

@@ -10,6 +10,7 @@ import { Screen } from "../ui/Screen";
 
 const SITES = [
   ["waist", "Waist"],
+  ["neck", "Neck"],
   ["hips", "Hips"],
   ["chest", "Chest"],
   ["left_arm", "Arm (left)"],
