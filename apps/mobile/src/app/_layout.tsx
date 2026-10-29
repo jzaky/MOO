@@ -7,6 +7,8 @@ import { ActivityIndicator, AppState, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { syncHealth } from "../features/health/sync";
+import { onWatchAction } from "../features/native/watch";
+import { applyWatchAction, syncNativeSurfaces } from "../features/workout/store";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { useProfile } from "../lib/data";
 import { flush, startOutboxLoop } from "../lib/outbox";
@@ -41,11 +43,15 @@ function Gate() {
     const pullHealth = () => void syncHealth().catch(() => {});
     pullHealth();
     const appState = AppState.addEventListener("change", (s) => s === "active" && pullHealth());
+    // Apple Watch: apply "complete set" taps, and push the current workout (and rest Live Activity) once.
+    const watch = onWatchAction(applyWatchAction);
+    syncNativeSurfaces();
     return () => {
       stopOutbox();
       stopPersist();
       unsub();
       appState.remove();
+      watch.remove();
     };
   }, [signedIn]);
 

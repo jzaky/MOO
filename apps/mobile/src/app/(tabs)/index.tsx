@@ -1,7 +1,10 @@
 import { displayBodyWeight } from "@stoke/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
+import { useEffect } from "react";
 import { Pressable, View } from "react-native";
+import { snapshotFromToday } from "../../features/native/widgetSnapshot";
+import { updateWidgets } from "../../features/native/widgets";
 import { useActiveWorkout } from "../../features/workout/store";
 import { api } from "../../lib/api";
 import { logWater, qk, useToday } from "../../lib/data";
@@ -31,6 +34,11 @@ export default function Today() {
   const active = useActiveWorkout();
   const d = today.data;
   const day = d?.day ?? todayKey();
+  const activeName = active?.name ?? null;
+  // Home-screen widgets (iOS) mirror today's numbers whenever they load or change.
+  useEffect(() => {
+    if (d) updateWidgets(snapshotFromToday(d, activeName));
+  }, [d, activeName]);
   const greeting = (() => {
     const h = new Date().getHours();
     return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";

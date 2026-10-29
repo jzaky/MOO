@@ -6,6 +6,10 @@ import { nowIso, todayKey, uuid } from "../../lib/ids";
 import { enqueue } from "../../lib/outbox";
 import { kv } from "../../lib/storage";
 import type { Exercise, StartWorkout } from "../../lib/types";
+import { endRestActivity, startRestActivity, updateRestActivity } from "../native/liveActivity";
+import type { WatchAction } from "../native/types";
+import { sendWorkoutState } from "../native/watch";
+import { restActivityInputFromWorkout, watchStateFromWorkout } from "../native/workoutMirror";
 
 /**
  * The live workout is local-first: the device is the source of truth while
@@ -62,11 +66,51 @@ let state: ActiveWorkout | null = kv.get<ActiveWorkout>(KEY);
 const listeners = new Set<() => void>();
 
 function commit(next: ActiveWorkout | null, sync = true) {
+  const prev = state;
   state = next;
   if (next) kv.set(KEY, next);
   else kv.remove(KEY);
   listeners.forEach((l) => l());
   if (next && sync) queueSnapshot(next, "active");
+  mirrorToNative(prev, next);
+}
+
+/**
+ * Mirrors every committed change to the native surfaces: the Apple Watch gets
+ * the current exercise / next set / rest, and the rest-timer Live Activity is
+ * started (rest begins in toggleSetComplete), updated (adjustRest) or ended
+ * (skipRest, togglePause, finishWorkout, discardWorkout). Best-effort: a
+ * native failure never affects the workout itself.
+ */
+function mirrorToNative(prev: ActiveWorkout | null, next: ActiveWorkout | null) {
+  try {
+    sendWorkoutState(watchStateFromWorkout(next));
+    const was = prev?.rest ?? null;
+    const now = next?.rest ?? null;
+    if (!next || !now) {
+      if (was || !next) endRestActivity();
+      return;
+    }
+    if (was && was.endsAt === now.endsAt && was.exerciseId === now.exerciseId) return;
+    const input = restActivityInputFromWorkout(next);
+    if (!input) return;
+    if (was) updateRestActivity(input);
+    else startRestActivity(input);
+  } catch {
+    // Native mirrors are optional.
+  }
+}
+
+/** Re-sends the current state to the watch and reconciles the Live Activity (call once at startup). */
+export function syncNativeSurfaces(): void {
+  try {
+    sendWorkoutState(watchStateFromWorkout(state));
+    const input = state?.rest && state.rest.endsAt > Date.now() ? restActivityInputFromWorkout(state) : null;
+    if (input) startRestActivity(input);
+    else endRestActivity();
+  } catch {
+    // Native mirrors are optional.
+  }
 }
 
 function update(fn: (w: ActiveWorkout) => ActiveWorkout, sync = true) {
@@ -246,6 +290,18 @@ export function toggleSetComplete(exerciseRowId: string, setId: string): void {
     };
   });
   haptic(startedRest ? "success" : "light");
+}
+
+/**
+ * Applies an action sent from the Apple Watch. "complete_set" goes through
+ * toggleSetComplete (same rest timer and haptics as a tap on the phone) but is
+ * idempotent: a duplicate or late delivery never un-completes a set.
+ */
+export function applyWatchAction(action: WatchAction): void {
+  if (action.type !== "complete_set" || !state) return;
+  const set = state.exercises.find((e) => e.id === action.exerciseRowId)?.sets.find((s) => s.id === action.setId);
+  if (!set || set.completed) return;
+  toggleSetComplete(action.exerciseRowId, action.setId);
 }
 
 export function adjustRest(deltaSec: number): void {
