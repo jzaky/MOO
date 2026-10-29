@@ -42,7 +42,7 @@ export interface AdaptiveInputs {
   maxStepKcal?: number;
 }
 
-export type AdaptiveStatus = "insufficient_data" | "on_track" | "adjust";
+export type AdaptiveStatus = "insufficient_data" | "adherence_gap" | "on_track" | "adjust";
 
 export interface AdaptiveResult {
   status: AdaptiveStatus;
@@ -58,6 +58,8 @@ export interface AdaptiveResult {
 }
 
 export const MIN_COMPLETE_DAYS = 14;
+/** If average logged intake differs from the target by more than this, the target itself is not what is being tested. */
+export const ADHERENCE_TOLERANCE = 0.1;
 const NO_CHANGE_THRESHOLD_KCAL = 50;
 
 export function runAdaptiveCheck(input: AdaptiveInputs): AdaptiveResult {
@@ -93,6 +95,7 @@ export function runAdaptiveCheck(input: AdaptiveInputs): AdaptiveResult {
   if (reasons.length || avgIntake === null || rate.kgPerWeek === null || rate.latestTrendKg === null) return base;
 
   const storedKcalPerDay = (rate.kgPerWeek / 7) * KCAL_PER_KG_BODY_MASS;
+  const intakeGap = (avgIntake - input.currentTargetKcal) / input.currentTargetKcal;
   const observed = avgIntake - storedKcalPerDay;
 
   const coverage = Math.min(1, complete.length / windowDays);
@@ -128,6 +131,21 @@ export function runAdaptiveCheck(input: AdaptiveInputs): AdaptiveResult {
     `Average logged intake ${Math.round(avgIntake)} kcal over ${complete.length} complete days; trend weight changed ${rate.kgPerWeek >= 0 ? "+" : ""}${rate.kgPerWeek.toFixed(2)} kg/week.`,
     `Estimated maintenance from this data ≈ ${Math.round(observed)} kcal (blended estimate ${Math.round(blended)} kcal).`,
   );
+
+  if (Math.abs(intakeGap) > ADHERENCE_TOLERANCE) {
+    return {
+      ...base,
+      status: "adherence_gap",
+      observedTdeeKcal: Math.round(observed),
+      blendedTdeeKcal: Math.round(blended),
+      confidence,
+      goalKgPerWeek,
+      reasons: [
+        ...reasons,
+        `Logged intake averaged ${Math.abs(Math.round(intakeGap * 100))}% ${intakeGap < 0 ? "below" : "above"} the ${input.currentTargetKcal} kcal target, so the observed weight change reflects actual intake rather than the target. No target change is suggested; the maintenance estimate has still been updated.`,
+      ],
+    };
+  }
 
   const rateGap = Math.abs(rate.kgPerWeek - goalKgPerWeek);
   const onTrackTolerance = Math.max(0.1, 0.0015 * rate.latestTrendKg);

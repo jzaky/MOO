@@ -75,6 +75,13 @@ describe("adaptive nutrition engine", () => {
     expect(r.reasons[0]).toMatch(/14 fully logged days/);
   });
 
+  it("flags an adherence gap instead of moving the target when intake differs from it", () => {
+    const r = runAdaptiveCheck({ asOf, intake: intake(1800), weighIns: series(start, 28, 86, -0.8), currentTargetKcal: 2300, priorTdeeKcal: 2700, goalWeeklyRatePct: -0.005, sex: "male" });
+    expect(r.status).toBe("adherence_gap");
+    expect(r.proposedTargetKcal).toBe(2300);
+    expect(r.reasons.at(-1)).toMatch(/22% below/);
+  });
+
   it("proposes a capped increase when weight is falling much faster than intended", () => {
     // Eating 1800 and losing ~1 kg/week → maintenance ≈ 2900; goal −0.43 kg/wk.
     const r = runAdaptiveCheck({

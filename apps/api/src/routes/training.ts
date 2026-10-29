@@ -174,6 +174,42 @@ async function completeWorkout(tx: Tx, userId: string, sessionId: string, day: s
   return full;
 }
 
+export async function loadProgram(tx: Tx, id: string) {
+  const [p] = await tx.select().from(workoutPrograms).where(eq(workoutPrograms.id, id));
+  if (!p) throw notFound("Program");
+  const days = await tx.select().from(workoutTemplates).where(and(eq(workoutTemplates.programId, id), isNull(workoutTemplates.deletedAt))).orderBy(asc(workoutTemplates.position));
+  const tes = days.length
+    ? await tx.select({ te: templateExercises, ex: exercises }).from(templateExercises).innerJoin(exercises, eq(exercises.id, templateExercises.exerciseId)).where(inArray(templateExercises.templateId, days.map((d) => d.id))).orderBy(asc(templateExercises.position))
+    : [];
+  return {
+    ...p,
+    days: days.map((d) => ({
+      id: d.id,
+      name: d.name,
+      weekday: d.weekday,
+      position: d.position,
+      exercises: tes.filter((t) => t.te.templateId === d.id).map((t) => ({ id: t.te.id, exerciseId: t.te.exerciseId, exercise: exerciseToDto(t.ex), position: t.te.position, supersetGroup: t.te.supersetGroup, prescription: t.te.prescription, notes: t.te.notes })),
+    })),
+  };
+}
+
+export async function insertProgram(tx: Tx, userId: string, body: z.infer<typeof ProgramCreate>, meta: { createdBy: string; parentProgramId?: string | null; version?: number; changeReason?: string | null }) {
+  const exIds = body.days.flatMap((d) => d.exercises.map((e) => e.exerciseId));
+  const visible = await tx.select({ id: exercises.id }).from(exercises).where(inArray(exercises.id, exIds));
+  if (new Set(visible.map((v) => v.id)).size !== new Set(exIds).size) throw badRequest("One or more exercises do not exist");
+  for (const d of body.days) for (const e of d.exercises) if (e.prescription.repRange.min > e.prescription.repRange.max) throw badRequest("Rep range minimum exceeds maximum");
+  const [p] = await tx
+    .insert(workoutPrograms)
+    .values({ userId, name: body.name, split: body.split, notes: body.notes ?? null, createdBy: meta.createdBy, parentProgramId: meta.parentProgramId ?? null, version: meta.version ?? 1, changeReason: meta.changeReason ?? null })
+    .returning();
+  for (const [i, d] of body.days.entries()) {
+    const [t] = await tx.insert(workoutTemplates).values({ userId, programId: p!.id, name: d.name, weekday: d.weekday ?? null, position: i }).returning();
+    await tx.insert(templateExercises).values(d.exercises.map((e, j) => ({ userId, templateId: t!.id, exerciseId: e.exerciseId, position: j, supersetGroup: e.supersetGroup ?? null, prescription: e.prescription, notes: e.notes ?? null })));
+  }
+  return p!.id;
+}
+
+
 const IdParam = z.object({ id: z.uuid() });
 
 export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): void {
@@ -269,41 +305,6 @@ export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): v
   });
 
   /* ── Programs & templates ── */
-
-  async function loadProgram(tx: Tx, id: string) {
-    const [p] = await tx.select().from(workoutPrograms).where(eq(workoutPrograms.id, id));
-    if (!p) throw notFound("Program");
-    const days = await tx.select().from(workoutTemplates).where(and(eq(workoutTemplates.programId, id), isNull(workoutTemplates.deletedAt))).orderBy(asc(workoutTemplates.position));
-    const tes = days.length
-      ? await tx.select({ te: templateExercises, ex: exercises }).from(templateExercises).innerJoin(exercises, eq(exercises.id, templateExercises.exerciseId)).where(inArray(templateExercises.templateId, days.map((d) => d.id))).orderBy(asc(templateExercises.position))
-      : [];
-    return {
-      ...p,
-      days: days.map((d) => ({
-        id: d.id,
-        name: d.name,
-        weekday: d.weekday,
-        position: d.position,
-        exercises: tes.filter((t) => t.te.templateId === d.id).map((t) => ({ id: t.te.id, exerciseId: t.te.exerciseId, exercise: exerciseToDto(t.ex), position: t.te.position, supersetGroup: t.te.supersetGroup, prescription: t.te.prescription, notes: t.te.notes })),
-      })),
-    };
-  }
-
-  async function insertProgram(tx: Tx, userId: string, body: z.infer<typeof ProgramCreate>, meta: { createdBy: string; parentProgramId?: string | null; version?: number; changeReason?: string | null }) {
-    const exIds = body.days.flatMap((d) => d.exercises.map((e) => e.exerciseId));
-    const visible = await tx.select({ id: exercises.id }).from(exercises).where(inArray(exercises.id, exIds));
-    if (new Set(visible.map((v) => v.id)).size !== new Set(exIds).size) throw badRequest("One or more exercises do not exist");
-    for (const d of body.days) for (const e of d.exercises) if (e.prescription.repRange.min > e.prescription.repRange.max) throw badRequest("Rep range minimum exceeds maximum");
-    const [p] = await tx
-      .insert(workoutPrograms)
-      .values({ userId, name: body.name, split: body.split, notes: body.notes ?? null, createdBy: meta.createdBy, parentProgramId: meta.parentProgramId ?? null, version: meta.version ?? 1, changeReason: meta.changeReason ?? null })
-      .returning();
-    for (const [i, d] of body.days.entries()) {
-      const [t] = await tx.insert(workoutTemplates).values({ userId, programId: p!.id, name: d.name, weekday: d.weekday ?? null, position: i }).returning();
-      await tx.insert(templateExercises).values(d.exercises.map((e, j) => ({ userId, templateId: t!.id, exerciseId: e.exerciseId, position: j, supersetGroup: e.supersetGroup ?? null, prescription: e.prescription, notes: e.notes ?? null })));
-    }
-    return p!.id;
-  }
 
   app.get("/v1/programs", auth, async (req) =>
     ctx.db.asUser(req.userId, async (tx) => {
