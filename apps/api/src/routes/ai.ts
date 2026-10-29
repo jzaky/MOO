@@ -1,6 +1,7 @@
 import { ParseLogRequest, RecognitionConfirmRequest } from "@moo/contracts";
 import {
   checkEnergyConsistency,
+  dayKeyInZone,
   consumedFraction,
   estimateMeal,
   isKnown,
@@ -17,7 +18,8 @@ import type { MultipartFile } from "@fastify/multipart";
 import { eq, sql } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { LABEL_SYSTEM, LabelAnalysis, MEAL_PHOTO_SYSTEM, MealPhotoAnalysis, PARSE_SYSTEM, ParsedLogAi, prepareImage } from "../ai/foodVision";
+import { LABEL_SYSTEM, LabelAnalysis, MEAL_PHOTO_SYSTEM, MealPhotoAnalysis, MENU_SYSTEM, MenuAnalysis, PARSE_SYSTEM, ParsedLogAi, prepareImage } from "../ai/foodVision";
+import { mealSuggestions } from "../services/insights";
 import type { AiUsage } from "../ai/provider";
 import type { Tx } from "../db/client";
 import { exercises, foodRecognitions, usageEvents } from "../db/schema";
@@ -204,6 +206,50 @@ export function registerAiRoutes(app: FastifyInstance, ctx: AppContext): void {
     await ctx.db.asUser(req.userId, (tx) => recordUsage(tx, req.userId, "label_ocr", usage));
     if (!data.isNutritionLabel) throw new HttpError(422, "not_a_label", "No nutrition facts panel was found in the photo. Try again closer and in good light.");
     return buildLabelDraft(data, fields.barcode ?? null);
+  });
+
+  /**
+   * Restaurant menu (photo or pasted text) → dishes ranked by fit to what is
+   * left today. Printed values are labelled "printed"; everything else is a
+   * labelled estimate with a range. Exact restaurant macros are never invented.
+   */
+  app.post("/v1/ai/menu", auth, async (req) => {
+    if (!ctx.ai.available) throw new HttpError(503, "ai_unavailable", "Menu analysis is not configured on this server");
+    let content: Parameters<typeof ctx.ai.structured>[0]["content"];
+    if (req.isMultipart()) {
+      await requirePhotoConsent(ctx, req.userId);
+      const { images } = await readImages(req, 3);
+      content = [...(await Promise.all(images.map((b) => prepareImage(b)))).map((p) => p.part), { type: "text", text: "Read this menu." }];
+    } else {
+      const body = parse(z.object({ text: z.string().min(3).max(20000) }), req.body);
+      content = [{ type: "text", text: `Menu:\n${body.text}` }];
+    }
+    const { data, usage } = await ctx.ai.structured({ purpose: "menu", system: MENU_SYSTEM, content, schema: MenuAnalysis, effort: "medium" });
+    await ctx.db.asUser(req.userId, (tx) => recordUsage(tx, req.userId, "menu", usage));
+    const p = await ctx.db.asUser(req.userId, (tx) => getProfile(tx, req.userId));
+    const remaining = await ctx.db.asUser(req.userId, async (tx) => (await mealSuggestions(tx, req.userId, dayKeyInZone(ctx.now(), p.timeZone), 0)).remaining);
+    const dishes = [];
+    for (const item of data.items) {
+      if (item.printedNutrition && item.printedNutrition.energyKcal != null) {
+        dishes.push({ name: item.name, description: item.description, basis: "printed" as const, energyKcal: item.printedNutrition.energyKcal, energyRangeKcal: null, proteinG: item.printedNutrition.proteinG, carbsG: item.printedNutrition.carbsG, fatG: item.printedNutrition.fatG, unmatchedComponents: [] as string[] });
+        continue;
+      }
+      const comps = [];
+      const unmatched: string[] = [];
+      for (const [i, c] of item.components.entries()) {
+        const [best] = await candidatesFor(ctx, req.userId, c.searchQuery);
+        const [low, est, high] = [c.gramsLow, c.gramsEstimate, c.gramsHigh].sort((a, b) => a - b) as [number, number, number];
+        if (!best || best.completeness < 1) unmatched.push(c.searchQuery);
+        comps.push({ id: `c${i}`, label: c.searchQuery, identityConfidence: 0.7, portionConfidence: 0.4, grams: { estimate: est, low, high }, matchedPer100: best && best.completeness === 1 ? best.per100 : null });
+      }
+      const e = estimateMeal(comps);
+      dishes.push({ name: item.name, description: item.description, basis: "estimate" as const, energyKcal: isKnown(e.totals.energyKcal) ? Math.round(e.totals.energyKcal) : null, energyRangeKcal: e.energyRangeKcal, proteinG: isKnown(e.totals.proteinG) ? Math.round(e.totals.proteinG) : null, carbsG: isKnown(e.totals.carbsG) ? Math.round(e.totals.carbsG) : null, fatG: isKnown(e.totals.fatG) ? Math.round(e.totals.fatG) : null, unmatchedComponents: unmatched });
+    }
+    const remE = remaining?.energyKcal ?? null, remP = remaining?.proteinG ?? null;
+    const scored = dishes
+      .map((d) => ({ ...d, fit: d.energyKcal == null || remE == null ? null : Math.round(((remP && d.proteinG ? Math.min(d.proteinG, remP) / Math.max(remP, 1) : 0) * 2 - Math.max(0, d.energyKcal - Math.max(remE, 0)) / Math.max(remE, 300)) * 100) / 100 }))
+      .sort((a, b) => (b.fit ?? -99) - (a.fit ?? -99));
+    return { restaurant: data.restaurant, remaining, dishes: scored, disclaimer: "Values marked 'estimate' are approximations from typical portions and generic foods; restaurant portions and cooking fats vary widely." };
   });
 
   /** Text (or transcribed voice) → structured DRAFT with database matches. Never writes. */

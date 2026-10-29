@@ -569,6 +569,13 @@ export const pushTokens = pgTable("push_tokens", {
   createdAt: createdAt(),
 }, (t) => [uniqueIndex("push_tokens_token_uq").on(t.token)]);
 
+/** Sent notifications, keyed by the planner's idempotency key, so a reminder is never delivered twice. */
+export const notificationDeliveries = pgTable("notification_deliveries", {
+  userId: userRef(),
+  key: text("key").notNull(),
+  sentAt: ts("sent_at").notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.userId, t.key] })]);
+
 export const auditEvents = pgTable("audit_events", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id"),

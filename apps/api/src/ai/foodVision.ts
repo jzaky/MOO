@@ -114,3 +114,22 @@ export async function prepareImage(input: Buffer): Promise<{ jpeg: Buffer; part:
   const out = await sharp(jpeg).metadata();
   return { jpeg, part: { type: "image", mediaType: "image/jpeg", base64: jpeg.toString("base64") }, width: out.width ?? 0, height: out.height ?? 0 };
 }
+
+export const MenuAnalysis = z.object({
+  restaurant: z.string().max(120).nullable(),
+  items: z
+    .array(
+      z.object({
+        name: z.string().max(120),
+        description: z.string().max(300).nullable(),
+        printedNutrition: z.object({ energyKcal: z.number().nullable(), proteinG: z.number().nullable(), carbsG: z.number().nullable(), fatG: z.number().nullable() }).nullable(),
+        components: z.array(z.object({ searchQuery: z.string().max(80), gramsEstimate: z.number().min(0).max(2000), gramsLow: z.number().min(0).max(2000), gramsHigh: z.number().min(0).max(3000) })).max(8),
+      }),
+    )
+    .max(40),
+});
+export type MenuAnalysis = z.infer<typeof MenuAnalysis>;
+
+export const MENU_SYSTEM = `You read restaurant menus (photos or pasted text) for a nutrition app.
+- List the dishes. Copy nutrition values ONLY if they are printed on the menu for that dish ("printedNutrition"); otherwise null. Never invent official values.
+- For each dish, list its likely main components with generic food-database search terms and a typical restaurant portion range in grams. These are estimates and will be labelled as such.`;

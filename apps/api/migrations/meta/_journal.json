@@ -29,6 +29,13 @@
       "when": 1793260094468,
       "tag": "0003_search_index",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793261578422,
+      "tag": "0004_notifications",
+      "breakpoints": true
     }
   ]
 }

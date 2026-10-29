@@ -19,3 +19,5 @@ export * from "./recovery/insights";
 export * from "./sync/merge";
 export * from "./training/splits";
 export * from "./training/generator";
+export * from "./notifications/planner";
+export * from "./movement/repCounter";

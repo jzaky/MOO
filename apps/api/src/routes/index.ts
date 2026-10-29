@@ -10,6 +10,8 @@ import { registerTrainingRoutes } from "./training";
 import { registerProgressRoutes } from "./progress";
 import { registerHealthRoutes } from "./health";
 import { registerCoachRoutes } from "./coach";
+import { registerMealPlanRoutes } from "./mealplans";
+import { registerPlatformRoutes } from "./platform";
 
 export function registerRoutes(app: FastifyInstance, ctx: AppContext): void {
   registerAuthRoutes(app, ctx);
@@ -22,4 +24,6 @@ export function registerRoutes(app: FastifyInstance, ctx: AppContext): void {
   registerProgressRoutes(app, ctx);
   registerHealthRoutes(app, ctx);
   registerCoachRoutes(app, ctx);
+  registerMealPlanRoutes(app, ctx);
+  registerPlatformRoutes(app, ctx);
 }
