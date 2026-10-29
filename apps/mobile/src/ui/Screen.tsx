@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { t } from "../i18n";
 import type { ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View, type StyleProp, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -44,7 +45,7 @@ export function Screen({
     <View style={{ paddingTop: insets.top + 6, paddingHorizontal: 16, backgroundColor: th.c.bg }}>
       {back || close || right ? (
         <Row justify="space-between" style={{ minHeight: 40 }}>
-          {back ? <IconButton icon="back" label="Back" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} /> : close ? <IconButton icon="close" label="Close" onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} /> : <View />}
+          {back ? <IconButton icon="back" label={t("Back")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} /> : close ? <IconButton icon="close" label={t("Close")} onPress={() => (router.canGoBack() ? router.back() : router.replace("/"))} /> : <View />}
           <Row gap={4}>{right}</Row>
         </Row>
       ) : null}

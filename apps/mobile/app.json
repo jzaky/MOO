@@ -48,7 +48,7 @@
       ["expo-camera", { "cameraPermission": "Stoke uses the camera to scan barcodes and photograph meals or nutrition labels you choose to log.", "recordAudioAndroid": false }],
       ["expo-image-picker", { "photosPermission": "Stoke lets you choose meal photos and progress photos from your library." }],
       ["expo-audio", { "microphonePermission": "Stoke records short voice notes only when you hold the microphone button to log food or workouts." }],
-      "expo-localization",
+      ["expo-localization", { "supportedLocales": { "ios": ["en", "ar"], "android": ["en", "ar"] } }],
       ["expo-notifications", { "color": "#7CF0B4" }],
       ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "Stoke reads steps, active energy, sleep, resting heart rate, heart rate variability, walking distance and body weight that you choose to share, to show recovery trends and keep your weight log in sync.", "NSHealthUpdateUsageDescription": "Stoke only reads from Apple Health. It does not write any data to it.", "background": true }],
       "react-native-health-connect",

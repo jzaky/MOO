@@ -115,6 +115,18 @@ describe("AI coach", () => {
     expect(msgs[1]!.native).toEqual([{ type: "text", text: "First answer." }]);
   });
 
+  it("asks for Arabic replies when the app language is Arabic", async () => {
+    const u = await user();
+    const conv = (await t.app.inject({ method: "POST", url: "/v1/coach/conversations", headers: u.headers })).json();
+    const lastUserText = () => ((ai.calls.at(-1)!.messages as { role: string; parts: { type: string; text?: string }[] }[]).at(-1)!.parts[0]!.text ?? "");
+    ai.queueAgent({ role: "assistant", parts: [{ type: "text", text: "أهلًا" }] });
+    await t.app.inject({ method: "POST", url: `/v1/coach/conversations/${conv.id}/messages`, headers: { ...u.headers, "accept-language": "ar" }, payload: { text: "كم بروتين أحتاج؟" } });
+    expect(lastUserText()).toContain("reply in Modern Standard Arabic");
+    ai.queueAgent({ role: "assistant", parts: [{ type: "text", text: "Hi" }] });
+    await t.app.inject({ method: "POST", url: `/v1/coach/conversations/${conv.id}/messages`, headers: { ...u.headers, "accept-language": "en" }, payload: { text: "Hi" } });
+    expect(lastUserText()).not.toContain("Arabic");
+  });
+
   it("can only propose; unsafe targets are refused by the tool; substitutions create a new program version", async () => {
     const u = await user();
     const gen = (await t.app.inject({ method: "POST", url: "/v1/programs/generate", headers: u.headers, payload: { preferredDays: [1, 3, 5] } })).json();

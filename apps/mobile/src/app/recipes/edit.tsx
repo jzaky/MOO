@@ -13,8 +13,9 @@ import type { Food, Recipe, RecipeDraft } from "../../lib/types";
 import { useTheme } from "../../theme/theme";
 import { Badge, Button, Card, Chip, ErrorState, Field, IconButton, Row, SectionHeader, Segmented, Skeleton, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
+import { t } from "../../i18n";
 
-const errText = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong. Try again.");
+const errText = (e: unknown) => (e instanceof ApiError ? e.message : t("Something went wrong. Try again."));
 const num = (s: string) => Number(s.replace(",", "."));
 
 function IngredientCard({ row, onChange, onRemove }: { row: IngredientRow; onChange: (r: IngredientRow) => void; onRemove: () => void }) {
@@ -32,12 +33,12 @@ function IngredientCard({ row, onChange, onRemove }: { row: IngredientRow; onCha
       <Stack gap={8}>
         <Row justify="space-between" align="flex-start">
           <T variant="body" style={{ flex: 1 }}>{row.rawText}</T>
-          <IconButton icon="close" label={`Remove ${row.rawText}`} onPress={onRemove} size={30} />
+          <IconButton icon="close" label={t("Remove {item}", { item: row.rawText })} onPress={onRemove} size={30} />
         </Row>
         {row.food ? (
           <>
             <Row gap={8}>
-              <Badge label="matched" tone="accent" />
+              <Badge label={t("matched")} tone="accent" />
               <T variant="footnote" color="textSecondary" style={{ flex: 1 }} numberOfLines={2}>{row.food.name}</T>
             </Row>
             <Row gap={8}>
@@ -48,16 +49,16 @@ function IngredientCard({ row, onChange, onRemove }: { row: IngredientRow; onCha
                   onEndEditing={() => num(qty) > 0 && onChange(withQuantity(row, num(qty)))}
                   onBlur={() => num(qty) > 0 && onChange(withQuantity(row, num(qty)))}
                   keyboardType="decimal-pad"
-                  accessibilityLabel={`Amount of ${row.rawText}`}
+                  accessibilityLabel={t("Amount of {item}", { item: row.rawText })}
                   suffix={row.portion ? (row.portion.kind === "amount" ? row.portion.unit : "×") : row.food.baseUnit}
-                  placeholder="amount"
+                  placeholder={t("amount")}
                 />
               </View>
-              <T variant="footnote" color={row.portion ? "textTertiary" : "warning"} style={{ flex: 1 }}>{row.portion ? describePortion(row) : `Enter the amount in ${row.food.baseUnit}; "${row.rawText}" can't be converted automatically.`}</T>
+              <T variant="footnote" color={row.portion ? "textTertiary" : "warning"} style={{ flex: 1 }}>{row.portion ? describePortion(row) : t("Enter the amount in {unit}; \"{item}\" can't be converted automatically.", { unit: row.food.baseUnit, item: row.rawText })}</T>
             </Row>
           </>
         ) : (
-          <T variant="footnote" color="warning">{row.candidates.length ? "Not sure about a match. Pick one below or search; it isn't counted until you do." : "Not matched. It will not be counted until you pick a food."}</T>
+          <T variant="footnote" color="warning">{row.candidates.length ? t("Not sure about a match. Pick one below or search; it isn't counted until you do.") : t("Not matched. It will not be counted until you pick a food.")}</T>
         )}
         {(row.candidates.length > 1 || (row.candidates.length === 1 && !row.food)) && !picking ? (
           <Row gap={6} wrap>
@@ -67,7 +68,7 @@ function IngredientCard({ row, onChange, onRemove }: { row: IngredientRow; onCha
         {picking ? (
           <FoodPicker initialQuery={row.rawText.replace(/^[\d\s.,/½¼¾⅓⅔-]+(g|kg|ml|l|cups?|tbsp|tsp|oz|lb)?\s+/i, "")} onPick={(f) => swap(f, null)} onCancel={() => setPicking(false)} />
         ) : (
-          <Button title={row.food ? "Change food" : "Find food"} kind="ghost" size="sm" icon="search" onPress={() => setPicking(true)} />
+          <Button title={row.food ? t("Change food") : t("Find food")} kind="ghost" size="sm" icon="search" onPress={() => setPicking(true)} />
         )}
       </Stack>
     </Card>
@@ -139,66 +140,66 @@ export default function RecipeEditor() {
     },
   });
 
-  if (editing && (existing.isPending || (!rows && !existing.isError))) return <Screen close title="Edit recipe"><Skeleton height={60} /><Skeleton height={160} /></Screen>;
-  if (editing && existing.isError) return <Screen close title="Edit recipe"><Card><ErrorState error={existing.error} onRetry={() => void existing.refetch()} /></Card></Screen>;
+  if (editing && (existing.isPending || (!rows && !existing.isError))) return <Screen close title={t("Edit recipe")}><Skeleton height={60} /><Skeleton height={160} /></Screen>;
+  if (editing && existing.isError) return <Screen close title={t("Edit recipe")}><Card><ErrorState error={existing.error} onRetry={() => void existing.refetch()} /></Card></Screen>;
 
   return (
     <Screen
       close
-      title={editing ? "Edit recipe" : "New recipe"}
-      footer={rows ? <Stack gap={6}>{save.error ? <T variant="footnote" color="danger">{errText(save.error)}</T> : null}<Button title="Save recipe" disabled={!valid} loading={save.isPending} onPress={() => save.mutate()} /></Stack> : undefined}
+      title={editing ? t("Edit recipe") : t("New recipe")}
+      footer={rows ? <Stack gap={6}>{save.error ? <T variant="footnote" color="danger">{errText(save.error)}</T> : null}<Button title={t("Save recipe")} disabled={!valid} loading={save.isPending} onPress={() => save.mutate()} /></Stack> : undefined}
     >
       {!rows ? (
         <>
-          <Segmented options={[{ value: "text", label: "Paste ingredients" }, { value: "url", label: "From a link" }]} value={source} onChange={setSource} />
+          <Segmented options={[{ value: "text", label: t("Paste ingredients") }, { value: "url", label: t("From a link") }]} value={source} onChange={setSource} />
           {source === "text" ? (
             <>
-              <Field label="Name" value={name} onChangeText={setName} placeholder="Chicken & rice bowls" />
-              <Field label="Servings" value={servings} onChangeText={setServings} keyboardType="decimal-pad" />
-              <Field label="Ingredients, one per line" value={text} onChangeText={setText} multiline numberOfLines={8} style={{ minHeight: 160, textAlignVertical: "top" }} placeholder={"500 g chicken breast\n300 g basmati rice\n1 tbsp olive oil\n2 cups broccoli"} />
+              <Field label={t("Name")} value={name} onChangeText={setName} placeholder={t("Chicken & rice bowls")} />
+              <Field label={t("Servings")} value={servings} onChangeText={setServings} keyboardType="decimal-pad" />
+              <Field label={t("Ingredients, one per line")} value={text} onChangeText={setText} multiline numberOfLines={8} style={{ minHeight: 160, textAlignVertical: "top" }} placeholder={"500 g chicken breast\n300 g basmati rice\n1 tbsp olive oil\n2 cups broccoli"} />
             </>
           ) : (
-            <Field label="Recipe page URL" value={url} onChangeText={setUrl} autoCapitalize="none" keyboardType="url" placeholder="https://…" />
+            <Field label={t("Recipe page URL")} value={url} onChangeText={setUrl} autoCapitalize="none" keyboardType="url" placeholder="https://…" />
           )}
           {draft.error ? <T variant="footnote" color="danger">{errText(draft.error)}</T> : null}
-          <Button title="Match ingredients" icon="search" loading={draft.isPending} disabled={source === "text" ? !text.trim() : !/^https?:\/\/\S+\.\S+/.test(url.trim())} onPress={() => draft.mutate()} />
-          <Button title="Start from scratch" kind="ghost" size="sm" onPress={() => setRows([])} />
-          <T variant="caption" color="textTertiary">Each line is matched to the food database and you review every match before saving. Pages are read for structured recipe data only.</T>
+          <Button title={t("Match ingredients")} icon="search" loading={draft.isPending} disabled={source === "text" ? !text.trim() : !/^https?:\/\/\S+\.\S+/.test(url.trim())} onPress={() => draft.mutate()} />
+          <Button title={t("Start from scratch")} kind="ghost" size="sm" onPress={() => setRows([])} />
+          <T variant="caption" color="textTertiary">{t("Each line is matched to the food database and you review every match before saving. Pages are read for structured recipe data only.")}</T>
         </>
       ) : (
         <>
-          <Field label="Name" value={name} onChangeText={setName} />
+          <Field label={t("Name")} value={name} onChangeText={setName} />
           <Row gap={8}>
-            <View style={{ flex: 1 }}><Field label="Servings" value={servings} onChangeText={setServings} keyboardType="decimal-pad" error={s > 0 ? null : "Enter a number"} /></View>
-            <View style={{ flex: 1 }}><Field label="Cooked weight" value={yieldG} onChangeText={setYieldG} keyboardType="decimal-pad" suffix="g" placeholder="optional" /></View>
+            <View style={{ flex: 1 }}><Field label={t("Servings")} value={servings} onChangeText={setServings} keyboardType="decimal-pad" error={s > 0 ? null : t("Enter a number")} /></View>
+            <View style={{ flex: 1 }}><Field label={t("Cooked weight")} value={yieldG} onChangeText={setYieldG} keyboardType="decimal-pad" suffix="g" placeholder={t("optional")} /></View>
           </Row>
           <Card style={{ backgroundColor: th.c.surfaceRaised }}>
             {preview ? (
               <Stack gap={4}>
                 <Row justify="space-between">
-                  <T variant="headline">{preview.perServing.energyKcal ?? "–"} kcal per serving</T>
-                  {preview.notCounted.length ? <Badge label={`${preview.notCounted.length} not counted`} tone="warning" /> : <Badge label="all counted" tone="accent" />}
+                  <T variant="headline">{t("{kcal} kcal per serving", { kcal: preview.perServing.energyKcal ?? "–" })}</T>
+                  {preview.notCounted.length ? <Badge label={t("{count} not counted", { count: preview.notCounted.length })} tone="warning" /> : <Badge label={t("all counted")} tone="accent" />}
                 </Row>
-                <T variant="footnote" color="textSecondary">Protein {preview.perServing.proteinG ?? "–"} g · Carbs {preview.perServing.carbsG ?? "–"} g · Fat {preview.perServing.fatG ?? "–"} g</T>
+                <T variant="footnote" color="textSecondary">{t("Protein {p} g · Carbs {c} g · Fat {f} g", { p: preview.perServing.proteinG ?? "–", c: preview.perServing.carbsG ?? "–", f: preview.perServing.fatG ?? "–" })}</T>
               </Stack>
-            ) : <T variant="footnote" color="textSecondary">Enter the number of servings to see nutrition.</T>}
+            ) : <T variant="footnote" color="textSecondary">{t("Enter the number of servings to see nutrition.")}</T>}
           </Card>
 
-          <SectionHeader title={`Ingredients (${rows.length})`} action={adding ? undefined : "Add"} onAction={() => setAdding(true)} />
-          {adding ? <Card><FoodPicker label="Add an ingredient" onPick={(f) => { setRows((rs) => [...(rs ?? []), rowForFood(f)]); setAdding(false); }} onCancel={() => setAdding(false)} /></Card> : null}
-          {rows.length === 0 && !adding ? <T variant="footnote" color="textSecondary">Add at least one ingredient.</T> : null}
+          <SectionHeader title={t("Ingredients ({count})", { count: rows.length })} action={adding ? undefined : t("Add")} onAction={() => setAdding(true)} />
+          {adding ? <Card><FoodPicker label={t("Add an ingredient")} onPick={(f) => { setRows((rs) => [...(rs ?? []), rowForFood(f)]); setAdding(false); }} onCancel={() => setAdding(false)} /></Card> : null}
+          {rows.length === 0 && !adding ? <T variant="footnote" color="textSecondary">{t("Add at least one ingredient.")}</T> : null}
           {rows.map((r) => (
             <IngredientCard key={r.key} row={r} onChange={(nr) => setRows((rs) => rs!.map((x) => (x.key === r.key ? nr : x)))} onRemove={() => setRows((rs) => rs!.filter((x) => x.key !== r.key))} />
           ))}
 
-          <SectionHeader title="Good for" />
+          <SectionHeader title={t("Good for")} />
           <Row gap={8} wrap>
             {MEALS.map((m) => <Chip key={m.value} label={m.label} selected={meals.includes(m.value)} onPress={() => setMeals((ms) => (ms.includes(m.value) ? ms.filter((x) => x !== m.value) : [...ms, m.value]))} />)}
           </Row>
-          <T variant="caption" color="textTertiary">Meal plans only schedule this recipe at the meals you pick. None picked means any meal.</T>
+          <T variant="caption" color="textTertiary">{t("Meal plans only schedule this recipe at the meals you pick. None picked means any meal.")}</T>
 
-          <SectionHeader title="Method" />
-          <Field value={instructions} onChangeText={setInstructions} multiline numberOfLines={6} style={{ minHeight: 120, textAlignVertical: "top" }} placeholder="Optional" />
+          <SectionHeader title={t("Method")} />
+          <Field value={instructions} onChangeText={setInstructions} multiline numberOfLines={6} style={{ minHeight: 120, textAlignVertical: "top" }} placeholder={t("Optional")} />
         </>
       )}
     </Screen>

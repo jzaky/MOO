@@ -12,6 +12,7 @@ import { api, ApiError } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { qk, useProfile } from "../lib/data";
 import { haptic } from "../lib/haptics";
+import { fmtNum, getLanguageSetting, locale, setLanguage, t, type LangSetting } from "../i18n";
 import { queryClient } from "../lib/query";
 import type { Profile, Targets } from "../lib/types";
 import { useTheme } from "../theme/theme";
@@ -29,13 +30,61 @@ interface NotificationPrefs {
   quietEnd: string;
 }
 
-const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong. Try again.");
+const errMsg = (e: unknown) => (e instanceof ApiError ? e.message : t("Something went wrong. Try again."));
+
+function readLabel(r: string): string {
+  switch (r) {
+    case "Steps": return t("Steps");
+    case "Active calories": return t("Active calories");
+    case "Active energy": return t("Active energy");
+    case "Resting heart rate": return t("Resting heart rate");
+    case "Heart rate variability": return t("Heart rate variability");
+    case "Walking + running distance": return t("Walking + running distance");
+    case "Body weight": return t("Body weight");
+    case "Sleep": return t("Sleep");
+    default: return r;
+  }
+}
+
+function dietLabel(p: Profile["dietary"]["pattern"]): string {
+  switch (p) {
+    case "omnivore": return t("Omnivore");
+    case "halal": return t("Halal");
+    case "vegetarian": return t("Vegetarian");
+    case "vegan": return t("Vegan");
+    case "pescatarian": return t("Pescatarian");
+    case "keto": return t("Keto");
+    case "kosher": return t("Kosher");
+    default: return t("Other");
+  }
+}
+
+function LanguageSection() {
+  const [setting, setSetting] = useState<LangSetting>(getLanguageSetting);
+  const [restart, setRestart] = useState(false);
+  return (
+    <Card>
+      <Stack gap={8}>
+        <Segmented
+          options={[{ value: "system", label: t("System") }, { value: "en", label: "English" }, { value: "ar", label: "العربية" }]}
+          value={setting}
+          onChange={(v) => {
+            setSetting(v);
+            setRestart(setLanguage(v).needsRestart);
+          }}
+        />
+        {restart ? <T variant="footnote" color="warning">{t("Close and reopen Stoke to switch the layout direction.")}</T> : null}
+        <T variant="caption" color="textTertiary">{t("Coach replies follow this language. Some explanations from the server are still in English.")}</T>
+      </Stack>
+    </Card>
+  );
+}
 
 function Toggle({ label, detail, value, onChange, disabled }: { label: string; detail?: string; value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   const th = useTheme();
   return (
     <Row justify="space-between" style={{ paddingVertical: 8, minHeight: 44 }}>
-      <View style={{ flex: 1, paddingRight: 12 }}>
+      <View style={{ flex: 1, paddingEnd: 12 }}>
         <T variant="body">{label}</T>
         {detail ? <T variant="footnote" color="textSecondary">{detail}</T> : null}
       </View>
@@ -54,28 +103,28 @@ function ProfileSection({ profile }: { profile: Profile }) {
   return (
     <Card>
       <Stack gap={12}>
-        <Field label="Name" value={name} onChangeText={setName} onEndEditing={() => name.trim() !== (profile.displayName ?? "") && save.mutate({ displayName: name.trim() || null })} autoCapitalize="words" />
+        <Field label={t("Name")} value={name} onChangeText={setName} onEndEditing={() => name.trim() !== (profile.displayName ?? "") && save.mutate({ displayName: name.trim() || null })} autoCapitalize="words" />
         <View style={{ gap: 6 }}>
-          <T variant="footnote" color="textSecondary">Units</T>
+          <T variant="footnote" color="textSecondary">{t("Units")}</T>
           <Segmented options={[{ value: "metric", label: "kg · cm" }, { value: "imperial", label: "lb · in" }]} value={profile.unitSystem} onChange={(unitSystem) => save.mutate({ unitSystem })} />
         </View>
         <View style={{ gap: 6 }}>
-          <T variant="footnote" color="textSecondary">Diet</T>
+          <T variant="footnote" color="textSecondary">{t("Diet")}</T>
           <Row gap={6} wrap>
             {(["omnivore", "halal", "vegetarian", "vegan", "pescatarian", "keto", "kosher", "other"] as const).map((p) => (
-              <Chip key={p} label={p[0]!.toUpperCase() + p.slice(1)} selected={profile.dietary.pattern === p} onPress={() => save.mutate({ dietary: { ...profile.dietary, pattern: p } })} />
+              <Chip key={p} label={dietLabel(p)} selected={profile.dietary.pattern === p} onPress={() => save.mutate({ dietary: { ...profile.dietary, pattern: p } })} />
             ))}
           </Row>
-          {profile.dietary.pattern === "halal" ? <T variant="caption" color="textTertiary">Foods with pork or alcohol in their name or ingredients are marked in search. This is a reading aid, not a halal certification.</T> : null}
+          {profile.dietary.pattern === "halal" ? <T variant="caption" color="textTertiary">{t("Foods with pork or alcohol in their name or ingredients are marked in search. This is a reading aid, not a halal certification.")}</T> : null}
         </View>
         <Row justify="space-between">
           <View style={{ flex: 1 }}>
-            <T variant="footnote" color="textSecondary">Time zone</T>
+            <T variant="footnote" color="textSecondary">{t("Time zone")}</T>
             <T variant="body">{profile.timeZone}</T>
           </View>
-          {deviceZone && deviceZone !== profile.timeZone ? <Button title={`Use ${deviceZone}`} kind="secondary" size="sm" onPress={() => save.mutate({ timeZone: deviceZone })} /> : null}
+          {deviceZone && deviceZone !== profile.timeZone ? <Button title={t("Use {zone}", { zone: deviceZone })} kind="secondary" size="sm" onPress={() => save.mutate({ timeZone: deviceZone })} /> : null}
         </Row>
-        <T variant="caption" color="textTertiary">Your day boundaries (diary, streaks, weekly reviews) follow this time zone.</T>
+        <T variant="caption" color="textTertiary">{t("Your day boundaries (diary, streaks, weekly reviews) follow this time zone.")}</T>
         {save.error ? <T variant="footnote" color="danger">{errMsg(save.error)}</T> : null}
       </Stack>
     </Card>
@@ -114,36 +163,36 @@ function TargetsSection({ profile }: { profile: Profile }) {
           {cur ? (
             <>
               <Row justify="space-between">
-                <T variant="headline">{cur.energyKcal.toLocaleString()} kcal</T>
-                <Badge label={cur.basis === "manual" ? "set by you" : cur.basis === "adapted" ? "adapted from your data" : "estimated"} />
+                <T variant="headline">{fmtNum(cur.energyKcal)} kcal</T>
+                <Badge label={cur.basis === "manual" ? t("set by you") : cur.basis === "adapted" ? t("adapted from your data") : t("estimated")} />
               </Row>
-              <T variant="subhead" color="textSecondary">Protein {cur.proteinG} g · Carbs {cur.carbsG} g · Fat {cur.fatG} g{cur.fiberG != null ? ` · Fibre ${cur.fiberG} g` : ""}</T>
+              <T variant="subhead" color="textSecondary">{t("Protein {p} g · Carbs {c} g · Fat {f} g", { p: cur.proteinG, c: cur.carbsG, f: cur.fatG })}{cur.fiberG != null ? ` · ${t("Fibre {g} g", { g: cur.fiberG })}` : ""}</T>
             </>
           ) : (
-            <T variant="subhead" color="textSecondary">No targets yet.</T>
+            <T variant="subhead" color="textSecondary">{t("No targets yet.")}</T>
           )}
-          <Button title="Edit targets" kind="secondary" size="md" icon="edit" onPress={() => setEditing(true)} />
+          <Button title={t("Edit targets")} kind="secondary" size="md" icon="edit" onPress={() => setEditing(true)} />
         </Stack>
       ) : (
         <Stack gap={10}>
-          <Field label="Energy" suffix="kcal" keyboardType="number-pad" value={form.energyKcal} onChangeText={(v) => setForm((f) => ({ ...f, energyKcal: v }))} />
+          <Field label={t("Energy")} suffix="kcal" keyboardType="number-pad" value={form.energyKcal} onChangeText={(v) => setForm((f) => ({ ...f, energyKcal: v }))} />
           <Row gap={8}>
-            <View style={{ flex: 1 }}><Field label="Protein" suffix="g" keyboardType="decimal-pad" value={form.proteinG} onChangeText={(v) => setForm((f) => ({ ...f, proteinG: v }))} /></View>
-            <View style={{ flex: 1 }}><Field label="Carbs" suffix="g" keyboardType="decimal-pad" value={form.carbsG} onChangeText={(v) => setForm((f) => ({ ...f, carbsG: v }))} /></View>
+            <View style={{ flex: 1 }}><Field label={t("Protein")} suffix="g" keyboardType="decimal-pad" value={form.proteinG} onChangeText={(v) => setForm((f) => ({ ...f, proteinG: v }))} /></View>
+            <View style={{ flex: 1 }}><Field label={t("Carbs")} suffix="g" keyboardType="decimal-pad" value={form.carbsG} onChangeText={(v) => setForm((f) => ({ ...f, carbsG: v }))} /></View>
           </Row>
           <Row gap={8}>
-            <View style={{ flex: 1 }}><Field label="Fat" suffix="g" keyboardType="decimal-pad" value={form.fatG} onChangeText={(v) => setForm((f) => ({ ...f, fatG: v }))} /></View>
-            <View style={{ flex: 1 }}><Field label="Fibre" suffix="g" keyboardType="decimal-pad" value={form.fiberG} onChangeText={(v) => setForm((f) => ({ ...f, fiberG: v }))} placeholder="optional" /></View>
+            <View style={{ flex: 1 }}><Field label={t("Fat")} suffix="g" keyboardType="decimal-pad" value={form.fatG} onChangeText={(v) => setForm((f) => ({ ...f, fatG: v }))} /></View>
+            <View style={{ flex: 1 }}><Field label={t("Fibre")} suffix="g" keyboardType="decimal-pad" value={form.fiberG} onChangeText={(v) => setForm((f) => ({ ...f, fiberG: v }))} placeholder={t("Optional")} /></View>
           </Row>
           {valid && Math.abs(macroKcal - energy) > Math.max(100, energy * 0.08) ? (
-            <T variant="footnote" color="warning">Your macros add up to about {Math.round(macroKcal)} kcal, which differs from the energy target by {Math.round(Math.abs(macroKcal - energy))} kcal.</T>
+            <T variant="footnote" color="warning">{t("Your macros add up to about {macro} kcal, which differs from the energy target by {diff} kcal.", { macro: Math.round(macroKcal), diff: Math.round(Math.abs(macroKcal - energy)) })}</T>
           ) : null}
-          {valid && energy < floor ? <T variant="footnote" color="warning">This is below {floor} kcal. Intakes this low are best done with a clinician's guidance.</T> : null}
-          <T variant="caption" color="textTertiary">Saving creates a new version from today. Past days keep the targets they had.</T>
+          {valid && energy < floor ? <T variant="footnote" color="warning">{t("This is below {floor} kcal. Intakes this low are best done with a clinician's guidance.", { floor })}</T> : null}
+          <T variant="caption" color="textTertiary">{t("Saving creates a new version from today. Past days keep the targets they had.")}</T>
           {save.error ? <T variant="footnote" color="danger">{errMsg(save.error)}</T> : null}
           <Row gap={8}>
-            <Button title="Cancel" kind="secondary" size="md" onPress={() => setEditing(false)} style={{ flex: 1 }} />
-            <Button title="Save targets" size="md" disabled={!valid} loading={save.isPending} onPress={() => save.mutate()} style={{ flex: 1.4 }} />
+            <Button title={t("Cancel")} kind="secondary" size="md" onPress={() => setEditing(false)} style={{ flex: 1 }} />
+            <Button title={t("Save targets")} size="md" disabled={!valid} loading={save.isPending} onPress={() => save.mutate()} style={{ flex: 1.4 }} />
           </Row>
         </Stack>
       )}
@@ -164,7 +213,7 @@ function HealthSection() {
     setError(null);
     try {
       if (kind === "connect" && !(await connectHealth())) {
-        setError(`${healthAdapter.name} access was not granted. You can change this in system settings.`);
+        setError(t("{name} access was not granted. You can change this in system settings.", { name: healthAdapter.name }));
         return;
       }
       setState(await syncHealth());
@@ -179,7 +228,7 @@ function HealthSection() {
   if (!available || !healthAdapter.provider) {
     return (
       <Card>
-        <T variant="subhead" color="textSecondary">{Platform.OS === "web" ? "Apple Health and Health Connect are available in the iOS and Android apps." : `${healthAdapter.provider === "health_connect" ? "Health Connect is not installed or needs an update." : "Health data is not available on this device."}`}</T>
+        <T variant="subhead" color="textSecondary">{Platform.OS === "web" ? t("Apple Health and Health Connect are available in the iOS and Android apps.") : healthAdapter.provider === "health_connect" ? t("Health Connect is not installed or needs an update.") : t("Health data is not available on this device.")}</T>
       </Card>
     );
   }
@@ -188,20 +237,20 @@ function HealthSection() {
       <Stack gap={10}>
         <Row justify="space-between">
           <T variant="headline">{healthAdapter.name}</T>
-          <Badge label={state.connected ? "connected" : "not connected"} tone={state.connected ? "accent" : "neutral"} />
+          <Badge label={state.connected ? t("connected") : t("not connected")} tone={state.connected ? "accent" : "neutral"} />
         </Row>
-        <T variant="footnote" color="textSecondary">Reads {healthAdapter.reads.join(", ").toLowerCase()}. Nothing is written back. Body-weight samples appear as weigh-ins.</T>
-        {state.lastSyncAt ? <T variant="caption" color="textTertiary">Last synced {new Date(state.lastSyncAt).toLocaleString()}{state.lastResult ? ` · ${state.lastResult.inserted} new of ${state.lastResult.received}` : ""}</T> : null}
+        <T variant="footnote" color="textSecondary">{t("Reads {list}. Nothing is written back. Body-weight samples appear as weigh-ins.", { list: healthAdapter.reads.map(readLabel).join(t(", ")) })}</T>
+        {state.lastSyncAt ? <T variant="caption" color="textTertiary">{t("Last synced {when}", { when: new Date(state.lastSyncAt).toLocaleString(locale()) })}{state.lastResult ? ` · ${t("{inserted} new of {received}", { inserted: state.lastResult.inserted, received: state.lastResult.received })}` : ""}</T> : null}
         {error ? <T variant="footnote" color="danger">{error}</T> : null}
         {state.connected ? (
           <Row gap={8}>
-            <Button title="Sync now" kind="secondary" size="md" icon="sync" loading={busy === "sync"} onPress={() => void run("sync")} style={{ flex: 1 }} />
-            <Button title="Disconnect" kind="ghost" size="md" onPress={() => { disconnectHealth(); setState(getHealthState()); }} style={{ flex: 1 }} />
+            <Button title={t("Sync now")} kind="secondary" size="md" icon="sync" loading={busy === "sync"} onPress={() => void run("sync")} style={{ flex: 1 }} />
+            <Button title={t("Disconnect")} kind="ghost" size="md" onPress={() => { disconnectHealth(); setState(getHealthState()); }} style={{ flex: 1 }} />
           </Row>
         ) : (
-          <Button title={`Connect ${healthAdapter.name}`} size="md" icon="heart" loading={busy === "connect"} onPress={() => void run("connect")} />
+          <Button title={t("Connect {name}", { name: healthAdapter.name })} size="md" icon="heart" loading={busy === "connect"} onPress={() => void run("connect")} />
         )}
-        {healthAdapter.openSystemSettings ? <Button title="Manage permissions" kind="ghost" size="sm" onPress={healthAdapter.openSystemSettings} /> : null}
+        {healthAdapter.openSystemSettings ? <Button title={t("Manage permissions")} kind="ghost" size="sm" onPress={healthAdapter.openSystemSettings} /> : null}
       </Stack>
     </Card>
   );
@@ -236,30 +285,30 @@ function NotificationsSection() {
   return (
     <Card>
       <Stack gap={2}>
-        <Toggle label="Workout reminders" detail="On your planned training days" value={p.workoutReminders} onChange={set("workoutReminders")} />
+        <Toggle label={t("Workout reminders")} detail={t("On your planned training days")} value={p.workoutReminders} onChange={set("workoutReminders")} />
         <Divider />
-        <Toggle label="Meal logging reminders" detail="Only if a usual meal has not been logged" value={p.mealReminders} onChange={set("mealReminders")} />
+        <Toggle label={t("Meal logging reminders")} detail={t("Only if a usual meal has not been logged")} value={p.mealReminders} onChange={set("mealReminders")} />
         <Divider />
-        <Toggle label="Hydration" value={p.hydrationReminders} onChange={set("hydrationReminders")} />
+        <Toggle label={t("Hydration")} value={p.hydrationReminders} onChange={set("hydrationReminders")} />
         <Divider />
-        <Toggle label="Weekly summary" value={p.weeklySummary} onChange={set("weeklySummary")} />
+        <Toggle label={t("Weekly summary")} value={p.weeklySummary} onChange={set("weeklySummary")} />
         <Divider />
-        <Toggle label="Personal records" value={p.personalRecords} onChange={set("personalRecords")} />
+        <Toggle label={t("Personal records")} value={p.personalRecords} onChange={set("personalRecords")} />
         <Divider />
-        <Toggle label="Check-ins" detail="Weekly weigh-in and measurement prompts" value={p.checkIns} onChange={set("checkIns")} />
+        <Toggle label={t("Check-ins")} detail={t("Weekly weigh-in and measurement prompts")} value={p.checkIns} onChange={set("checkIns")} />
         <Row gap={8} style={{ paddingTop: 8 }}>
-          <View style={{ flex: 1 }}><Field label="Quiet from" defaultValue={p.quietStart} onEndEditing={(e) => validTime(e.nativeEvent.text) && save.mutate({ ...p, quietStart: e.nativeEvent.text })} placeholder="22:00" maxLength={5} /></View>
-          <View style={{ flex: 1 }}><Field label="Quiet until" defaultValue={p.quietEnd} onEndEditing={(e) => validTime(e.nativeEvent.text) && save.mutate({ ...p, quietEnd: e.nativeEvent.text })} placeholder="07:00" maxLength={5} /></View>
+          <View style={{ flex: 1 }}><Field label={t("Quiet from")} defaultValue={p.quietStart} onEndEditing={(e) => validTime(e.nativeEvent.text) && save.mutate({ ...p, quietStart: e.nativeEvent.text })} placeholder="22:00" maxLength={5} /></View>
+          <View style={{ flex: 1 }}><Field label={t("Quiet until")} defaultValue={p.quietEnd} onEndEditing={(e) => validTime(e.nativeEvent.text) && save.mutate({ ...p, quietEnd: e.nativeEvent.text })} placeholder="07:00" maxLength={5} /></View>
         </Row>
-        <T variant="caption" color="textTertiary" style={{ paddingTop: 4 }}>Nothing is sent during quiet hours. Reminders never repeat for something you have already done.</T>
+        <T variant="caption" color="textTertiary" style={{ paddingTop: 4 }}>{t("Nothing is sent during quiet hours. Reminders never repeat for something you have already done.")}</T>
         <Button
-          title="Allow notifications on this device"
+          title={t("Allow notifications on this device")}
           kind="secondary"
           size="md"
           style={{ marginTop: 10 }}
           onPress={() =>
             void registerPush().then(
-              (r) => setPush(r === "granted" ? "Notifications are on for this device." : r === "denied" ? "Notifications are off in system settings." : "Push delivery needs a device build with an EAS project configured."),
+              (r) => setPush(r === "granted" ? t("Notifications are on for this device.") : r === "denied" ? t("Notifications are off in system settings.") : t("Push delivery needs a device build with an EAS project configured.")),
               (e) => setPush(errMsg(e)),
             )
           }
@@ -280,12 +329,12 @@ function PrivacySection({ profile }: { profile: Profile }) {
   return (
     <Card>
       <Stack gap={2}>
-        <Toggle label="Photo food recognition" detail="Meal and label photos are sent to the AI provider for analysis" value={c.photoAnalysis} onChange={(v) => save.mutate({ ...c, photoAnalysis: v })} />
+        <Toggle label={t("Photo food recognition")} detail={t("Meal and label photos are sent to the AI provider for analysis")} value={c.photoAnalysis} onChange={(v) => save.mutate({ ...c, photoAnalysis: v })} />
         <Divider />
-        <Toggle label="Keep meal photos" detail="Off: photos are deleted after you confirm or discard the result" value={c.retainMealPhotos} onChange={(v) => save.mutate({ ...c, retainMealPhotos: v })} />
+        <Toggle label={t("Keep meal photos")} detail={t("Off: photos are deleted after you confirm or discard the result")} value={c.retainMealPhotos} onChange={(v) => save.mutate({ ...c, retainMealPhotos: v })} />
         <Divider />
-        <Toggle label="Coach can use health data" detail="Sleep, resting heart rate and steps in coach answers" value={c.coachUsesHealthData} onChange={(v) => save.mutate({ ...c, coachUsesHealthData: v })} />
-        <T variant="caption" color="textTertiary" style={{ paddingTop: 6 }}>The coach reads your logs, goals and workouts to answer. It cannot change anything without your confirmation. Progress photos are never sent to the AI provider.</T>
+        <Toggle label={t("Coach can use health data")} detail={t("Sleep, resting heart rate and steps in coach answers")} value={c.coachUsesHealthData} onChange={(v) => save.mutate({ ...c, coachUsesHealthData: v })} />
+        <T variant="caption" color="textTertiary" style={{ paddingTop: 6 }}>{t("The coach reads your logs, goals and workouts to answer. It cannot change anything without your confirmation. Progress photos are never sent to the AI provider.")}</T>
       </Stack>
     </Card>
   );
@@ -323,7 +372,7 @@ function DataSection() {
         await file.write(json);
         await Share.share({ url: file.uri, title: name, message: Platform.OS === "android" ? file.uri : undefined });
       }
-      setMsg("Export ready.");
+      setMsg(t("Export ready."));
     } catch (e) {
       setMsg(errMsg(e));
     } finally {
@@ -333,23 +382,23 @@ function DataSection() {
   return (
     <Card>
       <Stack gap={10}>
-        <Button title="Import from Strong, Hevy or MyFitnessPal" kind="secondary" size="md" onPress={() => router.push("/import")} />
-        <Button title="Export my data (JSON)" kind="secondary" size="md" loading={exporting} onPress={() => void doExport()} />
+        <Button title={t("Import from Strong, Hevy or MyFitnessPal")} kind="secondary" size="md" onPress={() => router.push("/import")} />
+        <Button title={t("Export my data (JSON)")} kind="secondary" size="md" loading={exporting} onPress={() => void doExport()} />
         {msg ? <T variant="footnote" color="textSecondary">{msg}</T> : null}
-        <Button title="Sign out" kind="secondary" size="md" onPress={() => void signOut()} />
+        <Button title={t("Sign out")} kind="secondary" size="md" onPress={() => void signOut()} />
         {!deleting ? (
           <Pressable accessibilityRole="button" onPress={() => setDeleting(true)} style={{ alignItems: "center", paddingVertical: 12 }}>
-            <T variant="headline" color="danger">Delete account…</T>
+            <T variant="headline" color="danger">{t("Delete account…")}</T>
           </Pressable>
         ) : (
           <Stack gap={8}>
-            <T variant="footnote" color="danger">This permanently deletes your account, logs, workouts, measurements and photos. It cannot be undone. Export first if you want a copy.</T>
-            <Field label="Password" secureTextEntry value={password} onChangeText={setPassword} autoComplete="current-password" />
-            <Field label='Type "DELETE" to confirm' value={confirm} onChangeText={setConfirm} autoCapitalize="characters" />
+            <T variant="footnote" color="danger">{t("This permanently deletes your account, logs, workouts, measurements and photos. It cannot be undone. Export first if you want a copy.")}</T>
+            <Field label={t("Password")} secureTextEntry value={password} onChangeText={setPassword} autoComplete="current-password" />
+            <Field label={t("Type \"DELETE\" to confirm")} value={confirm} onChangeText={setConfirm} autoCapitalize="characters" />
             {del.error ? <T variant="footnote" color="danger">{errMsg(del.error)}</T> : null}
             <Row gap={8}>
-              <Button title="Cancel" kind="secondary" size="md" onPress={() => setDeleting(false)} style={{ flex: 1 }} />
-              <Button title="Delete forever" kind="danger" size="md" disabled={!password || confirm !== "DELETE"} loading={del.isPending} onPress={() => del.mutate()} style={{ flex: 1.3 }} />
+              <Button title={t("Cancel")} kind="secondary" size="md" onPress={() => setDeleting(false)} style={{ flex: 1 }} />
+              <Button title={t("Delete forever")} kind="danger" size="md" disabled={!password || confirm !== "DELETE"} loading={del.isPending} onPress={() => del.mutate()} style={{ flex: 1.3 }} />
             </Row>
           </Stack>
         )}
@@ -362,29 +411,31 @@ export default function Settings() {
   const profile = useProfile();
   const { email } = useAuth();
   return (
-    <Screen back title="Settings" subtitle={email ?? undefined}>
+    <Screen back title={t("Settings")} subtitle={email ?? undefined}>
       {profile.isPending ? (
         <Skeleton height={240} />
       ) : profile.isError ? (
         <ErrorState error={profile.error} onRetry={() => void profile.refetch()} />
       ) : (
         <>
-          <SectionHeader title="Profile" />
+          <SectionHeader title={t("Language")} />
+          <LanguageSection />
+          <SectionHeader title={t("Profile")} />
           <ProfileSection profile={profile.data} />
-          <SectionHeader title="Nutrition targets" />
+          <SectionHeader title={t("Nutrition targets")} />
           <TargetsSection profile={profile.data} />
           <Card padded={false} style={{ paddingHorizontal: 14 }}>
-            <ListRow icon="coach" title="Ask the coach to review targets" subtitle="Uses your intake and weight trend; changes need your approval" onPress={() => router.push("/coach")} />
+            <ListRow icon="coach" title={t("Ask the coach to review targets")} subtitle={t("Uses your intake and weight trend; changes need your approval")} onPress={() => router.push("/coach")} />
           </Card>
-          <SectionHeader title="Health data" />
+          <SectionHeader title={t("Health data")} />
           <HealthSection />
-          <SectionHeader title="Notifications" />
+          <SectionHeader title={t("Notifications")} />
           <NotificationsSection />
-          <SectionHeader title="Privacy & AI" />
+          <SectionHeader title={t("Privacy & AI")} />
           <PrivacySection profile={profile.data} />
-          <SectionHeader title="Your data" />
+          <SectionHeader title={t("Your data")} />
           <DataSection />
-          <T variant="caption" color="textTertiary" align="center">Stoke {Constants.expoConfig?.version ?? ""} · Estimates are not medical advice.</T>
+          <T variant="caption" color="textTertiary" align="center">Stoke {Constants.expoConfig?.version ?? ""} · {t("Estimates are not medical advice.")}</T>
         </>
       )}
     </Screen>

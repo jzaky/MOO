@@ -124,7 +124,9 @@ export function registerCoachRoutes(app: FastifyInstance, ctx: AppContext): void
   app.post("/v1/coach/conversations/:id/messages", { ...auth, config: { rateLimit: { max: 20, timeWindow: "1 minute" } } }, async (req) => {
     const { id } = parse(IdParam, req.params);
     const body = parse(CoachMessageRequest, req.body);
-    return runCoachTurn(ctx, req.userId, id, body.text);
+    // The app sends its UI language; Arabic users get Arabic replies.
+    const language = /^ar\b/i.test(String(req.headers["accept-language"] ?? "")) ? "ar" : "en";
+    return runCoachTurn(ctx, req.userId, id, body.text, { language });
   });
 
   app.delete("/v1/coach/conversations/:id", auth, async (req, reply) => {

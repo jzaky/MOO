@@ -15,6 +15,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import { isRTL, t } from "../i18n";
 import { haptic } from "../lib/haptics";
 import { useTheme } from "../theme/theme";
 import type { Palette, TypeVariant } from "../theme/tokens";
@@ -28,6 +29,10 @@ export interface TProps extends TextProps {
   weight?: TextStyle["fontWeight"];
 }
 
+// The web detects each paragraph's direction, so Latin-only text (an email, "Asia/Dubai") would sit
+// on the left of an Arabic screen. Align to the right by default there; native follows the layout.
+const WEB_RTL_ALIGN = (): TextStyle | null => (Platform.OS === "web" && isRTL() ? { textAlign: "right" } : null);
+
 export function T({ variant = "body", color = "text", align, weight, style, maxFontSizeMultiplier, ...rest }: TProps) {
   const th = useTheme();
   const c = (th.c as Record<string, string>)[color] ?? color;
@@ -35,7 +40,7 @@ export function T({ variant = "body", color = "text", align, weight, style, maxF
   return (
     <RNText
       maxFontSizeMultiplier={maxFontSizeMultiplier ?? (isMetric ? 1.3 : 1.8)}
-      style={[th.type[variant], { color: c }, align ? { textAlign: align } : null, weight ? { fontWeight: weight } : null, style]}
+      style={[th.type[variant], { color: c }, align ? { textAlign: align } : WEB_RTL_ALIGN(), weight ? { fontWeight: weight } : null, style]}
       {...rest}
     />
   );
@@ -91,12 +96,15 @@ export const ICONS = {
   trophy: ["trophy.fill", "emoji_events"],
 } as const;
 export type IconName = keyof typeof ICONS;
+const DIRECTIONAL = new Set<IconName>(["chevron", "back"]);
 
 export function Icon({ name, size = 20, color = "text", style }: { name: IconName; size?: number; color?: keyof Palette | (string & {}); style?: StyleProp<ViewStyle> }) {
   const th = useTheme();
   const tint = (th.c as Record<string, string>)[color] ?? color;
   const [ios, md] = ICONS[name];
-  return <SymbolView name={{ ios: ios as never, android: md as never, web: md as never }} size={size} tintColor={tint} style={[{ width: size, height: size }, style]} fallback={<View style={{ width: size, height: size }} />} />;
+  // Direction-bearing icons point the other way in right-to-left layouts.
+  const mirror = isRTL() && DIRECTIONAL.has(name);
+  return <SymbolView name={{ ios: ios as never, android: md as never, web: md as never }} size={size} tintColor={tint} style={[{ width: size, height: size }, mirror && { transform: [{ scaleX: -1 }] }, style]} fallback={<View style={{ width: size, height: size }} />} />;
 }
 
 /* ───────── Layout ───────── */
@@ -334,8 +342,8 @@ export function EmptyState({ icon = "info", title, body, action, onAction }: { i
 }
 
 export function ErrorState({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
-  const msg = error instanceof Error ? error.message : "Something went wrong.";
-  return <EmptyState icon="info" title="Couldn't load this" body={msg} action={onRetry ? "Try again" : undefined} onAction={onRetry} />;
+  const msg = error instanceof Error ? error.message : t("Something went wrong.");
+  return <EmptyState icon="info" title={t("Couldn't load this")} body={msg} action={onRetry ? t("Try again") : undefined} onAction={onRetry} />;
 }
 
 export function Skeleton({ height = 16, width = "100%", radius: r = 8, style }: { height?: number; width?: ViewStyle["width"]; radius?: number; style?: StyleProp<ViewStyle> }) {

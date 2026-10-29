@@ -11,26 +11,35 @@ import { kv } from "../lib/storage";
 import { useTheme } from "../theme/theme";
 import { Button, Card, Chip, Field, Icon, Row, Segmented, Stack, T } from "../ui/primitives";
 import { Screen } from "../ui/Screen";
+import { locale, t } from "../i18n";
 
 type Goal = "lose_fat" | "build_muscle" | "maintain" | "recomposition" | "strength" | "general_fitness" | "endurance";
-const GOALS: { value: Goal; label: string; body: string }[] = [
-  { value: "lose_fat", label: "Lose body fat", body: "A moderate deficit with high protein" },
-  { value: "build_muscle", label: "Build muscle", body: "A small surplus and progressive training" },
-  { value: "recomposition", label: "Recomposition", body: "Lose fat and gain muscle slowly" },
-  { value: "strength", label: "Get stronger", body: "Focus on main lifts" },
-  { value: "maintain", label: "Maintain weight", body: "Hold steady, improve habits" },
-  { value: "general_fitness", label: "General fitness", body: "Feel better, move more" },
-  { value: "endurance", label: "Improve endurance", body: "Conditioning alongside strength" },
+type Activity = "sedentary" | "light" | "moderate" | "very" | "extra";
+// Labels are built when rendering so they follow the current language.
+const goalOptions = (): { value: Goal; label: string; body: string }[] => [
+  { value: "lose_fat", label: t("Lose body fat"), body: t("A moderate deficit with high protein") },
+  { value: "build_muscle", label: t("Build muscle"), body: t("A small surplus and progressive training") },
+  { value: "recomposition", label: t("Recomposition"), body: t("Lose fat and gain muscle slowly") },
+  { value: "strength", label: t("Get stronger"), body: t("Focus on main lifts") },
+  { value: "maintain", label: t("Maintain weight"), body: t("Hold steady, improve habits") },
+  { value: "general_fitness", label: t("General fitness"), body: t("Feel better, move more") },
+  { value: "endurance", label: t("Improve endurance"), body: t("Conditioning alongside strength") },
 ];
-const ACTIVITY = [
-  { value: "sedentary", label: "Mostly sitting", body: "Desk work, little walking" },
-  { value: "light", label: "Lightly active", body: "Some walking most days" },
-  { value: "moderate", label: "Moderately active", body: "On your feet often or regular exercise" },
-  { value: "very", label: "Very active", body: "Physical job or hard training most days" },
-  { value: "extra", label: "Extremely active", body: "Physical job plus hard training" },
-] as const;
+const activityOptions = (): { value: Activity; label: string; body: string }[] => [
+  { value: "sedentary", label: t("Mostly sitting"), body: t("Desk work, little walking") },
+  { value: "light", label: t("Lightly active"), body: t("Some walking most days") },
+  { value: "moderate", label: t("Moderately active"), body: t("On your feet often or regular exercise") },
+  { value: "very", label: t("Very active"), body: t("Physical job or hard training most days") },
+  { value: "extra", label: t("Extremely active"), body: t("Physical job plus hard training") },
+];
 const EQUIPMENT = ["barbell", "dumbbell", "kettlebell", "machine", "cable", "bodyweight", "band", "pullup_bar", "cardio_machine"] as const;
-const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
+const equipmentLabel = (e: (typeof EQUIPMENT)[number]): string =>
+  ({ barbell: t("Barbell"), dumbbell: t("Dumbbells"), kettlebell: t("Kettlebell"), machine: t("Machines"), cable: t("Cable"), bodyweight: t("Bodyweight"), band: t("Bands"), pullup_bar: t("Pull-up bar"), cardio_machine: t("Cardio machine") })[e];
+const DIETS = ["omnivore", "halal", "vegetarian", "vegan", "pescatarian", "keto", "kosher", "other"] as const;
+const dietLabel = (p: (typeof DIETS)[number]): string =>
+  ({ omnivore: t("Omnivore"), halal: t("Halal"), vegetarian: t("Vegetarian"), vegan: t("Vegan"), pescatarian: t("Pescatarian"), keto: t("Keto"), kosher: t("Kosher"), other: t("Other") })[p];
+/** Weekday name for ISO weekday index 0 = Monday, from the platform's locale data. */
+const weekdayName = (i: number, style: "narrow" | "long") => new Date(Date.UTC(2024, 0, 1 + i)).toLocaleDateString(locale(), { weekday: style, timeZone: "UTC" });
 
 interface Draft {
   step: number;
@@ -44,7 +53,7 @@ interface Draft {
   heightIn: string;
   weight: string;
   bodyFat: string;
-  activity: (typeof ACTIVITY)[number]["value"] | null;
+  activity: Activity | null;
   sleepStart: string;
   sleepEnd: string;
   experience: "new" | "beginner" | "intermediate" | "advanced";
@@ -62,7 +71,8 @@ interface Draft {
 }
 
 const INITIAL: Draft = { step: 0, goals: [], units: "metric", sex: null, birthYear: "", birthMonth: "", birthDay: "", height: "", heightIn: "", weight: "", bodyFat: "", activity: null, sleepStart: "23:00", sleepEnd: "07:00", experience: "beginner", gymAccess: "commercial_gym", equipment: [], days: [1, 3, 5], sessionMinutes: 60, limitations: "", diet: "omnivore", allergies: "", dislikes: "", mealsPerDay: 3, photoAnalysis: true, coachUsesHealthData: false };
-const STEPS = ["Goals", "Body", "Lifestyle", "Training", "Nutrition", "Privacy", "Your plan"];
+const stepTitles = () => [t("Goals"), t("Body"), t("Lifestyle"), t("Training"), t("Nutrition"), t("Privacy"), t("Your plan")];
+const STEP_COUNT = 7;
 
 interface Plan {
   targets: { energyKcal: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; waterMl: number; estimatedTdeeKcal: number; bmrKcal: number; notes: string[]; weeklyRatePct: number };
@@ -132,7 +142,7 @@ export default function Onboarding() {
       setPlan(p);
       setError(null);
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Could not build the plan."),
+    onError: (e) => setError(e instanceof ApiError ? e.message : t("Could not build the plan.")),
   });
 
   const complete = useMutation({
@@ -155,7 +165,7 @@ export default function Onboarding() {
       kv.remove("onboarding.draft");
       await queryClient.invalidateQueries({ queryKey: qk.profile });
     },
-    onError: (e) => setError(e instanceof ApiError ? e.message : "Could not save. Check your connection and try again."),
+    onError: (e) => setError(e instanceof ApiError ? e.message : t("Could not save. Check your connection and try again.")),
   });
 
   const canContinue = [
@@ -171,7 +181,7 @@ export default function Onboarding() {
   const next = () => {
     if (d.step === 5) {
       const req = toRequest(d);
-      if (!req) return setError("Some details are missing.");
+      if (!req) return setError(t("Some details are missing."));
       planMutation.mutate(req);
     }
     set("step", Math.min(6, d.step + 1));
@@ -180,28 +190,28 @@ export default function Onboarding() {
   const units = d.units;
   return (
     <Screen
-      title={STEPS[d.step]}
-      subtitle={`Step ${d.step + 1} of ${STEPS.length}`}
+      title={stepTitles()[d.step]}
+      subtitle={t("Step {step} of {total}", { step: d.step + 1, total: STEP_COUNT })}
       back={false}
-      right={d.step > 0 ? <Button title="Back" kind="ghost" size="sm" onPress={() => set("step", d.step - 1)} /> : undefined}
+      right={d.step > 0 ? <Button title={t("Back")} kind="ghost" size="sm" onPress={() => set("step", d.step - 1)} /> : undefined}
       footer={
         d.step < 6 ? (
-          <Button title="Continue" onPress={next} disabled={!canContinue} />
+          <Button title={t("Continue")} onPress={next} disabled={!canContinue} />
         ) : (
-          <Button title="Start" onPress={() => complete.mutate()} loading={complete.isPending} disabled={!plan} />
+          <Button title={t("Start")} onPress={() => complete.mutate()} loading={complete.isPending} disabled={!plan} />
         )
       }
     >
       <View style={{ height: 4, borderRadius: 2, backgroundColor: th.c.track }}>
-        <View style={{ height: 4, borderRadius: 2, width: `${((d.step + 1) / STEPS.length) * 100}%`, backgroundColor: th.c.accent }} />
+        <View style={{ height: 4, borderRadius: 2, width: `${((d.step + 1) / STEP_COUNT) * 100}%`, backgroundColor: th.c.accent }} />
       </View>
 
       {d.step === 0 ? (
         <Stack gap={10}>
           <T variant="subhead" color="textSecondary">
-            Pick one or more. Tap in order of importance; the first is your main goal.
+            {t("Pick one or more. Tap in order of importance; the first is your main goal.")}
           </T>
-          {GOALS.map((g) => {
+          {goalOptions().map((g) => {
             const idx = d.goals.indexOf(g.value);
             return <Option key={g.value} title={g.label} body={g.body} selected={idx >= 0} badge={idx >= 0 ? String(idx + 1) : undefined} onPress={() => set("goals", idx >= 0 ? d.goals.filter((x) => x !== g.value) : [...d.goals, g.value].slice(0, 3))} />;
           })}
@@ -210,53 +220,53 @@ export default function Onboarding() {
 
       {d.step === 1 ? (
         <Stack gap={14}>
-          <Segmented options={[{ value: "metric", label: "Metric (kg, cm)" }, { value: "imperial", label: "Imperial (lb, ft)" }]} value={units} onChange={(v) => set("units", v)} />
+          <Segmented options={[{ value: "metric", label: t("Metric (kg, cm)") }, { value: "imperial", label: t("Imperial (lb, ft)") }]} value={units} onChange={(v) => set("units", v)} />
           <T variant="footnote" color="textSecondary">
-            Used for the energy estimate (Mifflin-St Jeor). You can change anything later.
+            {t("Used for the energy estimate (Mifflin-St Jeor). You can change anything later.")}
           </T>
           <Row gap={8}>
-            <Chip label="Male" selected={d.sex === "male"} onPress={() => set("sex", "male")} />
-            <Chip label="Female" selected={d.sex === "female"} onPress={() => set("sex", "female")} />
+            <Chip label={t("Male")} selected={d.sex === "male"} onPress={() => set("sex", "male")} />
+            <Chip label={t("Female")} selected={d.sex === "female"} onPress={() => set("sex", "female")} />
           </Row>
           <Row gap={8} align="flex-end">
             <View style={{ flex: 1.4 }}>
-              <Field label="Birth year" value={d.birthYear} onChangeText={(v) => set("birthYear", v.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" placeholder="1990" />
+              <Field label={t("Birth year")} value={d.birthYear} onChangeText={(v) => set("birthYear", v.replace(/\D/g, "").slice(0, 4))} keyboardType="number-pad" placeholder="1990" />
             </View>
             <View style={{ flex: 1 }}>
-              <Field label="Month" value={d.birthMonth} onChangeText={(v) => set("birthMonth", v.replace(/\D/g, "").slice(0, 2))} keyboardType="number-pad" placeholder="5" />
+              <Field label={t("Month")} value={d.birthMonth} onChangeText={(v) => set("birthMonth", v.replace(/\D/g, "").slice(0, 2))} keyboardType="number-pad" placeholder="5" />
             </View>
             <View style={{ flex: 1 }}>
-              <Field label="Day" value={d.birthDay} onChangeText={(v) => set("birthDay", v.replace(/\D/g, "").slice(0, 2))} keyboardType="number-pad" placeholder="14" />
+              <Field label={t("Day")} value={d.birthDay} onChangeText={(v) => set("birthDay", v.replace(/\D/g, "").slice(0, 2))} keyboardType="number-pad" placeholder="14" />
             </View>
           </Row>
           {units === "metric" ? (
-            <Field label="Height" value={d.height} onChangeText={(v) => set("height", v)} keyboardType="decimal-pad" suffix="cm" placeholder="178" />
+            <Field label={t("Height")} value={d.height} onChangeText={(v) => set("height", v)} keyboardType="decimal-pad" suffix="cm" placeholder="178" />
           ) : (
             <Row gap={8}>
               <View style={{ flex: 1 }}>
-                <Field label="Height" value={d.height} onChangeText={(v) => set("height", v)} keyboardType="number-pad" suffix="ft" placeholder="5" />
+                <Field label={t("Height")} value={d.height} onChangeText={(v) => set("height", v)} keyboardType="number-pad" suffix="ft" placeholder="5" />
               </View>
               <View style={{ flex: 1 }}>
                 <Field label=" " value={d.heightIn} onChangeText={(v) => set("heightIn", v)} keyboardType="decimal-pad" suffix="in" placeholder="10" />
               </View>
             </Row>
           )}
-          <Field label="Current weight" value={d.weight} onChangeText={(v) => set("weight", v)} keyboardType="decimal-pad" suffix={units === "metric" ? "kg" : "lb"} placeholder={units === "metric" ? "82.5" : "182"} />
-          <Field label="Body fat (optional)" value={d.bodyFat} onChangeText={(v) => set("bodyFat", v)} keyboardType="decimal-pad" suffix="%" placeholder="Only if measured" />
+          <Field label={t("Current weight")} value={d.weight} onChangeText={(v) => set("weight", v)} keyboardType="decimal-pad" suffix={units === "metric" ? "kg" : "lb"} placeholder={units === "metric" ? "82.5" : "182"} />
+          <Field label={t("Body fat (optional)")} value={d.bodyFat} onChangeText={(v) => set("bodyFat", v)} keyboardType="decimal-pad" suffix="%" placeholder={t("Only if measured")} />
         </Stack>
       ) : null}
 
       {d.step === 2 ? (
         <Stack gap={10}>
-          {ACTIVITY.map((a) => (
+          {activityOptions().map((a) => (
             <Option key={a.value} title={a.label} body={a.body} selected={d.activity === a.value} onPress={() => set("activity", a.value)} />
           ))}
           <Row gap={8}>
             <View style={{ flex: 1 }}>
-              <Field label="Usual bedtime" value={d.sleepStart} onChangeText={(v) => set("sleepStart", v)} placeholder="23:00" />
+              <Field label={t("Usual bedtime")} value={d.sleepStart} onChangeText={(v) => set("sleepStart", v)} placeholder="23:00" />
             </View>
             <View style={{ flex: 1 }}>
-              <Field label="Usual wake time" value={d.sleepEnd} onChangeText={(v) => set("sleepEnd", v)} placeholder="07:00" />
+              <Field label={t("Usual wake time")} value={d.sleepEnd} onChangeText={(v) => set("sleepEnd", v)} placeholder="07:00" />
             </View>
           </Row>
         </Stack>
@@ -265,37 +275,37 @@ export default function Onboarding() {
       {d.step === 3 ? (
         <Stack gap={16}>
           <Stack gap={8}>
-            <T variant="headline">Experience</T>
-            <Segmented options={[{ value: "new", label: "New" }, { value: "beginner", label: "< 1 yr" }, { value: "intermediate", label: "1–3 yrs" }, { value: "advanced", label: "3+ yrs" }]} value={d.experience} onChange={(v) => set("experience", v)} />
+            <T variant="headline">{t("Experience")}</T>
+            <Segmented options={[{ value: "new", label: t("New") }, { value: "beginner", label: t("< 1 yr") }, { value: "intermediate", label: t("1–3 yrs") }, { value: "advanced", label: t("3+ yrs") }]} value={d.experience} onChange={(v) => set("experience", v)} />
           </Stack>
           <Stack gap={8}>
-            <T variant="headline">Where do you train?</T>
+            <T variant="headline">{t("Where do you train?")}</T>
             <Row gap={8} wrap>
-              {([["commercial_gym", "Full gym"], ["home_gym", "Home gym"], ["minimal", "Minimal kit"], ["none", "No equipment"]] as const).map(([v, l]) => (
+              {([["commercial_gym", t("Full gym")], ["home_gym", t("Home gym")], ["minimal", t("Minimal kit")], ["none", t("No equipment")]] as const).map(([v, l]) => (
                 <Chip key={v} label={l} selected={d.gymAccess === v} onPress={() => set("gymAccess", v)} />
               ))}
             </Row>
           </Stack>
           {d.gymAccess !== "commercial_gym" ? (
             <Stack gap={8}>
-              <T variant="headline">Equipment you have</T>
+              <T variant="headline">{t("Equipment you have")}</T>
               <Row gap={8} wrap>
                 {EQUIPMENT.map((e) => (
-                  <Chip key={e} label={e.replace(/_/g, " ")} selected={d.equipment.includes(e)} onPress={() => set("equipment", d.equipment.includes(e) ? d.equipment.filter((x) => x !== e) : [...d.equipment, e])} />
+                  <Chip key={e} label={equipmentLabel(e)} selected={d.equipment.includes(e)} onPress={() => set("equipment", d.equipment.includes(e) ? d.equipment.filter((x) => x !== e) : [...d.equipment, e])} />
                 ))}
               </Row>
             </Stack>
           ) : null}
           <Stack gap={8}>
-            <T variant="headline">Training days</T>
+            <T variant="headline">{t("Training days")}</T>
             <Row gap={6}>
-              {DAYS.map((label, i) => {
+              {[0, 1, 2, 3, 4, 5, 6].map((i) => {
                 const wd = i + 1;
                 const on = d.days.includes(wd);
                 return (
-                  <Pressable key={wd} accessibilityRole="button" accessibilityLabel={["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][i]} accessibilityState={{ selected: on }} onPress={() => set("days", on ? d.days.filter((x) => x !== wd) : [...d.days, wd].sort())} style={{ flex: 1, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: on ? th.c.accent : th.c.surface, borderWidth: 1, borderColor: on ? th.c.accent : th.c.hairline }}>
+                  <Pressable key={wd} accessibilityRole="button" accessibilityLabel={weekdayName(i, "long")} accessibilityState={{ selected: on }} onPress={() => set("days", on ? d.days.filter((x) => x !== wd) : [...d.days, wd].sort())} style={{ flex: 1, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: on ? th.c.accent : th.c.surface, borderWidth: 1, borderColor: on ? th.c.accent : th.c.hairline }}>
                     <T variant="headline" color={on ? "textInverse" : "textSecondary"}>
-                      {label}
+                      {weekdayName(i, "narrow")}
                     </T>
                   </Pressable>
                 );
@@ -303,24 +313,24 @@ export default function Onboarding() {
             </Row>
           </Stack>
           <Stack gap={8}>
-            <T variant="headline">Session length</T>
-            <Segmented options={[{ value: "30", label: "30 min" }, { value: "45", label: "45" }, { value: "60", label: "60" }, { value: "75", label: "75" }, { value: "90", label: "90" }]} value={String(d.sessionMinutes) as "30"} onChange={(v) => set("sessionMinutes", Number(v))} />
+            <T variant="headline">{t("Session length")}</T>
+            <Segmented options={[{ value: "30", label: t("{n} min", { n: 30 }) }, { value: "45", label: "45" }, { value: "60", label: "60" }, { value: "75", label: "75" }, { value: "90", label: "90" }]} value={String(d.sessionMinutes) as "30"} onChange={(v) => set("sessionMinutes", Number(v))} />
           </Stack>
-          <Field label="Movement limitations (optional)" value={d.limitations} onChangeText={(v) => set("limitations", v)} placeholder="e.g. avoid overhead pressing" multiline />
+          <Field label={t("Movement limitations (optional)")} value={d.limitations} onChangeText={(v) => set("limitations", v)} placeholder={t("e.g. avoid overhead pressing")} multiline />
         </Stack>
       ) : null}
 
       {d.step === 4 ? (
         <Stack gap={14}>
           <Row gap={8} wrap>
-            {(["omnivore", "halal", "vegetarian", "vegan", "pescatarian", "keto", "kosher", "other"] as const).map((p) => (
-              <Chip key={p} label={p[0]!.toUpperCase() + p.slice(1)} selected={d.diet === p} onPress={() => set("diet", p)} />
+            {DIETS.map((p) => (
+              <Chip key={p} label={dietLabel(p)} selected={d.diet === p} onPress={() => set("diet", p)} />
             ))}
           </Row>
-          <Field label="Allergies (comma separated)" value={d.allergies} onChangeText={(v) => set("allergies", v)} placeholder="e.g. peanuts, shellfish" />
-          <Field label="Foods you dislike" value={d.dislikes} onChangeText={(v) => set("dislikes", v)} placeholder="e.g. mushrooms" />
+          <Field label={t("Allergies (comma separated)")} value={d.allergies} onChangeText={(v) => set("allergies", v)} placeholder={t("e.g. peanuts, shellfish")} />
+          <Field label={t("Foods you dislike")} value={d.dislikes} onChangeText={(v) => set("dislikes", v)} placeholder={t("e.g. mushrooms")} />
           <Stack gap={8}>
-            <T variant="headline">Meals per day</T>
+            <T variant="headline">{t("Meals per day")}</T>
             <Segmented options={[{ value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4", label: "4" }, { value: "5", label: "5+" }]} value={String(Math.min(5, d.mealsPerDay)) as "3"} onChange={(v) => set("mealsPerDay", Number(v))} />
           </Stack>
         </Stack>
@@ -330,56 +340,56 @@ export default function Onboarding() {
         <Stack gap={12}>
           <Card>
             <Row justify="space-between" align="flex-start">
-              <View style={{ flex: 1, gap: 4, paddingRight: 12 }}>
-                <T variant="headline">Photo analysis</T>
+              <View style={{ flex: 1, gap: 4, paddingEnd: 12 }}>
+                <T variant="headline">{t("Photo analysis")}</T>
                 <T variant="footnote" color="textSecondary">
-                  Meal and label photos are sent to the AI provider to draft an entry you review. Photos are deleted after you confirm unless you choose to keep them.
+                  {t("Meal and label photos are sent to the AI provider to draft an entry you review. Photos are deleted after you confirm unless you choose to keep them.")}
                 </T>
               </View>
-              <Switch value={d.photoAnalysis} onValueChange={(v) => set("photoAnalysis", v)} trackColor={{ true: th.c.accent, false: th.c.track }} accessibilityLabel="Allow photo analysis" />
+              <Switch value={d.photoAnalysis} onValueChange={(v) => set("photoAnalysis", v)} trackColor={{ true: th.c.accent, false: th.c.track }} accessibilityLabel={t("Allow photo analysis")} />
             </Row>
           </Card>
           <Card>
             <Row justify="space-between" align="flex-start">
-              <View style={{ flex: 1, gap: 4, paddingRight: 12 }}>
-                <T variant="headline">Coach can use health data</T>
+              <View style={{ flex: 1, gap: 4, paddingEnd: 12 }}>
+                <T variant="headline">{t("Coach can use health data")}</T>
                 <T variant="footnote" color="textSecondary">
-                  Lets the coach read sleep, resting heart rate and check-ins when answering. Off by default.
+                  {t("Lets the coach read sleep, resting heart rate and check-ins when answering. Off by default.")}
                 </T>
               </View>
-              <Switch value={d.coachUsesHealthData} onValueChange={(v) => set("coachUsesHealthData", v)} trackColor={{ true: th.c.accent, false: th.c.track }} accessibilityLabel="Allow coach to use health data" />
+              <Switch value={d.coachUsesHealthData} onValueChange={(v) => set("coachUsesHealthData", v)} trackColor={{ true: th.c.accent, false: th.c.track }} accessibilityLabel={t("Allow coach to use health data")} />
             </Row>
           </Card>
           <T variant="footnote" color="textTertiary">
-            Apple Health / Health Connect and notifications are set up later in Settings, one permission at a time.
+            {t("Apple Health / Health Connect and notifications are set up later in Settings, one permission at a time.")}
           </T>
         </Stack>
       ) : null}
 
       {d.step === 6 ? (
         <Stack gap={12}>
-          {planMutation.isPending ? <T color="textSecondary">Building your plan…</T> : null}
+          {planMutation.isPending ? <T color="textSecondary">{t("Building your plan…")}</T> : null}
           {plan ? (
             <>
               <Card>
                 <Stack gap={10}>
                   <Row justify="space-between">
                     <T variant="label" color="textTertiary">
-                      Daily targets
+                      {t("Daily targets")}
                     </T>
                     <T variant="caption" color="textTertiary">
-                      Estimated
+                      {t("Estimated")}
                     </T>
                   </Row>
                   <Row gap={8}>
-                    {([["energyKcal", "Energy", "kcal"], ["proteinG", "Protein", "g"], ["carbsG", "Carbs", "g"], ["fatG", "Fat", "g"]] as const).map(([k, l, u]) => (
+                    {([["energyKcal", t("Energy"), "kcal"], ["proteinG", t("Protein"), "g"], ["carbsG", t("Carbs"), "g"], ["fatG", t("Fat"), "g"]] as const).map(([k, l, u]) => (
                       <View key={k} style={{ flex: 1 }}>
                         <Field label={l} value={edits[k] ?? String(plan.targets[k])} onChangeText={(v) => setEdits((e) => ({ ...e, [k]: v.replace(/[^\d]/g, "") }))} keyboardType="number-pad" suffix={u} />
                       </View>
                     ))}
                   </Row>
                   <T variant="footnote" color="textSecondary">
-                    Estimated maintenance ≈ {plan.targets.estimatedTdeeKcal} kcal. Targets adapt to your logged intake and weight trend after a few weeks, and only with your approval.
+                    {t("Estimated maintenance ≈ {kcal} kcal. Targets adapt to your logged intake and weight trend after a few weeks, and only with your approval.", { kcal: plan.targets.estimatedTdeeKcal.toLocaleString(locale()) })}
                   </T>
                   {plan.targets.notes.map((n) => (
                     <T key={n} variant="footnote" color="warning">
@@ -391,7 +401,7 @@ export default function Onboarding() {
               <Card>
                 <Stack gap={6}>
                   <T variant="label" color="textTertiary">
-                    Training
+                    {t("Training")}
                   </T>
                   <T variant="headline">{plan.training.dayNames.join(" · ")}</T>
                   <T variant="footnote" color="textSecondary">
@@ -402,13 +412,13 @@ export default function Onboarding() {
               <Card>
                 <Stack gap={6}>
                   <T variant="label" color="textTertiary">
-                    Measuring progress
+                    {t("Measuring progress")}
                   </T>
                   <T variant="footnote" color="textSecondary">
                     {plan.measurementSchedule.weighIns}
                   </T>
                   <T variant="footnote" color="textSecondary">
-                    About {plan.activity.dailyStepsTarget.toLocaleString()} steps a day. {plan.activity.note}
+                    {t("About {steps} steps a day.", { steps: plan.activity.dailyStepsTarget.toLocaleString(locale()) })} {plan.activity.note}
                   </T>
                 </Stack>
               </Card>

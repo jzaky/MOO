@@ -11,6 +11,7 @@ import { useTheme } from "../../../theme/theme";
 import { ActionSheet } from "../../../ui/ActionSheet";
 import { Button, Card, Divider, EmptyState, ErrorState, Icon, Row, SectionHeader, Skeleton, Stack, T } from "../../../ui/primitives";
 import { Screen } from "../../../ui/Screen";
+import { t } from "../../../i18n";
 
 function fmtQty(i: GroceryItem): string {
   if (i.unit === "g" && i.quantity >= 1000) return `${Math.round(i.quantity / 100) / 10} kg`;
@@ -35,7 +36,7 @@ export default function GroceryListScreen() {
     },
     onError: (_, v) => {
       setChecked(v.item.id, !v.checked);
-      setMessage("Couldn't save that change. Check your connection.");
+      setMessage(t("Couldn't save that change. Check your connection."));
     },
   });
   const toPantry = useMutation({
@@ -43,7 +44,7 @@ export default function GroceryListScreen() {
     onSuccess: (_, i) => {
       toggle.mutate({ item: i, checked: true });
       void queryClient.invalidateQueries({ queryKey: qk.pantry });
-      setMessage(`${i.name} added to your pantry. Future lists will subtract it.`);
+      setMessage(t("{item} added to your pantry. Future lists will subtract it.", { item: i.name }));
     },
   });
 
@@ -52,13 +53,13 @@ export default function GroceryListScreen() {
   const categories = [...new Set(items.map((i) => i.category))];
 
   return (
-    <Screen back title="Grocery list" subtitle={list.data ? `${done} of ${items.length} in the basket` : undefined} right={<Button title="Pantry" kind="secondary" size="sm" onPress={() => router.push("/plan/pantry")} />} onRefresh={() => void list.refetch()} refreshing={list.isRefetching}>
+    <Screen back title={t("Grocery list")} subtitle={list.data ? t("{done} of {total} in the basket", { done, total: items.length }) : undefined} right={<Button title={t("Pantry")} kind="secondary" size="sm" onPress={() => router.push("/plan/pantry")} />} onRefresh={() => void list.refetch()} refreshing={list.isRefetching}>
       {list.isPending ? (
         <Card><Stack><Skeleton /><Skeleton /><Skeleton width="60%" /></Stack></Card>
       ) : list.isError ? (
         <Card><ErrorState error={list.error} onRetry={() => void list.refetch()} /></Card>
       ) : !items.length ? (
-        <Card><EmptyState icon="cart" title="Nothing to buy" body="Everything this plan needs is already in your pantry, or its recipes have no matched ingredients." /></Card>
+        <Card><EmptyState icon="cart" title={t("Nothing to buy")} body={t("Everything this plan needs is already in your pantry, or its recipes have no matched ingredients.")} /></Card>
       ) : (
         <>
           {message ? <T variant="footnote" color="textSecondary">{message}</T> : null}
@@ -73,7 +74,7 @@ export default function GroceryListScreen() {
                       accessibilityRole="checkbox"
                       accessibilityState={{ checked: i.checked }}
                       accessibilityLabel={`${i.name}, ${fmtQty(i)}`}
-                      accessibilityHint="Hold for more options"
+                      accessibilityHint={t("Hold for more options")}
                       onPress={() => toggle.mutate({ item: i, checked: !i.checked })}
                       onLongPress={() => setMenu(i)}
                       style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, minHeight: 48 }}
@@ -84,7 +85,7 @@ export default function GroceryListScreen() {
                       <View style={{ flex: 1 }}>
                         <T variant="body" color={i.checked ? "textTertiary" : "text"} style={{ textDecorationLine: i.checked ? "line-through" : "none" }}>{i.name}</T>
                         {/* Recipes that list a cooked ingredient give its cooked weight; buy less of it dry. */}
-                        {/\bcooked\b/i.test(i.name) ? <T variant="caption" color="textTertiary">cooked weight; buy less dry</T> : null}
+                        {/\bcooked\b/i.test(i.name) ? <T variant="caption" color="textTertiary">{t("cooked weight; buy less dry")}</T> : null}
                       </View>
                       <T variant="subhead" color="textSecondary">{fmtQty(i)}</T>
                     </Pressable>
@@ -93,10 +94,10 @@ export default function GroceryListScreen() {
               </Card>
             </View>
           ))}
-          <T variant="caption" color="textTertiary">Amounts are totals across the plan's recipes, minus what's in your pantry. Hold an item if you already have it.</T>
+          <T variant="caption" color="textTertiary">{t("Amounts are totals across the plan's recipes, minus what's in your pantry. Hold an item if you already have it.")}</T>
         </>
       )}
-      <ActionSheet visible={!!menu} title={menu?.name} onClose={() => setMenu(null)} actions={menu ? [{ label: "I have this at home (add to pantry)", icon: "check" as const, onPress: () => toPantry.mutate(menu) }] : []} />
+      <ActionSheet visible={!!menu} title={menu?.name} onClose={() => setMenu(null)} actions={menu ? [{ label: t("I have this at home (add to pantry)"), icon: "check" as const, onPress: () => toPantry.mutate(menu) }] : []} />
     </Screen>
   );
 }

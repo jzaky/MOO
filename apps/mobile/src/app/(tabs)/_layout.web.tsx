@@ -1,4 +1,5 @@
 import { TabList, TabSlot, TabTrigger, Tabs, type TabTriggerSlotProps } from "expo-router/ui";
+import { t } from "../../i18n";
 import { Pressable, View } from "react-native";
 import { useTheme } from "../../theme/theme";
 import { Icon, T, type IconName } from "../../ui/primitives";
@@ -20,11 +21,11 @@ function TabButton({ isFocused, icon, label, ref: _ref, ...props }: TabTriggerSl
 export default function WebTabsLayout() {
   const th = useTheme();
   const tabs: { name: string; href: "/" | "/nutrition" | "/train" | "/progress" | "/coach"; icon: IconName; label: string }[] = [
-    { name: "index", href: "/", icon: "today", label: "Today" },
-    { name: "nutrition", href: "/nutrition", icon: "nutrition", label: "Nutrition" },
-    { name: "train", href: "/train", icon: "train", label: "Train" },
-    { name: "progress", href: "/progress", icon: "progress", label: "Progress" },
-    { name: "coach", href: "/coach", icon: "coach", label: "Coach" },
+    { name: "index", href: "/", icon: "today", label: t("Today") },
+    { name: "nutrition", href: "/nutrition", icon: "nutrition", label: t("Nutrition") },
+    { name: "train", href: "/train", icon: "train", label: t("Train") },
+    { name: "progress", href: "/progress", icon: "progress", label: t("Progress") },
+    { name: "coach", href: "/coach", icon: "coach", label: t("Coach") },
   ];
   return (
     <Tabs>

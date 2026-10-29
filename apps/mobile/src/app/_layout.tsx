@@ -9,6 +9,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { syncHealth } from "../features/health/sync";
 import { onWatchAction } from "../features/native/watch";
 import { applyWatchAction, syncNativeSurfaces } from "../features/workout/store";
+import { applyDirection, useLanguage } from "../i18n";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { useProfile } from "../lib/data";
 import { flush, startOutboxLoop } from "../lib/outbox";
@@ -19,9 +20,11 @@ import { onlineManager } from "@tanstack/react-query";
 SplashScreen.preventAutoHideAsync().catch(() => {});
 restoreCache();
 wireOnlineManager();
+applyDirection();
 
 function Gate() {
   const th = useTheme();
+  const lang = useLanguage();
   const { status } = useAuth();
   const signedIn = status === "signedIn";
   const profile = useProfile(signedIn);
@@ -66,7 +69,8 @@ function Gate() {
   const sheet = { presentation: "formSheet" as const, sheetAllowedDetents: [0.6, 1], sheetGrabberVisible: true, contentStyle: { backgroundColor: th.c.bg } };
   const modal = { presentation: "modal" as const, contentStyle: { backgroundColor: th.c.bg } };
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: th.c.bg }, animation: "default" }}>
+    // Keyed on language so every screen re-renders its text when it changes.
+    <Stack key={lang} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: th.c.bg }, animation: "default" }}>
       <Stack.Protected guard={!signedIn}>
         <Stack.Screen name="welcome" />
         <Stack.Screen name="sign-in" />

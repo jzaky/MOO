@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import { currentLang, t } from "../i18n";
 import { secure } from "./storage";
 
 export const API_URL: string = process.env.EXPO_PUBLIC_API_URL ?? (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl ?? "http://localhost:4000";
@@ -87,7 +88,8 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
   // Refresh proactively when the access token is about to expire.
   if (auth && tokens && Date.parse(tokens.accessTokenExpiresAt) - Date.now() < 30_000) await refresh();
   const doFetch = async () => {
-    const headers: Record<string, string> = { Accept: "application/json" };
+    // The coach replies in the app's language; other server text is English for now.
+    const headers: Record<string, string> = { Accept: "application/json", "Accept-Language": currentLang() };
     if (opts.body !== undefined) headers["Content-Type"] = "application/json";
     if (auth && tokens) headers.Authorization = `Bearer ${tokens.accessToken}`;
     return fetch(`${API_URL}${path}${qs}`, { method, headers, body: opts.form ?? (opts.body !== undefined ? JSON.stringify(opts.body) : undefined), signal: opts.signal });
@@ -98,7 +100,7 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
     if (res.status === 401 && auth && tokens && (await refresh())) res = await doFetch();
   } catch (e) {
     if ((e as Error).name === "AbortError") throw e;
-    throw new ApiError(0, "network", "You appear to be offline.");
+    throw new ApiError(0, "network", t("You appear to be offline."));
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();

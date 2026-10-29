@@ -10,8 +10,24 @@ import type { Recommendation } from "../../lib/types";
 import { useTheme } from "../../theme/theme";
 import { Badge, Button, Card, Chip, EmptyState, Field, Icon, IconButton, Row, SectionHeader, Segmented, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
+import { fmtDay, locale, t, tn } from "../../i18n";
 
-const PROMPTS = ["What should I eat tonight?", "Am I eating enough protein?", "Build me a 45-minute workout", "How consistent have I been?", "Why has my weight stopped dropping?", "What should I change next week?"];
+const prompts = () => [t("What should I eat tonight?"), t("Am I eating enough protein?"), t("Build me a 45-minute workout"), t("How consistent have I been?"), t("Why has my weight stopped dropping?"), t("What should I change next week?")];
+
+function statusLabel(status: string): string {
+  if (status === "accepted") return t("Applied");
+  if (status === "rejected") return t("Declined");
+  if (status === "proposed") return t("Waiting for you");
+  if (status === "expired") return t("Expired");
+  return status;
+}
+
+function sufficiencyLabel(s: string): string {
+  if (s === "good") return t("good");
+  if (s === "limited") return t("limited");
+  if (s === "insufficient") return t("insufficient");
+  return s;
+}
 
 interface Message {
   id: string;
@@ -21,7 +37,7 @@ interface Message {
 
 function payloadSummary(r: Recommendation): string | null {
   const p = r.payload as Record<string, number | string | undefined>;
-  if (r.kind === "nutrition_targets") return `${p.energyKcal} kcal · ${p.proteinG} g protein · ${p.carbsG} g carbs · ${p.fatG} g fat`;
+  if (r.kind === "nutrition_targets") return t("{kcal} kcal · {protein} g protein · {carbs} g carbs · {fat} g fat", { kcal: String(p.energyKcal), protein: String(p.proteinG), carbs: String(p.carbsG), fat: String(p.fatG) });
   return null;
 }
 
@@ -39,27 +55,27 @@ function RecommendationCard({ r }: { r: Recommendation }) {
       <Stack gap={8}>
         <Row justify="space-between" align="flex-start">
           <T variant="headline" style={{ flex: 1 }}>{r.title}</T>
-          <Badge label={r.source === "engine" ? "From your data" : "Coach"} tone="info" />
+          <Badge label={r.source === "engine" ? t("From your data") : t("Coach")} tone="info" />
         </Row>
         {payloadSummary(r) ? <T variant="subhead">{payloadSummary(r)}</T> : null}
         <T variant="footnote" color="textSecondary">{r.rationale}</T>
-        {ev.confidence ? <T variant="caption" color="textTertiary">Confidence {ev.confidence} · {ev.completeDays} complete days{ev.observedKgPerWeek != null ? ` · trend ${ev.observedKgPerWeek.toFixed(2)} kg/wk` : ""}</T> : null}
+        {ev.confidence ? <T variant="caption" color="textTertiary">{t("Confidence {level}", { level: ev.confidence === "high" ? t("high") : ev.confidence === "medium" ? t("medium") : ev.confidence === "low" ? t("low") : ev.confidence })} · {tn(ev.completeDays ?? 0, "{n} complete day", "{n} complete days")}{ev.observedKgPerWeek != null ? ` · ${t("trend {value} kg/wk", { value: ev.observedKgPerWeek.toFixed(2) })}` : ""}</T> : null}
         {r.status === "proposed" ? (
           <Row gap={8}>
-            <Button title="Not now" kind="secondary" size="md" onPress={() => decide.mutate("reject")} style={{ flex: 1 }} disabled={decide.isPending} />
-            <Button title="Apply" size="md" onPress={() => decide.mutate("accept")} loading={decide.isPending} style={{ flex: 1 }} />
+            <Button title={t("Not now")} kind="secondary" size="md" onPress={() => decide.mutate("reject")} style={{ flex: 1 }} disabled={decide.isPending} />
+            <Button title={t("Apply")} size="md" onPress={() => decide.mutate("accept")} loading={decide.isPending} style={{ flex: 1 }} />
           </Row>
         ) : (
-          <Badge label={r.status} tone={r.status === "accepted" ? "accent" : "neutral"} />
+          <Badge label={statusLabel(r.status)} tone={r.status === "accepted" ? "accent" : "neutral"} />
         )}
-        {decide.error ? <T variant="footnote" color="danger">{decide.error instanceof ApiError ? decide.error.message : "Failed"}</T> : null}
+        {decide.error ? <T variant="footnote" color="danger">{decide.error instanceof ApiError ? decide.error.message : t("Something went wrong. Try again.")}</T> : null}
       </Stack>
     </Card>
   );
 }
 
-const fmtDay = (d: string, withMonth = true) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, withMonth ? { month: "short", day: "numeric", timeZone: "UTC" } : { day: "numeric", timeZone: "UTC" });
-const fmtRange = (a: string, b: string) => (a.slice(0, 7) === b.slice(0, 7) ? `${fmtDay(a)} – ${fmtDay(b, false)}` : `${fmtDay(a)} – ${fmtDay(b)}`);
+const fmtNum0 = (n: number | null) => (n == null ? "–" : Math.round(n).toLocaleString(locale()));
+const fmtRange = (a: string, b: string) => (a.slice(0, 7) === b.slice(0, 7) ? `${fmtDay(a)} – ${fmtDay(b, { day: "numeric" })}` : `${fmtDay(a)} – ${fmtDay(b)}`);
 
 export default function Coach() {
   const th = useTheme();
@@ -103,15 +119,15 @@ export default function Coach() {
   };
 
   return (
-    <Screen tabBar title="Coach" right={tab === "chat" && conversationId ? <IconButton icon="add" label="New conversation" onPress={() => { kv.remove("coach.conversation"); setConversationId(null); }} /> : undefined}>
-      <Segmented options={[{ value: "chat", label: "Ask" }, { value: "suggestions", label: `Suggestions${pending.length ? ` (${pending.length})` : ""}` }, { value: "week", label: "This week" }]} value={tab} onChange={setTab} />
+    <Screen tabBar title={t("Coach")} right={tab === "chat" && conversationId ? <IconButton icon="add" label={t("New conversation")} onPress={() => { kv.remove("coach.conversation"); setConversationId(null); }} /> : undefined}>
+      <Segmented options={[{ value: "chat", label: t("Ask") }, { value: "suggestions", label: pending.length ? t("Suggestions ({n})", { n: pending.length }) : t("Suggestions") }, { value: "week", label: t("This week") }]} value={tab} onChange={setTab} />
 
       {tab === "chat" ? (
         <>
           {!messages.data?.length ? (
             <Stack gap={10}>
-              <T variant="subhead" color="textSecondary">Answers use your logged food, workouts, weight trend and goals. Changes are suggested for you to approve, never applied silently.</T>
-              <Row gap={8} wrap>{PROMPTS.map((p) => <Chip key={p} label={p} onPress={() => submit(p)} />)}</Row>
+              <T variant="subhead" color="textSecondary">{t("Answers use your logged food, workouts, weight trend and goals. Changes are suggested for you to approve, never applied silently.")}</T>
+              <Row gap={8} wrap>{prompts().map((p) => <Chip key={p} label={p} onPress={() => submit(p)} />)}</Row>
             </Stack>
           ) : (
             <Stack gap={10}>
@@ -122,31 +138,31 @@ export default function Coach() {
               ))}
             </Stack>
           )}
-          {send.isPending ? <Row gap={8}><ActivityIndicator color={th.c.textSecondary} /><T variant="footnote" color="textSecondary">Looking at your data…</T></Row> : null}
-          {send.error ? <T variant="footnote" color="danger">{send.error instanceof ApiError ? send.error.message : "The coach is unavailable right now."}</T> : null}
-          {pending.length ? <Button title={`${pending.length} suggestion${pending.length > 1 ? "s" : ""} to review`} kind="secondary" size="md" icon="coach" onPress={() => setTab("suggestions")} /> : null}
+          {send.isPending ? <Row gap={8}><ActivityIndicator color={th.c.textSecondary} /><T variant="footnote" color="textSecondary">{t("Looking at your data…")}</T></Row> : null}
+          {send.error ? <T variant="footnote" color="danger">{send.error instanceof ApiError ? send.error.message : t("The coach is unavailable right now.")}</T> : null}
+          {pending.length ? <Button title={tn(pending.length, "{n} suggestion to review", "{n} suggestions to review")} kind="secondary" size="md" icon="coach" onPress={() => setTab("suggestions")} /> : null}
           <Row gap={8} align="flex-end">
-            <View style={{ flex: 1 }}><Field value={text} onChangeText={setText} placeholder="Ask about food, training or progress" multiline onSubmitEditing={() => submit()} accessibilityLabel="Message the coach" /></View>
-            <IconButton icon="send" label="Send" onPress={() => submit()} bg="accent" color="textInverse" size={48} />
+            <View style={{ flex: 1 }}><Field value={text} onChangeText={setText} placeholder={t("Ask about food, training or progress")} multiline onSubmitEditing={() => submit()} accessibilityLabel={t("Message the coach")} /></View>
+            <IconButton icon="send" label={t("Send")} onPress={() => submit()} bg="accent" color="textInverse" size={48} />
           </Row>
-          <T variant="caption" color="textTertiary">Not medical advice. For pain, injury, or medical conditions, talk to a qualified professional.</T>
+          <T variant="caption" color="textTertiary">{t("Not medical advice. For pain, injury, or medical conditions, talk to a qualified professional.")}</T>
         </>
       ) : null}
 
       {tab === "suggestions" ? (
         <>
-          <Button title="Check my calorie target" kind="secondary" icon="progress" onPress={() => adaptive.mutate()} loading={adaptive.isPending} />
+          <Button title={t("Check my calorie target")} kind="secondary" icon="progress" onPress={() => adaptive.mutate()} loading={adaptive.isPending} />
           {adaptive.data && !adaptive.data.recommendation ? (
-            <Card><Stack gap={4}><T variant="headline">{adaptive.data.result.status === "on_track" ? "On track" : adaptive.data.result.status === "adherence_gap" ? "Target not the issue" : "Not enough data yet"}</T>{adaptive.data.result.reasons.map((r) => <T key={r} variant="footnote" color="textSecondary">{r}</T>)}</Stack></Card>
+            <Card><Stack gap={4}><T variant="headline">{adaptive.data.result.status === "on_track" ? t("On track") : adaptive.data.result.status === "adherence_gap" ? t("Target not the issue") : t("Not enough data yet")}</T>{adaptive.data.result.reasons.map((r) => <T key={r} variant="footnote" color="textSecondary">{r}</T>)}</Stack></Card>
           ) : null}
-          {pending.length ? pending.map((r) => <RecommendationCard key={r.id} r={r} />) : <Card><EmptyState icon="check" title="Nothing to review" body="Suggestions from the coach and the adaptive engine will appear here for your approval." /></Card>}
+          {pending.length ? pending.map((r) => <RecommendationCard key={r.id} r={r} />) : <Card><EmptyState icon="check" title={t("Nothing to review")} body={t("Suggestions from the coach and the adaptive engine will appear here for your approval.")} /></Card>}
           {(recs.data ?? []).filter((r) => r.status !== "proposed").length ? (
             <>
-              <SectionHeader title="History" />
+              <SectionHeader title={t("History")} />
               {(recs.data ?? []).filter((r) => r.status !== "proposed").slice(0, 10).map((r) => (
                 <Row key={r.id} gap={10}>
                   <Icon name={r.status === "accepted" ? "check" : "close"} size={14} color={r.status === "accepted" ? "accent" : "textTertiary"} />
-                  <T variant="footnote" color="textSecondary" style={{ flex: 1 }}>{r.title} · {r.status}{r.actions[0] ? ` · applied ${r.actions[0].createdAt.slice(0, 10)}` : ""}</T>
+                  <T variant="footnote" color="textSecondary" style={{ flex: 1 }}>{r.title} · {statusLabel(r.status)}{r.actions[0] ? ` · ${t("applied {date}", { date: fmtDay(r.actions[0].createdAt.slice(0, 10)) })}` : ""}</T>
                 </Row>
               ))}
             </>
@@ -160,33 +176,33 @@ export default function Coach() {
             <T variant="footnote" color="textSecondary">{fmtRange(weekly.data.week.start, weekly.data.week.end)}</T>
             <Card>
               <Stack gap={6}>
-                <T variant="label" color="textTertiary">Nutrition · logged</T>
-                <T variant="subhead">{weekly.data.nutrition.daysLogged} days logged, {weekly.data.nutrition.completeDays} complete.</T>
-                {weekly.data.nutrition.averages.energyKcal != null ? <T variant="subhead">Averaged {weekly.data.nutrition.averages.energyKcal} kcal{weekly.data.nutrition.targets ? ` (target ${weekly.data.nutrition.targets.energyKcal})` : ""} and {weekly.data.nutrition.averages.proteinG} g protein.</T> : null}
-                {weekly.data.nutrition.proteinTargetHitDays != null && weekly.data.nutrition.completeDays > 0 ? <T variant="footnote" color="textSecondary">Protein target reached on {weekly.data.nutrition.proteinTargetHitDays} of {weekly.data.nutrition.completeDays} complete days.</T> : null}
+                <T variant="label" color="textTertiary">{t("Nutrition · logged")}</T>
+                <T variant="subhead">{t("{logged} days logged, {complete} complete.", { logged: weekly.data.nutrition.daysLogged, complete: weekly.data.nutrition.completeDays })}</T>
+                {weekly.data.nutrition.averages.energyKcal != null ? <T variant="subhead">{weekly.data.nutrition.targets ? t("Averaged {kcal} kcal (target {target}) and {protein} g protein.", { kcal: fmtNum0(weekly.data.nutrition.averages.energyKcal), target: fmtNum0(weekly.data.nutrition.targets.energyKcal), protein: String(weekly.data.nutrition.averages.proteinG) }) : t("Averaged {kcal} kcal and {protein} g protein.", { kcal: fmtNum0(weekly.data.nutrition.averages.energyKcal), protein: String(weekly.data.nutrition.averages.proteinG) })}</T> : null}
+                {weekly.data.nutrition.proteinTargetHitDays != null && weekly.data.nutrition.completeDays > 0 ? <T variant="footnote" color="textSecondary">{t("Protein target reached on {hit} of {complete} complete days.", { hit: weekly.data.nutrition.proteinTargetHitDays, complete: weekly.data.nutrition.completeDays })}</T> : null}
               </Stack>
             </Card>
             <Card>
               <Stack gap={6}>
-                <T variant="label" color="textTertiary">Training · logged</T>
-                <T variant="subhead">{weekly.data.training.sessionsCompleted} session{weekly.data.training.sessionsCompleted === 1 ? "" : "s"}{weekly.data.training.sessionsPlannedPerWeek ? ` of ${weekly.data.training.sessionsPlannedPerWeek} planned` : ""}</T>
-                {weekly.data.training.prExercises.length ? <T variant="footnote" color="accent">New records on {weekly.data.training.prExercises.slice(0, 4).join(", ")}{weekly.data.training.prExercises.length > 4 ? ` and ${weekly.data.training.prExercises.length - 4} more` : ""}.</T> : null}
+                <T variant="label" color="textTertiary">{t("Training · logged")}</T>
+                <T variant="subhead">{weekly.data.training.sessionsPlannedPerWeek ? t("{done} of {planned} planned sessions", { done: weekly.data.training.sessionsCompleted, planned: weekly.data.training.sessionsPlannedPerWeek }) : tn(weekly.data.training.sessionsCompleted, "{n} session", "{n} sessions")}</T>
+                {weekly.data.training.prExercises.length ? <T variant="footnote" color="accent">{weekly.data.training.prExercises.length > 4 ? t("New records on {list} and {more} more.", { list: weekly.data.training.prExercises.slice(0, 4).join(t(", ")), more: weekly.data.training.prExercises.length - 4 }) : t("New records on {list}.", { list: weekly.data.training.prExercises.join(t(", ")) })}</T> : null}
               </Stack>
             </Card>
             <Card>
               <Stack gap={6}>
-                <T variant="label" color="textTertiary">Body · calculated</T>
-                <T variant="subhead">{weekly.data.weight.kgPerWeek == null ? "Not enough weigh-ins for a trend." : `Trend ${weekly.data.weight.kgPerWeek >= 0 ? "+" : ""}${weekly.data.weight.kgPerWeek.toFixed(2)} kg/week (${weekly.data.weight.sufficiency} data).`}</T>
+                <T variant="label" color="textTertiary">{t("Body · calculated")}</T>
+                <T variant="subhead">{weekly.data.weight.kgPerWeek == null ? t("Not enough weigh-ins for a trend.") : t("Trend {value} kg/week ({quality} data).", { value: `${weekly.data.weight.kgPerWeek >= 0 ? "+" : ""}${weekly.data.weight.kgPerWeek.toFixed(2)}`, quality: sufficiencyLabel(weekly.data.weight.sufficiency) })}</T>
               </Stack>
             </Card>
             <Card>
               <Stack gap={6}>
-                <T variant="label" color="textTertiary">Targets · estimate</T>
+                <T variant="label" color="textTertiary">{t("Targets · estimate")}</T>
                 {weekly.data.adaptive.reasons.map((r) => <T key={r} variant="footnote" color="textSecondary">{r}</T>)}
               </Stack>
             </Card>
           </Stack>
-        ) : weekly.isPending ? <ActivityIndicator /> : <EmptyState title="Weekly review unavailable" />
+        ) : weekly.isPending ? <ActivityIndicator /> : <EmptyState title={t("Weekly review unavailable")} />
       ) : null}
     </Screen>
   );

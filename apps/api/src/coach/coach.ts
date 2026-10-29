@@ -35,7 +35,7 @@ function rowToAgentMessage(r: Row): AgentMessage {
   return r.providerContent as AgentMessage;
 }
 
-export async function runCoachTurn(ctx: AppContext, userId: string, conversationId: string, text: string) {
+export async function runCoachTurn(ctx: AppContext, userId: string, conversationId: string, text: string, opts: { language?: "en" | "ar" } = {}) {
   if (!ctx.ai.available) throw new HttpError(503, "ai_unavailable", "The AI coach is not configured on this server");
   const now = ctx.now();
   const { history, profile } = await ctx.db.asUser(userId, async (tx) => {
@@ -53,7 +53,7 @@ export async function runCoachTurn(ctx: AppContext, userId: string, conversation
   const turnStartedAt = new Date(now.getTime() - 1000);
 
   // Context travels in the user message (not the system prompt) so the cached prefix stays stable.
-  const userMsg: AgentMessage = { role: "user", parts: [{ type: "text", text: `[Today: ${today}, time zone ${p.timeZone}, units ${p.unitSystem}]\n\n${text}` }] };
+  const userMsg: AgentMessage = { role: "user", parts: [{ type: "text", text: `[Today: ${today}, time zone ${p.timeZone}, units ${p.unitSystem}${opts.language === "ar" ? ", app language Arabic: reply in Modern Standard Arabic, keep food and exercise names as the tools return them" : ""}]\n\n${text}` }] };
   const persist = async (m: AgentMessage, role: "user" | "assistant" | "tool", display: string, toolCalls: unknown = null, model: string | null = null) => {
     messages.push(m);
     await ctx.db.asUser(userId, async (tx) => {

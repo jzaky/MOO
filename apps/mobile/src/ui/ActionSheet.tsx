@@ -1,4 +1,5 @@
 import { Modal, Pressable, View } from "react-native";
+import { t } from "../i18n";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/theme";
 import { Icon, T, type IconName } from "./primitives";
@@ -16,7 +17,7 @@ export function ActionSheet({ visible, title, actions, onClose }: { visible: boo
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable accessibilityLabel="Dismiss" style={{ flex: 1, backgroundColor: th.c.overlay }} onPress={onClose} />
+      <Pressable accessibilityLabel={t("Dismiss")} style={{ flex: 1, backgroundColor: th.c.overlay }} onPress={onClose} />
       <View style={{ backgroundColor: th.c.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 10, paddingBottom: insets.bottom + 10, paddingHorizontal: 12 }}>
         <View style={{ alignSelf: "center", width: 36, height: 5, borderRadius: 3, backgroundColor: th.c.border, marginBottom: 8 }} />
         {title ? (
@@ -42,7 +43,7 @@ export function ActionSheet({ visible, title, actions, onClose }: { visible: boo
         ))}
         <Pressable accessibilityRole="button" onPress={onClose} style={{ height: 52, alignItems: "center", justifyContent: "center", marginTop: 4 }}>
           <T variant="headline" color="textSecondary">
-            Cancel
+            {t("Cancel")}
           </T>
         </Pressable>
       </View>

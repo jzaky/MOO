@@ -13,6 +13,7 @@ import { useTheme } from "../../theme/theme";
 import { StatTile } from "../../ui/charts";
 import { Button, Card, Chip, Divider, ErrorState, Icon, Row, SectionHeader, Skeleton, Stack, Stepper, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
+import { t, tn } from "../../i18n";
 
 const fmt = (v: unknown, unit: string) => (typeof v === "number" ? `${Math.round(v)}` : "–") + (typeof v === "number" ? unit : "");
 
@@ -34,8 +35,8 @@ export default function RecipeDetail() {
     },
   });
 
-  if (recipe.isPending) return <Screen back title="Recipe"><Skeleton height={120} /><Skeleton height={200} /></Screen>;
-  if (recipe.isError || !r) return <Screen back title="Recipe"><Card><ErrorState error={recipe.error} onRetry={() => void recipe.refetch()} /></Card></Screen>;
+  if (recipe.isPending) return <Screen back title={t("Recipe")}><Skeleton height={120} /><Skeleton height={200} /></Screen>;
+  if (recipe.isError || !r) return <Screen back title={t("Recipe")}><Card><ErrorState error={recipe.error} onRetry={() => void recipe.refetch()} /></Card></Screen>;
 
   const log = () => {
     if (!food.data || !r.servingId) return;
@@ -46,42 +47,42 @@ export default function RecipeDetail() {
   const ps = r.perServing;
 
   return (
-    <Screen back title={r.name} subtitle={`Makes ${r.servings} serving${r.servings === 1 ? "" : "s"}${r.cookedYieldG ? ` · ${Math.round(r.cookedYieldG)} g cooked` : ""}`} right={<Button title="Edit" kind="secondary" size="sm" icon="edit" onPress={() => router.push({ pathname: "/recipes/edit", params: { id: r.id } })} />}>
+    <Screen back title={r.name} subtitle={`${tn(r.servings, "Makes {n} serving", "Makes {n} servings")}${r.cookedYieldG ? ` · ${t("{g} g cooked", { g: Math.round(r.cookedYieldG) })}` : ""}`} right={<Button title={t("Edit")} kind="secondary" size="sm" icon="edit" onPress={() => router.push({ pathname: "/recipes/edit", params: { id: r.id } })} />}>
       <Row gap={8} align="stretch">
-        <StatTile label="Energy" value={fmt(ps.energyKcal, "")} unit="kcal" />
-        <StatTile label="Protein" value={fmt(ps.proteinG, "")} unit="g" />
+        <StatTile label={t("Energy")} value={fmt(ps.energyKcal, "")} unit="kcal" />
+        <StatTile label={t("Protein")} value={fmt(ps.proteinG, "")} unit="g" />
       </Row>
       <Row gap={8} align="stretch">
-        <StatTile label="Carbs" value={fmt(ps.carbsG, "")} unit="g" />
-        <StatTile label="Fat" value={fmt(ps.fatG, "")} unit="g" />
+        <StatTile label={t("Carbs")} value={fmt(ps.carbsG, "")} unit="g" />
+        <StatTile label={t("Fat")} value={fmt(ps.fatG, "")} unit="g" />
       </Row>
-      <T variant="caption" color="textTertiary">Per serving, calculated from matched ingredients.</T>
+      <T variant="caption" color="textTertiary">{t("Per serving, calculated from matched ingredients.")}</T>
       {r.missingIngredientCount ? (
         <Card style={{ borderColor: th.c.warning }}>
           <Row gap={8} align="flex-start">
             <Icon name="info" color="warning" size={18} />
-            <T variant="footnote" style={{ flex: 1 }}>{r.missingIngredientCount} ingredient{r.missingIngredientCount === 1 ? " is" : "s are"} not matched to a food, so {r.missingIngredientCount === 1 ? "it is" : "they are"} not counted. Edit the recipe to match {r.missingIngredientCount === 1 ? "it" : "them"}.</T>
+            <T variant="footnote" style={{ flex: 1 }}>{tn(r.missingIngredientCount, "{n} ingredient is not matched to a food, so it is not counted. Edit the recipe to match it.", "{n} ingredients are not matched to a food, so they are not counted. Edit the recipe to match them.")}</T>
           </Row>
         </Card>
       ) : null}
 
-      <SectionHeader title="Log it" />
+      <SectionHeader title={t("Log it")} />
       <Card>
         <Stack gap={12}>
           <Row gap={8} wrap>{MEALS.map((m) => <Chip key={m.value} label={m.label} selected={meal === m.value} onPress={() => setMeal(m.value)} />)}</Row>
-          <Stepper label="Servings" value={servings} onChange={setServings} step={0.5} min={0.5} max={20} format={(v) => `${v}`} />
+          <Stepper label={t("Servings")} value={servings} onChange={setServings} step={0.5} min={0.5} max={20} format={(v) => `${v}`} />
           {logged ? (
             <Row justify="space-between">
-              <T variant="subhead" color="accent">Logged to {MEALS.find((m) => m.value === meal)?.label.toLowerCase()}</T>
-              <Button title="Done" kind="secondary" size="sm" onPress={() => router.back()} />
+              <T variant="subhead" color="accent">{t("Logged to {meal}", { meal: MEALS.find((m) => m.value === meal)?.label.toLowerCase() ?? "" })}</T>
+              <Button title={t("Done")} kind="secondary" size="sm" onPress={() => router.back()} />
             </Row>
           ) : (
-            <Button title={`Log ${servings} serving${servings === 1 ? "" : "s"} today`} icon="add" disabled={!food.data || !r.servingId} loading={food.isPending && !!r.foodId} onPress={log} />
+            <Button title={tn(servings, "Log {n} serving today", "Log {n} servings today")} icon="add" disabled={!food.data || !r.servingId} loading={food.isPending && !!r.foodId} onPress={log} />
           )}
         </Stack>
       </Card>
 
-      <SectionHeader title="Ingredients" />
+      <SectionHeader title={t("Ingredients")} />
       <Card padded={false} style={{ paddingHorizontal: 14 }}>
         {r.ingredients.map((g, i) => (
           <View key={g.id}>
@@ -97,14 +98,14 @@ export default function RecipeDetail() {
 
       {r.instructions ? (
         <>
-          <SectionHeader title="Method" />
+          <SectionHeader title={t("Method")} />
           <Card><T variant="body">{r.instructions}</T></Card>
         </>
       ) : null}
-      {r.sourceUrl ? <Button title="Open original recipe" kind="ghost" size="sm" onPress={() => void Linking.openURL(r.sourceUrl!)} /> : null}
+      {r.sourceUrl ? <Button title={t("Open original recipe")} kind="ghost" size="sm" onPress={() => void Linking.openURL(r.sourceUrl!)} /> : null}
       {/* Two-step delete: the first tap arms it. Logged entries keep their values either way. */}
-      <Button title={confirmDelete ? "Tap again to delete (past logs are kept)" : "Delete recipe"} kind={confirmDelete ? "danger" : "ghost"} size="sm" loading={remove.isPending} onPress={() => (confirmDelete ? remove.mutate() : setConfirmDelete(true))} />
-      {remove.error ? <T variant="footnote" color="danger">{remove.error instanceof ApiError ? remove.error.message : "Could not delete"}</T> : null}
+      <Button title={confirmDelete ? t("Tap again to delete (past logs are kept)") : t("Delete recipe")} kind={confirmDelete ? "danger" : "ghost"} size="sm" loading={remove.isPending} onPress={() => (confirmDelete ? remove.mutate() : setConfirmDelete(true))} />
+      {remove.error ? <T variant="footnote" color="danger">{remove.error instanceof ApiError ? remove.error.message : t("Could not delete")}</T> : null}
     </Screen>
   );
 }

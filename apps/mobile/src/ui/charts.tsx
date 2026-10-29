@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { t, tn } from "../i18n";
 import { View, type GestureResponderEvent, type LayoutChangeEvent } from "react-native";
 import Svg, { Circle, G, Line, Path, Rect } from "react-native-svg";
 import { useTheme } from "../theme/theme";
@@ -41,7 +42,7 @@ export function MacroBar({ label, consumed, target, unit, color, missing = 0 }: 
   const pct = Math.min(1, frac);
   const remaining = Math.round(target - consumed);
   return (
-    <View accessible accessibilityLabel={`${label}: ${Math.round(consumed)} of ${Math.round(target)} ${unit}${missing ? `, ${missing} entries missing data` : ""}`} style={{ gap: 6, flex: 1 }}>
+    <View accessible accessibilityLabel={`${t("{label}: {consumed} of {target} {unit}", { label, consumed: Math.round(consumed), target: Math.round(target), unit })}${missing ? `, ${tn(missing, "{n} entry missing data", "{n} entries missing data")}` : ""}`} style={{ gap: 6, flex: 1 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color }} />
         <T variant="footnote" color="textSecondary">
@@ -127,7 +128,7 @@ export function LineChart({ series, height = 180, formatY = (v: number) => Strin
 
   if (!all.length) return null;
   return (
-    <View accessible accessibilityLabel={`${title}. ${series.map((s) => `${s.label}: latest ${formatY(s.points.at(-1)?.y ?? 0)}`).join(". ")}`} onLayout={onLayout} style={{ height }} onStartShouldSetResponder={() => true} onResponderGrant={handleTouch} onResponderMove={handleTouch} onResponderRelease={() => setScrubX(null)} onResponderTerminate={() => setScrubX(null)}>
+    <View accessible accessibilityLabel={`${title}. ${series.map((s) => t("{label}: latest {value}", { label: s.label, value: formatY(s.points.at(-1)?.y ?? 0) })).join(". ")}`} onLayout={onLayout} style={{ height }} onStartShouldSetResponder={() => true} onResponderGrant={handleTouch} onResponderMove={handleTouch} onResponderRelease={() => setScrubX(null)} onResponderTerminate={() => setScrubX(null)}>
       {geom ? (
         <Svg width={width} height={height}>
           {geom.ticks.map((tk) => (

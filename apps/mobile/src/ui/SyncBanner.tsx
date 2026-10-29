@@ -1,4 +1,5 @@
 import { useOnlineManager } from "../lib/useOnline";
+import { t, tn } from "../i18n";
 import { flush, useOutbox } from "../lib/outbox";
 import { useTheme } from "../theme/theme";
 import { Pressable, View } from "react-native";
@@ -13,12 +14,12 @@ export function SyncBanner() {
   const pending = ops.length - failed;
   if (online && !pending && !failed) return null;
   const text = failed
-    ? `${failed} change${failed > 1 ? "s" : ""} couldn't be saved. Tap to review.`
+    ? tn(failed, "{n} change couldn't be saved. Tap to review.", "{n} changes couldn't be saved. Tap to review.")
     : !online
       ? pending
-        ? `Offline · ${pending} change${pending > 1 ? "s" : ""} will sync automatically`
-        : "Offline · showing saved data"
-      : `Syncing ${pending} change${pending > 1 ? "s" : ""}…`;
+        ? tn(pending, "Offline · {n} change will sync automatically", "Offline · {n} changes will sync automatically")
+        : t("Offline · showing saved data")
+      : tn(pending, "Syncing {n} change…", "Syncing {n} changes…");
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={text} onPress={() => void flush()} style={{ marginHorizontal: 16, marginBottom: 6 }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: failed ? th.c.dangerMuted : th.c.surfaceRaised }}>
