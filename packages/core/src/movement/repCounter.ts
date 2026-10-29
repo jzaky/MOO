@@ -84,8 +84,22 @@ export interface MovementAnalysis {
 }
 
 /**
+ * The angle that counts as "back at the top" for this person and camera view.
+ * Many people don't fully straighten between reps, and camera angle shortens
+ * joints, so a fixed 160° would merge reps. Use the person's own standing
+ * angle in this set (90th percentile) minus a margin, capped at the nominal
+ * top and kept well above the bottom threshold.
+ */
+export function standingThreshold(angles: readonly number[], nominalTop: number, bottom: number): number {
+  const valid = angles.filter((a) => !Number.isNaN(a)).sort((x, y) => x - y);
+  if (!valid.length) return nominalTop;
+  const p90 = valid[Math.min(valid.length - 1, Math.floor(valid.length * 0.9))]!;
+  return Math.max(bottom + 25, Math.min(nominalTop, p90 - 10));
+}
+
+/**
  * Count reps with a hysteresis state machine on the smoothed joint angle:
- * a rep is top → below `bottom` → back above `top`.
+ * a rep is top → below `bottom` → back above the person's standing threshold.
  */
 export function analyzeMovement(movement: MovementKind, frames: readonly Frame[], minVisibility = 0.5): MovementAnalysis {
   const cfg = MOVEMENTS[movement];
@@ -104,6 +118,7 @@ export function analyzeMovement(movement: MovementKind, frames: readonly Frame[]
   const visAll = sides.flat().map((s) => s.vis);
   const trackingConfidence = visAll.length ? visAll.reduce((a, b) => a + b, 0) / visAll.length : 0;
   const angle = smooth(combined);
+  const top = standingThreshold(angle, cfg.top, cfg.bottom);
 
   const reps: RepMetrics[] = [];
   let state: "top" | "down" = "top";
@@ -112,7 +127,7 @@ export function analyzeMovement(movement: MovementKind, frames: readonly Frame[]
     const a = angle[i]!;
     if (Number.isNaN(a)) continue;
     if (state === "top") {
-      if (a >= cfg.top) startIdx = i;
+      if (a >= top) startIdx = i;
       if (a < cfg.bottom && startIdx >= 0) {
         state = "down";
         minAngle = a;
@@ -123,7 +138,7 @@ export function analyzeMovement(movement: MovementKind, frames: readonly Frame[]
         minAngle = a;
         bottomIdx = i;
       }
-      if (a >= cfg.top) {
+      if (a >= top) {
         reps.push({ index: reps.length + 1, startMs: frames[startIdx]!.tMs, bottomMs: frames[bottomIdx]!.tMs, endMs: frames[i]!.tMs, minAngle, eccentricMs: frames[bottomIdx]!.tMs - frames[startIdx]!.tMs, concentricMs: frames[i]!.tMs - frames[bottomIdx]!.tMs });
         state = "top";
         startIdx = i;

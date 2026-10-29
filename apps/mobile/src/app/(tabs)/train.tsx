@@ -101,7 +101,10 @@ export default function Train() {
         </Card>
       )}
 
-      <Button title="Start empty workout" kind="secondary" icon="add" disabled={!!active} onPress={() => router.push({ pathname: "/workout/active", params: { empty: "1" } })} />
+      <Row gap={8}>
+        <Button title="Empty workout" kind="secondary" icon="add" size="md" disabled={!!active} onPress={() => router.push({ pathname: "/workout/active", params: { empty: "1" } })} style={{ flex: 1 }} />
+        <Button title="Form check" kind="secondary" icon="camera" size="md" onPress={() => router.push("/workout/form-check")} style={{ flex: 1 }} />
+      </Row>
 
       <SectionHeader title="This week" />
       <Card>
