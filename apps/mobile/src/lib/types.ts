@@ -119,6 +119,11 @@ export interface Program {
   createdBy: string;
   notes: string | null;
   days: ProgramDay[];
+  blockWeeks: number | null;
+  blockStart: string | null;
+  deloadWeekStart: string | null;
+  block: { week: number; of: number; deload: boolean } | null;
+  deloadThisWeek: boolean;
 }
 
 export interface StartWorkout {
@@ -127,6 +132,8 @@ export interface StartWorkout {
   readiness: "good" | "normal" | "poor";
   recoveryInsights: { id: string; message: string; severity: string }[];
   shortened: boolean;
+  block: { week: number; of: number; deload: boolean } | null;
+  deload: boolean;
   items: {
     templateExerciseId: string;
     exercise: Exercise;

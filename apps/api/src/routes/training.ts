@@ -362,7 +362,15 @@ export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): v
   app.get("/v1/programs", auth, async (req) =>
     ctx.db.asUser(req.userId, async (tx) => {
       const rows = await tx.select().from(workoutPrograms).where(and(eq(workoutPrograms.userId, req.userId), eq(workoutPrograms.status, "active"))).orderBy(desc(workoutPrograms.createdAt));
-      return { items: await Promise.all(rows.map((r) => loadProgram(tx, r.id))) };
+      const today = dayKeyInZone(ctx.now(), (await getProfile(tx, req.userId)).timeZone);
+      const items = await Promise.all(rows.map((r) => loadProgram(tx, r.id)));
+      // Where this week sits in the block, so clients don't need the profile's time zone.
+      return {
+        items: items.map((p) => {
+          const block = blockPosition(p.blockStart, p.blockWeeks, today);
+          return { ...p, block, deloadThisWeek: isDeloadWeek(today, block, p.deloadWeekStart) };
+        }),
+      };
     }),
   );
 

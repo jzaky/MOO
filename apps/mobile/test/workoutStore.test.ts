@@ -18,7 +18,7 @@ const rec = (r: Partial<ProgressionRecommendation>): ProgressionRecommendation =
 const previous = { day: "2026-10-26", sets: [0, 1, 2].map(() => ({ weightKg: 100, reps: 10, kind: "working" as const, completed: true })) };
 
 function start(recommendation: ProgressionRecommendation): StartWorkout {
-  return { template: { id: "t1", name: "Lower A" }, day: "2026-10-29", readiness: "normal", recoveryInsights: [], shortened: false, items: [{ templateExerciseId: "te1", exercise: exercise("squat", "Back Squat"), supersetGroup: null, prescription: rx, role: "main", previous, recommendation }] };
+  return { template: { id: "t1", name: "Lower A" }, day: "2026-10-29", readiness: "normal", recoveryInsights: [], shortened: false, block: null, deload: false, items: [{ templateExerciseId: "te1", exercise: exercise("squat", "Back Squat"), supersetGroup: null, prescription: rx, role: "main", previous, recommendation }] };
 }
 
 beforeEach(() => {

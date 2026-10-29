@@ -1,4 +1,4 @@
-import { kgToLb, lbToKg, round, type UnitSystem } from "@stoke/core";
+import { kgToLb, lbToKg, platesToLoad, round, STANDARD_BARBELL, type UnitSystem } from "@stoke/core";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { haptic } from "../../lib/haptics";
@@ -27,6 +27,28 @@ const KIND_CYCLE: SetKind[] = ["working", "warmup", "drop", "failure"];
 function fmtLoad(kg: number, units: UnitSystem): string {
   const v = units === "imperial" ? round(kgToLb(kg), 1) : round(kg, 2);
   return Number.isInteger(v) ? String(v) : String(v);
+}
+
+function PlateCalculator({ ex, units }: { ex: ActiveExercise; units: UnitSystem }) {
+  const th = useTheme();
+  const target = ex.sets.find((s) => !s.completed && s.kind !== "warmup") ?? ex.sets.find((s) => !s.completed) ?? ex.sets.at(-1);
+  const unit = units === "imperial" ? "lb" : "kg";
+  const bar = STANDARD_BARBELL[unit];
+  // Plates are counted in the unit the gym uses, so convert the logged weight first.
+  const r = target && target.weightKg > 0 ? platesToLoad(bar, unit === "lb" ? round(kgToLb(target.weightKg), 1) : target.weightKg) : null;
+  if (!r) return <T variant="footnote" color="textSecondary">Enter a weight of at least the bar ({bar.barKg} {unit}) to see plates.</T>;
+  return (
+    <View accessibilityLabel={`Each side: ${r.plates.length ? r.plates.join(", ") : "no plates"} ${unit}`} style={{ gap: 6, padding: 10, borderRadius: 12, backgroundColor: th.c.surfaceSunken }}>
+      <Row justify="space-between">
+        <T variant="footnote" color="textSecondary">Each side, on a {bar.barKg} {unit} bar</T>
+        <T variant="footnote" weight="600">{r.total} {unit}</T>
+      </Row>
+      <Row gap={6} wrap>
+        {r.plates.length ? r.plates.map((p, i) => <Badge key={i} label={`${p}`} tone="info" />) : <T variant="footnote">Just the bar</T>}
+      </Row>
+      {!r.exact ? <T variant="caption" color="warning">Standard plates can't make exactly that; this is the closest.</T> : null}
+    </View>
+  );
 }
 
 export function SetRow({ ex, set, index, active, units }: { ex: ActiveExercise; set: ActiveSet; index: number; active: boolean; units: UnitSystem }) {
@@ -91,6 +113,8 @@ export function SetRow({ ex, set, index, active, units }: { ex: ActiveExercise; 
 
 export function ExerciseBlock({ ex, workout, units, onReplace, onInfo }: { ex: ActiveExercise; workout: ActiveWorkout; units: UnitSystem; onReplace: () => void; onInfo: () => void }) {
   const [menu, setMenu] = useState(false);
+  const [plates, setPlates] = useState(false);
+  const barbell = ex.exercise.loadProfile === "barbell";
   const next = workout.exercises.flatMap((e) => e.sets.map((s) => ({ e: e.id, s: s.id, done: s.completed }))).find((x) => !x.done);
   const rec = ex.recommendation;
   const unit = units === "imperial" ? "lb" : "kg";
@@ -130,7 +154,11 @@ export function ExerciseBlock({ ex, workout, units, onReplace, onInfo }: { ex: A
           <View style={{ width: 44 }} />
         </Row>
         {ex.sets.map((s, i) => <SetRow key={s.id} ex={ex} set={s} index={i} active={next?.s === s.id} units={units} />)}
-        <Button title="Add set" kind="ghost" size="sm" icon="add" onPress={() => addSet(ex.id)} />
+        {plates ? <PlateCalculator ex={ex} units={units} /> : null}
+        <Row gap={8}>
+          <Button title="Add set" kind="ghost" size="sm" icon="add" onPress={() => addSet(ex.id)} style={{ flex: 1 }} />
+          {barbell ? <Button title={plates ? "Hide plates" : "Plates"} kind="ghost" size="sm" onPress={() => setPlates((v) => !v)} style={{ flex: 1 }} /> : null}
+        </Row>
       </Stack>
       <ActionSheet
         visible={menu}

@@ -30,6 +30,16 @@ function PreStart({ templateId }: { templateId: string }) {
     <Screen close title={s?.template.name ?? "Workout"} subtitle={s ? `${s.items.length} exercises${s.shortened ? " · shortened" : ""}` : undefined} footer={s ? <Button title="Start workout" icon="play" onPress={() => { startFromTemplate(s); }} /> : undefined}>
       {start.isPending ? <ActivityIndicator /> : start.isError ? <ErrorState error={start.error} onRetry={() => void start.refetch()} /> : s ? (
         <>
+          {s.deload ? (
+            <Card>
+              <Stack gap={6}>
+                <Badge label={s.block?.deload ? `Deload week · week ${s.block.week} of ${s.block.of}` : "Deload week"} tone="warning" />
+                <T variant="footnote" color="textSecondary">Sets are cut to about 60%, loads go one step lighter and you stop further from failure. You'll come back stronger next week.</T>
+              </Stack>
+            </Card>
+          ) : s.block ? (
+            <T variant="footnote" color="textSecondary">Week {s.block.week} of {s.block.of} in this block.</T>
+          ) : null}
           {s.readiness !== "good" ? (
             <Card>
               <Stack gap={6}>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assessFatigue, blockPosition, deloadRecommendation, DEFAULT_PROFILES, isDeloadWeek, type LoggedSet, type ProgressionRecommendation } from "../src";
+import { assessFatigue, blockPosition, deloadRecommendation, DEFAULT_PROFILES, isDeloadWeek, platesToLoad, STANDARD_BARBELL, type LoggedSet, type ProgressionRecommendation } from "../src";
 
 const set = (weightKg: number, reps: number): LoggedSet => ({ weightKg, reps, kind: "working", completed: true });
 const session = (day: string, kg: number, reps = 5) => ({ day, sets: [set(kg, reps), set(kg, reps)] });
@@ -39,5 +39,18 @@ describe("fatigue", () => {
     expect(assessFatigue([falling("Squat"), steady("Bench")]).suggestDeload).toBe(false);
     expect(assessFatigue([falling("Squat"), steady("Bench")], "poor").suggestDeload).toBe(true);
     expect(assessFatigue([steady("Squat"), steady("Bench")], "poor").suggestDeload).toBe(false);
+  });
+});
+
+describe("plate calculator", () => {
+  it("loads kg plates per side", () => {
+    expect(platesToLoad(STANDARD_BARBELL.kg, 100)).toEqual({ total: 100, plates: [25, 15], exact: true });
+    expect(platesToLoad(STANDARD_BARBELL.kg, 20)).toEqual({ total: 20, plates: [], exact: true });
+    expect(platesToLoad(STANDARD_BARBELL.kg, 62.5)).toEqual({ total: 62.5, plates: [20, 1.25], exact: true });
+  });
+  it("loads lb plates and falls back to the closest loadable weight", () => {
+    expect(platesToLoad(STANDARD_BARBELL.lb, 225)).toEqual({ total: 225, plates: [45, 45], exact: true });
+    expect(platesToLoad(STANDARD_BARBELL.lb, 137)).toEqual({ total: 135, plates: [45], exact: false });
+    expect(platesToLoad(STANDARD_BARBELL.kg, 10)).toBeNull();
   });
 });

@@ -275,6 +275,8 @@ describe("training blocks, deloads and fatigue", () => {
       expect(it.recommendation).toMatchObject({ action: "deload", requiresConfirmation: true });
     }
 
+    const listed = (await t.app.inject({ method: "GET", url: "/v1/programs", headers: u.headers })).json().items[0];
+    expect(listed).toMatchObject({ id: prog.id, block: { week: 1, of: 5, deload: false }, deloadThisWeek: true });
     const v2 = (await t.app.inject({ method: "PUT", url: `/v1/programs/${prog.id}`, headers: u.headers, payload: { ...gen.draft, name: "Renamed" } })).json();
     expect(v2).toMatchObject({ version: 2, blockWeeks: 5, blockStart: prog.blockStart, deloadWeekStart: monday(todayDubai()) });
     const off = (await t.app.inject({ method: "PUT", url: `/v1/programs/${v2.id}/block`, headers: u.headers, payload: { blockWeeks: null } })).json();

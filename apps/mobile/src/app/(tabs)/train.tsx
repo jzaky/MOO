@@ -10,11 +10,106 @@ import { queryClient } from "../../lib/query";
 import type { Program } from "../../lib/types";
 import { useTheme } from "../../theme/theme";
 import { BarList } from "../../ui/charts";
-import { Badge, Button, Card, Divider, EmptyState, ErrorState, ListRow, Row, SectionHeader, Skeleton, Stack, T } from "../../ui/primitives";
+import { Badge, Button, Card, Chip, Divider, EmptyState, ErrorState, ListRow, Row, SectionHeader, Skeleton, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
 
 const WEEKDAY = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const pretty = (s: string) => s.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+interface Fatigue {
+  suggestDeload: boolean;
+  regressingLifts: string[];
+  reasons: string[];
+  liftsChecked: string[];
+  readiness: string;
+}
+
+/** Monday of the week after `day` (YYYY-MM-DD). */
+function nextWeekOf(day: string): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 7 - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+const todayKey = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+function BlockCard({ program }: { program: Program }) {
+  const [editing, setEditing] = useState(false);
+  const fatigue = useQuery({ queryKey: ["training-fatigue"], queryFn: () => api<Fatigue>("/v1/training/fatigue") });
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: qk.programs });
+    void queryClient.invalidateQueries({ queryKey: ["template-start"] });
+  };
+  const setBlock = useMutation({ mutationFn: (b: { blockWeeks: number | null; restart?: boolean }) => api(`/v1/programs/${program.id}/block`, { method: "PUT", body: b }), onSuccess: () => { haptic("success"); setEditing(false); refresh(); } });
+  const setDeload = useMutation({ mutationFn: (weekOf: string | null) => api(`/v1/programs/${program.id}/deload`, { method: "PUT", body: { weekOf } }), onSuccess: () => { haptic("success"); refresh(); } });
+  const b = program.block;
+  const today = todayKey();
+  // A one-off deload still ahead (this week's is reported as deloadThisWeek).
+  const scheduled = program.deloadWeekStart && !program.deloadThisWeek && program.deloadWeekStart > today ? program.deloadWeekStart : null;
+  const cancellableNow = program.deloadThisWeek && !b?.deload && !!program.deloadWeekStart;
+  const f = fatigue.data;
+  const showFatigue = f?.suggestDeload && !program.deloadThisWeek && !scheduled;
+  const err = setBlock.error ?? setDeload.error;
+
+  return (
+    <Card>
+      <Stack gap={10}>
+        <Row justify="space-between">
+          <View style={{ flex: 1 }}>
+            <T variant="headline">{program.deloadThisWeek ? "Deload week" : b ? `Week ${b.week} of ${b.of}` : "No training blocks"}</T>
+            <T variant="footnote" color="textSecondary">
+              {program.deloadThisWeek
+                ? "Fewer sets, lighter loads, more in reserve. Workouts started this week are adjusted."
+                : b
+                  ? `${b.of - 1} build weeks, then a lighter week. ${b.of - b.week === 1 ? "Block deload next week." : `Block deload in ${b.of - b.week} weeks.`}`
+                  : "Progress continues week to week. Deload whenever you need one."}
+            </T>
+          </View>
+          {program.deloadThisWeek ? <Badge label="deload" tone="warning" /> : b ? <Badge label={`${b.week}/${b.of}`} tone="accent" /> : null}
+        </Row>
+        {scheduled ? (
+          <Row justify="space-between">
+            <T variant="footnote" color="textSecondary" style={{ flex: 1 }}>Extra deload the week of {new Date(`${scheduled}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" })}.</T>
+            <Button title="Cancel" kind="ghost" size="sm" loading={setDeload.isPending} onPress={() => setDeload.mutate(null)} />
+          </Row>
+        ) : null}
+        {showFatigue ? (
+          <View style={{ gap: 6 }}>
+            <Badge label="Fatigue building" tone="warning" />
+            {f.reasons.map((r) => <T key={r} variant="footnote" color="textSecondary">{r}</T>)}
+            <Row gap={8} wrap>
+              <Button title="Deload this week" size="sm" loading={setDeload.isPending && setDeload.variables === today} onPress={() => setDeload.mutate(today)} />
+              <Button title="Next week" kind="secondary" size="sm" loading={setDeload.isPending && setDeload.variables !== today} onPress={() => setDeload.mutate(nextWeekOf(today))} />
+            </Row>
+            <T variant="caption" color="textTertiary">A suggestion from your last few sessions on {f.liftsChecked.join(", ")}. Nothing changes unless you choose.</T>
+          </View>
+        ) : null}
+        {editing ? (
+          <View style={{ gap: 8 }}>
+            <T variant="footnote" color="textSecondary">Block length (the last week is the deload)</T>
+            <Row gap={6} wrap>
+              {[3, 4, 5, 6, 8].map((n) => <Chip key={n} label={`${n} weeks`} selected={program.blockWeeks === n} onPress={() => setBlock.mutate({ blockWeeks: n })} />)}
+              <Chip label="Off" selected={!program.blockWeeks} onPress={() => setBlock.mutate({ blockWeeks: null })} />
+            </Row>
+            <Row gap={8}>
+              {program.blockWeeks ? <Button title="Restart block this week" kind="secondary" size="sm" loading={setBlock.isPending} onPress={() => setBlock.mutate({ blockWeeks: program.blockWeeks, restart: true })} /> : null}
+              <Button title="Done" kind="ghost" size="sm" onPress={() => setEditing(false)} />
+            </Row>
+          </View>
+        ) : (
+          <Row gap={8} wrap>
+            <Button title={b ? "Change block" : "Use blocks"} kind="secondary" size="sm" onPress={() => setEditing(true)} />
+            {cancellableNow ? <Button title="Skip this deload" kind="ghost" size="sm" loading={setDeload.isPending} onPress={() => setDeload.mutate(null)} /> : null}
+            {!program.deloadThisWeek && !scheduled && !showFatigue ? <Button title="Deload next week" kind="ghost" size="sm" loading={setDeload.isPending} onPress={() => setDeload.mutate(nextWeekOf(today))} /> : null}
+          </Row>
+        )}
+        {err ? <T variant="footnote" color="danger">{err instanceof ApiError ? err.message : "Couldn't save. Try again."}</T> : null}
+      </Stack>
+    </Card>
+  );
+}
 
 interface Proposal {
   draft: unknown;
@@ -72,6 +167,7 @@ export default function Train() {
               </View>
             ))}
           </Card>
+          <BlockCard program={program} />
           <T variant="caption" color="textTertiary">Version {program.version}{program.createdBy === "ai" ? " · suggested by coach" : ""}. Edits create a new version; history is kept.</T>
         </>
       ) : proposal ? (

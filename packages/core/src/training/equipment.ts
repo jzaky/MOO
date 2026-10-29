@@ -80,3 +80,23 @@ export function platesPerSide(profile: Extract<LoadProfile, { kind: "barbell" }>
   }
   return Math.abs(perSide) < 1e-6 ? out : null;
 }
+
+/** Standard bar and plates, in the unit the user loads (kg or lb). */
+export const STANDARD_BARBELL = {
+  kg: { kind: "barbell", barKg: 20, platePairsKg: [25, 20, 15, 10, 5, 2.5, 1.25] },
+  lb: { kind: "barbell", barKg: 45, platePairsKg: [45, 35, 25, 10, 5, 2.5] },
+} as const satisfies Record<"kg" | "lb", Extract<LoadProfile, { kind: "barbell" }>>;
+
+/**
+ * What to put on each side for `total` (same unit as the profile). If the
+ * plates can't make it exactly, returns the closest loadable weight instead,
+ * flagged `exact: false`. Null below the bar.
+ */
+export function platesToLoad(profile: Extract<LoadProfile, { kind: "barbell" }>, total: number): { total: number; plates: number[]; exact: boolean } | null {
+  if (total < profile.barKg - 1e-9) return null;
+  const exact = platesPerSide(profile, total);
+  if (exact) return { total, plates: exact, exact: true };
+  const near = roundToAchievable(profile, total);
+  const plates = platesPerSide(profile, near);
+  return plates ? { total: near, plates, exact: false } : null;
+}
