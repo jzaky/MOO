@@ -1,8 +1,9 @@
 import type { PortionDto } from "@stoke/contracts";
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from "expo-audio";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Platform, Pressable, View } from "react-native";
+import { normalizeLogText } from "../../features/native/deepLinks";
 import { addExercise, addSet, getActiveWorkout, removeSet, updateSet } from "../../features/workout/store";
 import { api, ApiError } from "../../lib/api";
 import { defaultMealForNow, logFood, logWater, logWeight } from "../../lib/data";
@@ -32,11 +33,13 @@ type Draft =
  */
 export default function VoiceLog() {
   const th = useTheme();
-  const params = useLocalSearchParams<{ day?: string }>();
+  // `text` arrives from deep links (stoke://log?text=…, Siri "Log food in Stoke"): prefill and parse it right away.
+  const params = useLocalSearchParams<{ day?: string; text?: string }>();
   const day = params.day ?? todayKey();
+  const linkText = normalizeLogText(params.text);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const rec = useAudioRecorderState(recorder);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(linkText ?? "");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [chosen, setChosen] = useState<Record<number, number>>({});
   const [off, setOff] = useState<Record<number, boolean>>({});
@@ -56,6 +59,16 @@ export default function VoiceLog() {
       setBusy(false);
     }
   };
+
+  // Parse each linked text once (a new link while the sheet is open parses the new text).
+  const parsedLink = useRef<string | null>(null);
+  useEffect(() => {
+    if (!linkText || parsedLink.current === linkText) return;
+    parsedLink.current = linkText;
+    setText(linkText);
+    void parse(linkText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- parse once per incoming text
+  }, [linkText]);
 
   const startRecording = async () => {
     setError(null);
