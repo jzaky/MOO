@@ -27,7 +27,7 @@ A summary of the due diligence in `docs/research/01–04`, which hold each repos
 | 11 | foodvision-bench | MIT | Dataset unpublished | **REJECT** | Nothing. No data, hard-coded vendor scores. |
 | 12 | mealie-recipes/mealie | AGPL-3.0 | – | **REFERENCE** | Meal-plan rules, shopping-list merge, ingredient-parser fallback chain. |
 | 13 | TandoorRecipes/recipes | AGPL-3.0 + Commons Clause | – | **REFERENCE** | Nutrition-from-ingredients modelling concepts. |
-| 14 | google-ai-edge/mediapipe | Apache-2.0 (Pose Landmarker models Apache-2.0) | – | **ADOPT** (planned) | Pose Landmarker through a thin in-house Expo module. Server-side landmark analysis is already built. |
+| 14 | google-ai-edge/mediapipe | Apache-2.0 (Pose Landmarker models Apache-2.0) | – | **ADOPT** | Pose Landmarker (tasks-vision 1.1.1, lite model) runs in a shared page: WebView on device, iframe on web (ADR-11). Analysis runs on the device. |
 | 15 | stevenzchen/pose-trainer | GPL-3.0 (+ OpenPose non-commercial) | – | **REFERENCE** | The paper's method: explainable angle and threshold rules. Re-implemented from scratch. |
 | 16 | exercemus/exercises | MIT code | Per-record, mostly unlabelled; includes CC BY-SA | **REJECT** (as a dataset) | Taxonomy ideas only. |
 | 17 | expo/expo (SDK 58) | MIT | – | **ADOPT** | App framework, Router, camera, audio, SQLite, notifications. |

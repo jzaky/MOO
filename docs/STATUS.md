@@ -8,7 +8,7 @@ What exists, what has been verified, and what has not. Updated 2026-10-29.
 - **Partial:** usable, but part of the specified behaviour is missing. The note says what.
 - **Planned:** not built.
 
-**Test suites.** `@moo/core` has 82 unit tests. `@moo/api` has 76 integration tests against Postgres, including row-level-security isolation. `@moo/mobile` has 10 unit tests covering the live-workout store and the offline outbox. Run all of them with `pnpm test`.
+**Test suites.** `@moo/core` has 85 unit tests. `@moo/api` has 83 integration tests against Postgres, including row-level-security isolation. `@moo/mobile` has 20 unit tests covering the live-workout store, the offline outbox, the recipe editor and the form-check session. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
 
 ## Verification limits in this environment
 
@@ -17,7 +17,7 @@ These could not be exercised here and must be verified on hardware or with crede
 | Area | Why not verified | What *is* verified |
 | --- | --- | --- |
 | Claude API calls (photo recognition, label reading, menu estimates, coach, free-text parsing) | No API key in the build environment | The full request and response path, using a fake provider that returns schema-validated structured output. Schema rejection, tool grounding, consent gates and the append-only history replay are all tested. The Anthropic adapter compiles against SDK 1.3.0 but has not made a live call. |
-| iOS/Android builds, HealthKit, Health Connect, camera, barcode scanning, microphone, push delivery | No simulator or device | Mobile code typechecks. The web build exports every route. Main screens were rendered in Chromium at 390×844 against a live API with seeded data. Server-side health ingest and push planning are tested. |
+| iOS/Android builds, HealthKit, Health Connect, camera, barcode scanning, microphone, push delivery, the form-check WebView | No simulator or device | Mobile code typechecks. The web build exports every route. Screens were rendered and driven in Chromium at 390×844 against a live API with seeded data. The form check ran end to end in Chromium with real squat footage as the camera feed. Server-side health ingest and push planning are tested. |
 | Live Open Food Facts and USDA API calls | The tests use recorded fixtures | Mapping is tested against real recorded OFF responses (Nutella, Coca-Cola) and USDA records. The SR Legacy bulk import of 7,793 foods ran successfully. |
 | whisper.cpp transcription server | Not installed | The client is tested against a local stub server that checks the multipart contract. Transcription-to-draft is tested with a fake speech-to-text service. |
 
@@ -53,14 +53,15 @@ These could not be exercised here and must be verified on hardware or with crede
 | Diary: idempotent upserts, last-writer-wins, tombstones, nutrient snapshot frozen at log time | Tested | |
 | Quick add, copy meal, saved meals, recents with last portion, favourites, water, day completion | Tested | |
 | Food corrections that do not alter past entries | Tested | |
-| Recipes with per-serving nutrition, loggable as a food, text and URL import | Tested | URL import includes an SSRF guard. **Mobile recipe screens: planned.** |
+| Recipes with per-serving nutrition, loggable as a food, text and URL import | Tested | URL import includes an SSRF guard. The mobile list, detail and editor (live per-serving preview) were driven on web; the editor logic is unit-tested. |
+| Ingredient matching (recipe drafts, text and voice logging) | Tested | Suggests the best-ranked food only when it shares a real word with the line. Unit synonyms (tablespoon = tbsp). Volume converts through the food's own volume servings. A count with no matching serving asks for an amount; it never falls back to an arbitrary first serving. |
 | Photo meal recognition: separate stages, confidence tiers, ranges, consent gate, confirm-only logging | Tested (fake AI) | Before/after leftover fraction is supported in the model output. |
 | Nutrition label reading into a reviewable draft | Tested (fake AI) | |
-| Restaurant menus with printed values kept separate from estimates | Tested (fake AI) | **Mobile menu screen: planned.** |
+| Restaurant menus with printed values kept separate from estimates | Tested (fake AI) | Mobile screen (photo or pasted text) driven on web with scripted AI output. Estimated dishes are logged with the `ai_estimate` label. |
 | Text logging: deterministic parser first, AI fallback | Tested | |
 | Voice logging: transcribe, parse, confirm | Tested (fake speech-to-text) | Mobile recording screen implemented; not device-verified. |
 | Adaptive targets from intake and EWMA weight trend | Tested | Capped at 150 kcal per step and needs 14 complete days. Reports an adherence gap rather than cutting further. Applied only on approval. |
-| Meal plans from the user's recipes and saved meals; grocery list minus pantry | Tested | **Mobile meal-plan and grocery screens: planned.** |
+| Meal plans from the user's recipes and saved meals; grocery list minus pantry | Tested | No dish repeats within a day when alternatives exist. Water is left off grocery lists, and cooked-weight items are labelled. Mobile plan, grocery and pantry screens were driven on web. Recipes have no meal tags yet, so a soup can land at breakfast. |
 
 ### Training
 | Feature | State | Notes |
@@ -71,7 +72,7 @@ These could not be exercised here and must be verified on hardware or with crede
 | Live workout: local-first, rest timer, set types, RIR, substitutions, pause and resume, offline | Tested (store) | The store has unit tests for: no pre-applied load increases, local persistence, rest timer and finish snapshot. Server sync of the session is tested. The UI was rendered on web. |
 | Progression (double, linear and RPE) with equipment-aware load steps | Tested | Load changes are never applied without the user tapping "Use suggestion". |
 | PR detection, e1RM (Epley + RIR), weekly hard sets per muscle | Tested | |
-| Form analysis: rep counting and depth/asymmetry checks from pose landmarks | Partial | Server analysis from landmarks is tested. **The on-device MediaPipe Expo module that produces landmarks is planned.** |
+| Form check: on-device pose tracking, rep counting, depth, tempo, asymmetry | Tested (web) | MediaPipe Pose Landmarker in a shared page (WebView on device, iframe on web). Analysis runs locally. Regression-tested on landmarks from real squat footage: 6 of 6 reps. **Device WebView camera not verified.** Measured about 4 fps in headless CPU Chromium; device frame rate unknown. Needs network on first use to fetch the runtime and model (about 6 MB). |
 
 ### Progress and recovery
 | Feature | State | Notes |
@@ -108,7 +109,7 @@ These could not be exercised here and must be verified on hardware or with crede
 ## Known limitations
 - **Search.** The ranker is heuristic. Ambiguous one-word queries ("bread") return a reasonable variety rather than a canonical default.
 - **Food data.** UAE product coverage in Open Food Facts is thin (about 9,500 products, 52% with complete macros), and anonymous OFF search is rate-limited. Barcode lookup is the reliable path; search uses the local catalogue first.
-- **Branding.** The app icon is still the Expo template placeholder.
 - **Push.** Push needs `extra.eas.projectId`. Without it, settings says so instead of failing silently.
 - **Health on Android.** HRV and distance are not imported, because Health Connect's units and semantics differ from HealthKit's.
-- **Native verification.** Native modules (HealthKit, Health Connect, camera) need a development build. Expo Go cannot load them.
+- **Native verification.** Native modules (HealthKit, Health Connect, camera, WebView) need a development build. Expo Go cannot load them.
+- **Form check.** Squat and push-up only, from one camera view. Counts and angles, not a safety assessment. The MediaPipe runtime and model are loaded from jsDelivr and Google storage at runtime (version-pinned); no video or images are sent anywhere.

@@ -67,5 +67,9 @@ Five tabs: **Today · Nutrition · Train · Progress · Coach**. These are nativ
 | Weigh-in / Measurements | `/weigh-in` | Weight and circumferences in user units | Validation | Built |
 | Coach | `/(tabs)/coach` | Ask (chat with suggested prompts), Suggestions (accept/reject), This week | "AI not configured" message; per-message retry | Built |
 | Settings | `/settings` | Profile and units, targets (versioned edit), health connection, notifications and quiet hours, AI consent, export, sign out, delete account | Skeletons; per-section error and retry | Built |
-| Recipes, Meal plans, Grocery list, Pantry, Restaurant menu | – | API complete and tested | – | **Planned (mobile UI)** |
-| Form check camera | – | Needs the on-device pose module | – | **Planned** |
+| Recipes | `/recipes`, `/recipes/[id]` | List; detail with per-serving nutrition, log servings, two-step delete | Empty state explains how matching works | Built |
+| Recipe editor | `/recipes/edit` | Paste ingredients or a link → reviewed matches, amounts, live per-serving preview | Unmatched or uncertain lines are highlighted and not counted | Built |
+| Meal plan | `/plan` | Build a week from own recipes and saved meals; per-day totals vs targets; log a planned meal | Empty state with meal choice; server explains when recipes are missing | Built |
+| Grocery list, Pantry | `/plan/grocery/[id]`, `/plan/pantry` | Check-off by category; "I have this" adds to pantry; pantry subtracts from lists | Empty list explains why | Built |
+| Restaurant menu | `/food/menu` | Photo or text; dishes ranked by fit with what is left today; printed vs estimate labels | Consent and AI-unavailable messages; manual fallback | Built |
+| Form check | `/workout/form-check` | Squat or push-up; set-up guidance, skeleton overlay, live rep count, results with per-rep depth and tempo | Model loading, camera denied, "no person in view", and too-little-tracked states | Built (device unverified) |

@@ -61,6 +61,10 @@ packages/contracts  zod request/response schemas shared by API and app
 
 **ADR-10: No synthetic recovery score.** Sleep, resting heart rate, HRV, training load and check-ins are each compared with the user's own baseline and explained in words. A single opaque number would imply precision the inputs don't have.
 
+**ADR-11: Form check runs MediaPipe's web runtime in a WebView.** The research recommended a thin native Expo module around MediaPipe Pose Landmarker. Instead, one self-contained page (MediaPipe tasks-vision, version-pinned) runs in a WebView on iOS and Android and in an iframe on web. The trade-off: likely lower frame rate than native GPU code, and a first-use download of about 6 MB. In exchange, the tracking code is identical on every platform and was verified end to end here with real footage, which a native module could not be. Only landmark coordinates cross into the app; analysis is the tested `@moo/core` code running locally. If device frame rates prove too low, the page's message contract (`start`/`stop` in, `frames`/`status` out) is the seam a native module would implement.
+
+**ADR-12: Food matches are suggested, never substituted.** Ingredient and spoken-food matching pre-selects only the best-ranked food, and only if it shares a real word with what the user wrote. Amounts are converted only through the food's own data (servings, volume servings). Anything else is shown as "needs your choice" rather than filled in, because a confident wrong match (e.g. "za'atar" → a cup of currants) fabricates nutrition.
+
 ## Data model (summary)
 
 Every user-owned table has `user_id` and an RLS policy. Times are `timestamptz`. Diary days are `YYYY-MM-DD` in the user's time zone at the time of logging.

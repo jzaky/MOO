@@ -68,13 +68,15 @@ Mobile: `EXPO_PUBLIC_API_URL` (or `extra.apiUrl` in `app.json`), and `extra.eas.
 ## Checks
 
 ```bash
-pnpm --filter @moo/core test        # 82 unit tests
-pnpm --filter @moo/api test         # 76 integration tests (needs the moo_test database)
-pnpm --filter @moo/mobile test      # 10 unit tests (workout store, offline outbox)
+pnpm --filter @moo/core test        # 85 unit tests
+pnpm --filter @moo/api test         # 83 integration tests (needs the moo_test database)
+pnpm --filter @moo/mobile test      # 20 unit tests (workout store, outbox, recipe editor, form check)
 pnpm test                           # all of the above
 pnpm -r typecheck
 cd apps/mobile && npx expo export --platform web
 ```
+
+CI (`.github/workflows/ci.yml`) runs the same checks on every push, with a Postgres 16 service.
 
 ## Data and licences
 
