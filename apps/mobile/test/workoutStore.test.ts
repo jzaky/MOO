@@ -9,6 +9,9 @@ vi.mock("expo-crypto", () => ({ randomUUID }));
 vi.mock("../src/lib/storage", () => storageMock);
 vi.mock("../src/lib/haptics", () => hapticMock);
 vi.mock("../src/lib/outbox", () => ({ enqueue: (op: (typeof enqueued)[number]) => enqueued.push(op) }));
+// Native mirrors (Live Activity, Apple Watch) are covered in workoutNative.test.ts.
+vi.mock("../src/features/native/liveActivity", () => ({ startRestActivity: vi.fn(), updateRestActivity: vi.fn(), endRestActivity: vi.fn() }));
+vi.mock("../src/features/native/watch", () => ({ sendWorkoutState: vi.fn(), onWatchAction: () => ({ remove() {} }) }));
 
 const store = await import("../src/features/workout/store");
 

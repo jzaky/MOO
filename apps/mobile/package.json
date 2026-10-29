@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@bacons/apple-targets": "~5.0.0",
+    "@expo/ui": "~58.0.25",
     "@kingstinct/react-native-healthkit": "16.2.0",
     "@stoke/contracts": "workspace:*",
     "@stoke/core": "workspace:*",
@@ -31,6 +33,7 @@
     "expo-status-bar": "~58.0.4",
     "expo-symbols": "~58.0.4",
     "expo-system-ui": "~58.0.7",
+    "expo-widgets": "~58.0.25",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.1",
@@ -59,6 +62,13 @@
     "test": "vitest run",
     "export:web": "expo export --platform web",
     "lint": "expo lint"
+  },
+  "expo": {
+    "autolinking": {
+      "android": {
+        "exclude": ["expo-widgets", "@expo/ui"]
+      }
+    }
   },
   "private": true
 }
