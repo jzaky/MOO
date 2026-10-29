@@ -173,7 +173,22 @@ export async function searchLocalFoods(tx: Tx, userId: string, query: string, li
   // Word similarity tolerates typos ("chiken") against long names; 0.45 balances recall and noise.
   await tx.execute(sql`select set_config('pg_trgm.word_similarity_threshold', '0.45', true)`);
   const hay = sql`lower(${foods.name} || ' ' || coalesce(${foods.brand}, ''))`;
-  const score = sql`greatest(word_similarity(${q}, ${hay}), word_similarity(${singular}, ${hay})) + case when lower(${foods.name}) like ${q + "%"} or lower(${foods.name}) like ${singular + "%"} then 0.3 else 0 end`;
+  const tokens = [...new Set(singular.split(/\s+/).filter((w) => w.length >= 2))].slice(0, 6);
+  const escape = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  // Fraction of query words present as whole-word prefixes ("egg" matches "Egg, whole" and "eggs").
+  const tokenHits = tokens.length
+    ? sql`(${sql.join(tokens.map((w) => sql`case when ${hay} ~ ${"\\m" + escape(w)} then 1 else 0 end`), sql` + `)})::float8 / ${tokens.length}`
+    : sql`0`;
+  const score = sql`(
+      1.0 * ${tokenHits}
+    + 0.5 * greatest(word_similarity(${q}, ${hay}), word_similarity(${singular}, ${hay}))
+    + case when lower(${foods.name}) like ${q + "%"} or lower(${foods.name}) like ${singular + "%"} then 0.3 else 0 end
+    - least(0.4, length(${foods.name}) * 0.004)
+    - case when ${foods.name} ~ '[A-Z]{4,}' and ${foods.ownerUserId} is null then 0.25 else 0 end
+    - case when lower(${foods.name}) ~ '(dry mix|baby food|infant formula|babyfood)' then 0.3 else 0 end
+    + case when lower(${foods.name}) ~ '\\m(whole|raw|fresh|plain|cooked|boiled|roasted|grilled)\\M' then 0.08 else 0 end
+    - case when lower(${foods.name}) ~ '\\m(dried|dehydrated|powder|powdered|substitute|imitation)\\M' and ${q} !~ '(dried|powder)' then 0.12 else 0 end
+  )`;
   const rows = await tx
     .select({ food: foods, uses: usage.uses })
     .from(foods)

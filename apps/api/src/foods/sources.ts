@@ -169,6 +169,7 @@ interface FdcFood {
   fdcId: number;
   description: string;
   dataType?: string;
+  foodCategory?: { description?: string } | string;
   brandOwner?: string;
   brandName?: string;
   gtinUpc?: string;
@@ -219,7 +220,7 @@ export function mapFdcFood(f: FdcFood): NormalizedFood | null {
     imageUrl: null,
     countries: ["en:united-states"],
     quality: assessQuality(per100, servings, flags),
-    sourcePayload: { fdcId: f.fdcId, dataType: f.dataType ?? null },
+    sourcePayload: { fdcId: f.fdcId, dataType: f.dataType ?? null, category: typeof f.foodCategory === "string" ? f.foodCategory : f.foodCategory?.description ?? null },
   };
 }
 
