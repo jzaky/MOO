@@ -2,6 +2,7 @@ import { SymbolView } from "expo-symbols";
 import { useState, type ReactNode, type Ref } from "react";
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   Text as RNText,
   TextInput,
@@ -249,6 +250,9 @@ export function Segmented<T extends string>({ options, value, onChange }: { opti
 
 /* ───────── Inputs ───────── */
 
+// The browser's own focus outline would draw inside the container's focus ring (web only; not in RN's style types).
+const WEB_NO_OUTLINE = (Platform.OS === "web" ? { outlineStyle: "none" } : null) as TextStyle | null;
+
 export function Field({ label, suffix, error, style, ref, onFocus, onBlur, ...rest }: TextInputProps & { label?: string; suffix?: string; error?: string | null; ref?: Ref<TextInputInstance> }) {
   const th = useTheme();
   // The container draws the focus ring (the browser outline on web is suppressed).
@@ -266,7 +270,7 @@ export function Field({ label, suffix, error, style, ref, onFocus, onBlur, ...re
           placeholderTextColor={th.c.textTertiary}
           selectionColor={th.c.accent}
           accessibilityLabel={label}
-          style={[th.type.body, { flex: 1, minWidth: 0, color: th.c.text, paddingVertical: 12, outlineWidth: 0 }, style]}
+          style={[th.type.body, { flex: 1, minWidth: 0, color: th.c.text, paddingVertical: 12, outlineWidth: 0 }, WEB_NO_OUTLINE, style]}
           onFocus={(e) => {
             setFocused(true);
             onFocus?.(e);
