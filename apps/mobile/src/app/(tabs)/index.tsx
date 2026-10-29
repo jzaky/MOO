@@ -1,4 +1,4 @@
-import { displayBodyWeight } from "@moo/core";
+import { displayBodyWeight } from "@stoke/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Pressable, View } from "react-native";

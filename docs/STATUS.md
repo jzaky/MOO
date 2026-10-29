@@ -8,7 +8,7 @@ What exists, what has been verified, and what has not. Updated 2026-10-29.
 - **Partial:** usable, but part of the specified behaviour is missing. The note says what.
 - **Planned:** not built.
 
-**Test suites.** `@moo/core` has 85 unit tests. `@moo/api` has 83 integration tests against Postgres, including row-level-security isolation. `@moo/mobile` has 20 unit tests covering the live-workout store, the offline outbox, the recipe editor and the form-check session. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
+**Test suites.** `@stoke/core` has 85 unit tests. `@stoke/api` has 83 integration tests against Postgres, including row-level-security isolation. `@stoke/mobile` has 20 unit tests covering the live-workout store, the offline outbox, the recipe editor and the form-check session. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
 
 ## Verification limits in this environment
 
@@ -49,7 +49,7 @@ These could not be exercised here and must be verified on hardware or with crede
 | --- | --- | --- |
 | Food catalogue: USDA SR Legacy (CC0), Open Food Facts (ODbL) on demand, private user foods | Tested | Missing nutrients stay `null`, never 0. |
 | Barcode lookup: GTIN check digit, UPC-A to EAN-13, cache, private-product precedence | Tested | Scanner UI not device-verified. |
-| Food search: pg_trgm retrieval plus the tested `@moo/core` ranker | Tested | Ranks by head food, category prefixes, processed forms, typos and personal history. Locally p50 is 112 ms and p95 170 ms over 7,793 foods. |
+| Food search: pg_trgm retrieval plus the tested `@stoke/core` ranker | Tested | Ranks by head food, category prefixes, processed forms, typos and personal history. Locally p50 is 112 ms and p95 170 ms over 7,793 foods. |
 | Diary: idempotent upserts, last-writer-wins, tombstones, nutrient snapshot frozen at log time | Tested | |
 | Quick add, copy meal, saved meals, recents with last portion, favourites, water, day completion | Tested | |
 | Food corrections that do not alter past entries | Tested | |

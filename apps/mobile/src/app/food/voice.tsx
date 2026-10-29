@@ -1,4 +1,4 @@
-import type { PortionDto } from "@moo/contracts";
+import type { PortionDto } from "@stoke/contracts";
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from "expo-audio";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";

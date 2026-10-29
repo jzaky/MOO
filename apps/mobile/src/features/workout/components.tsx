@@ -1,4 +1,4 @@
-import { kgToLb, lbToKg, round, type UnitSystem } from "@moo/core";
+import { kgToLb, lbToKg, round, type UnitSystem } from "@stoke/core";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { haptic } from "../../lib/haptics";

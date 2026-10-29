@@ -6,8 +6,8 @@
     {
       "layers" : [
         {
-          "image-name" : "moo-glyph.svg",
-          "name" : "moo-glyph",
+          "image-name" : "stoke-glyph.svg",
+          "name" : "stoke-glyph",
           "position" : {
             "scale" : 1,
             "translation-in-points" : [0, 0]

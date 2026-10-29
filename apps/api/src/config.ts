@@ -4,10 +4,10 @@ const Env = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().default(4000),
   HOST: z.string().default("0.0.0.0"),
-  /** Runtime connection: a role that is a member of moo_runtime (RLS applies). */
-  DATABASE_URL: z.string().default("postgres://moo_app:moo_app@localhost:5432/moo_dev"),
+  /** Runtime connection: a role that is a member of stoke_runtime (RLS applies). */
+  DATABASE_URL: z.string().default("postgres://stoke_app:stoke_app@localhost:5432/stoke_dev"),
   /** Owner connection: migrations and named system tasks only. */
-  DATABASE_OWNER_URL: z.string().default("postgres://moo_owner:moo_owner@localhost:5432/moo_dev"),
+  DATABASE_OWNER_URL: z.string().default("postgres://stoke_owner:stoke_owner@localhost:5432/stoke_dev"),
   JWT_SECRET: z.string().min(32).default("dev-only-secret-change-me-dev-only-secret"),
   MEDIA_SIGNING_SECRET: z.string().min(32).default("dev-only-media-secret-change-me-0123456789"),
   ACCESS_TOKEN_TTL_SEC: z.coerce.number().int().default(15 * 60),
@@ -20,7 +20,7 @@ const Env = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL: z.string().default("claude-opus-5-5"),
   /** Open Food Facts requires an identifying User-Agent. */
-  OFF_USER_AGENT: z.string().default("MooFitness/0.1 (private development build)"),
+  OFF_USER_AGENT: z.string().default("StokeFitness/0.1 (private development build)"),
   OFF_BASE_URL: z.string().default("https://world.openfoodfacts.org"),
   USDA_API_KEY: z.string().optional(),
   USDA_BASE_URL: z.string().default("https://api.nal.usda.gov/fdc/v1"),

@@ -1,4 +1,4 @@
-import type { PortionDto } from "@moo/contracts";
+import type { PortionDto } from "@stoke/contracts";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";

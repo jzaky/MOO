@@ -1,4 +1,4 @@
-import { PrescriptionSchema, ProgramCreate, WorkoutUpsert, type PrescriptionDto } from "@moo/contracts";
+import { PrescriptionSchema, ProgramCreate, WorkoutUpsert, type PrescriptionDto } from "@stoke/contracts";
 import {
   addDays,
   bestE1rm,
@@ -20,8 +20,8 @@ import {
   type Prescription,
   type ReadinessSignal,
   type SessionPerformance,
-} from "@moo/core";
-import { TrainingPreferences } from "@moo/contracts";
+} from "@stoke/core";
+import { TrainingPreferences } from "@stoke/contracts";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";

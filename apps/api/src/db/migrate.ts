@@ -17,7 +17,7 @@ export async function runMigrations(ownerUrl: string): Promise<void> {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  const url = process.env.DATABASE_OWNER_URL ?? "postgres://moo_owner:moo_owner@localhost:5432/moo_dev";
+  const url = process.env.DATABASE_OWNER_URL ?? "postgres://stoke_owner:stoke_owner@localhost:5432/stoke_dev";
   runMigrations(url)
     .then(() => console.log("migrations applied"))
     .catch((e) => {

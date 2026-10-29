@@ -1,5 +1,5 @@
-import type { NutrientValues, ProgressionRecommendation, LoggedSet } from "@moo/core";
-import type { PortionDto, PrescriptionDto, ProfileDto } from "@moo/contracts";
+import type { NutrientValues, ProgressionRecommendation, LoggedSet } from "@stoke/core";
+import type { PortionDto, PrescriptionDto, ProfileDto } from "@stoke/contracts";
 
 /** Response shapes of the API endpoints the app consumes. */
 

@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generateProgram, suggestSplit, type CatalogueExercise } from "@moo/core";
+import { generateProgram, suggestSplit, type CatalogueExercise } from "@stoke/core";
 import { EXERCISES } from "../src/db/seed/exercises";
 import { makeTestApp, onboard, registerUser, type TestApp } from "./helpers";
 

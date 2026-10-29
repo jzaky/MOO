@@ -1,4 +1,4 @@
-import { addDays, summarizeDay, type NutrientValues } from "@moo/core";
+import { addDays, summarizeDay, type NutrientValues } from "@stoke/core";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";

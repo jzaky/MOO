@@ -1,4 +1,4 @@
-# MOO mobile app
+# Stoke mobile app
 
 Expo SDK 58 / React Native 0.88 / Expo Router. iPhone first, Android supported, web build for development and review.
 

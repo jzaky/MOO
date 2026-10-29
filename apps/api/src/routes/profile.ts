@@ -10,8 +10,8 @@ import {
   SetGoalsRequest,
   TrainingPreferences,
   type OnboardingPlanRequest as PlanReq,
-} from "@moo/contracts";
-import { ageFromBirthDate, dayKeyInZone, DEFAULT_MEASUREMENT_SCHEDULE, generateTargets, isValidTimeZone, suggestSplit, type PrimaryGoal } from "@moo/core";
+} from "@stoke/contracts";
+import { ageFromBirthDate, dayKeyInZone, DEFAULT_MEASUREMENT_SCHEDULE, generateTargets, isValidTimeZone, suggestSplit, type PrimaryGoal } from "@stoke/core";
 import { and, desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";

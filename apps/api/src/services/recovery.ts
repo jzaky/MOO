@@ -1,4 +1,4 @@
-import { addDays, readinessFromInsights, recoveryInsights, type DailySignals } from "@moo/core";
+import { addDays, readinessFromInsights, recoveryInsights, type DailySignals } from "@stoke/core";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import type { Tx } from "../db/client";
 import { dailyCheckins, healthObservations, setLogs, sessionExercises, workoutSessions } from "../db/schema";

@@ -37,8 +37,8 @@ export async function seedExercises(system: Db): Promise<number> {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  const owner = process.env.DATABASE_OWNER_URL ?? "postgres://moo_owner:moo_owner@localhost:5432/moo_dev";
-  const db = createDatabase(process.env.DATABASE_URL ?? "postgres://moo_app:moo_app@localhost:5432/moo_dev", owner, { max: 2 });
+  const owner = process.env.DATABASE_OWNER_URL ?? "postgres://stoke_owner:stoke_owner@localhost:5432/stoke_dev";
+  const db = createDatabase(process.env.DATABASE_URL ?? "postgres://stoke_app:stoke_app@localhost:5432/stoke_dev", owner, { max: 2 });
   seedExercises(db.system)
     .then((n) => console.log(`seeded ${n} exercises`))
     .finally(() => db.close());

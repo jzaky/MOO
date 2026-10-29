@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { LM } from "@moo/core";
+import { LM } from "@stoke/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { FakeAiProvider } from "../src/ai/fake";
 import { upsertSharedFood } from "../src/foods/repository";

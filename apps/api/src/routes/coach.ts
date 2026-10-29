@@ -1,5 +1,5 @@
-import { CoachMessageRequest, ProgramCreate, RecommendationDecision } from "@moo/contracts";
-import { dayKeyInZone } from "@moo/core";
+import { CoachMessageRequest, ProgramCreate, RecommendationDecision } from "@stoke/contracts";
+import { dayKeyInZone } from "@stoke/core";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";

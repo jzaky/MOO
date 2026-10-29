@@ -1,9 +1,9 @@
-import { analyzeMovement, type Frame, type MovementAnalysis, type MovementKind } from "@moo/core";
+import { analyzeMovement, type Frame, type MovementAnalysis, type MovementKind } from "@stoke/core";
 import type { PoseFrame } from "./types";
 
 /**
  * Turns frames from the pose page into the core analysis input. Runs entirely
- * on the device with the same @moo/core analysis the API exposes.
+ * on the device with the same @stoke/core analysis the API exposes.
  */
 
 export const MIN_TRACKED_FRAMES = 10;

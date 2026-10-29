@@ -1,5 +1,5 @@
 import * as Crypto from "expo-crypto";
-import { dayKeyInZone } from "@moo/core";
+import { dayKeyInZone } from "@stoke/core";
 
 export const uuid = (): string => Crypto.randomUUID();
 export const nowIso = (): string => new Date().toISOString();

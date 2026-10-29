@@ -1,5 +1,5 @@
-import type { PortionDto } from "@moo/contracts";
-import { nutrientsForPortion, type PortionInput } from "@moo/core";
+import type { PortionDto } from "@stoke/contracts";
+import { nutrientsForPortion, type PortionInput } from "@stoke/core";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "./api";
 import { nowIso, uuid } from "./ids";
@@ -75,7 +75,7 @@ function describePortion(food: Food, p: PortionDto): string {
 
 /**
  * Log a database food. Nutrients are computed on-device with the same
- * @moo/core code the server uses, so the optimistic entry matches the server's
+ * @stoke/core code the server uses, so the optimistic entry matches the server's
  * snapshot; the server recomputes authoritatively on sync.
  */
 export function logFood(args: { food: Food; portion: PortionDto; day: string; meal: string; provenance?: "ai_estimate"; recognitionId?: string; id?: string }): string {

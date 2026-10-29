@@ -1,4 +1,4 @@
-import type { ProgressionRecommendation } from "@moo/core";
+import type { ProgressionRecommendation } from "@stoke/core";
 import { randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { StartWorkout } from "../src/lib/types";

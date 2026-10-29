@@ -215,7 +215,7 @@ async function jpeg(): Promise<Buffer> {
 }
 
 function multipart(files: Buffer[], fields: Record<string, string> = {}) {
-  const boundary = "----moo" + Math.random().toString(16).slice(2);
+  const boundary = "----stoke" + Math.random().toString(16).slice(2);
   const parts: Buffer[] = [];
   for (const [k, v] of Object.entries(fields)) parts.push(Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`));
   files.forEach((f, i) => {

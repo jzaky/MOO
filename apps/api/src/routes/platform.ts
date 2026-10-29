@@ -1,5 +1,5 @@
-import { NotificationPreferences } from "@moo/contracts";
-import { analyzeMovement, dayKeyInZone, localTimeToUtc, planNotifications, type Frame } from "@moo/core";
+import { NotificationPreferences } from "@stoke/contracts";
+import { analyzeMovement, dayKeyInZone, localTimeToUtc, planNotifications, type Frame } from "@stoke/core";
 import { and, eq, isNull } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -94,8 +94,8 @@ export function registerPlatformRoutes(app: FastifyInstance, ctx: AppContext): v
     const user = await ctx.auth.getUser(req.userId);
     await ctx.db.asUser(req.userId, (tx) => tx.insert(schema.auditEvents).values({ userId: req.userId, event: "data.exported" }));
     return reply
-      .header("Content-Disposition", `attachment; filename="moo-export-${new Date().toISOString().slice(0, 10)}.json"`)
-      .send({ exportedAt: ctx.now().toISOString(), format: "moo-export/v1", account: user, data, notes: ["Progress photos are referenced by storage key; download them from the app while signed in.", "Shared food database records are not included; diary entries contain the nutrient values as logged."] });
+      .header("Content-Disposition", `attachment; filename="stoke-export-${new Date().toISOString().slice(0, 10)}.json"`)
+      .send({ exportedAt: ctx.now().toISOString(), format: "stoke-export/v1", account: user, data, notes: ["Progress photos are referenced by storage key; download them from the app while signed in.", "Shared food database records are not included; diary entries contain the nutrient values as logged."] });
   });
 
   app.post("/v1/push-tokens", auth, async (req, reply) => {

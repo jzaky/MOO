@@ -1,5 +1,5 @@
-import { CheckinUpsert, HealthIngestRequest } from "@moo/contracts";
-import { addDays, dayKeyInZone, mean } from "@moo/core";
+import { CheckinUpsert, HealthIngestRequest } from "@stoke/contracts";
+import { addDays, dayKeyInZone, mean } from "@stoke/core";
 import { and, eq, gte, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";

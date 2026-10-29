@@ -1,6 +1,6 @@
 # Architecture
 
-MOO is a private, single-user fitness and nutrition app, built so it can later become a multi-user SaaS without a rewrite. This document records the shape of the system and the decisions behind it.
+Stoke is a private, single-user fitness and nutrition app, built so it can later become a multi-user SaaS without a rewrite. This document records the shape of the system and the decisions behind it.
 
 ## System overview
 
@@ -45,7 +45,7 @@ packages/contracts  zod request/response schemas shared by API and app
 
 **ADR-2: Expo (React Native) for mobile.** iPhone first, with Android from the same code. Expo SDK 58 provides Expo Router native tabs, camera barcode scanning, audio and SQLite. The health libraries (`@kingstinct/react-native-healthkit`, `react-native-health-connect`) are MIT and maintained. *Rejected:* Flutter. It would split the language from the TypeScript domain core, and the best Flutter references (wger, OpenNutriTracker) are GPL or AGPL anyway.
 
-**ADR-3: Postgres Row-Level Security as the isolation boundary.** The API connects as `moo_app`, which is a member of `moo_runtime` and does not own the tables. Every request runs inside a transaction that sets `app.user_id`, and policies compare against `app_user_id()`. Shared catalogue rows (`owner_user_id IS NULL`) are readable by all. A separate owner connection is used only for auth, shared-catalogue upserts and named jobs. A forgotten `WHERE user_id = …` therefore cannot leak data. Tests try exactly that.
+**ADR-3: Postgres Row-Level Security as the isolation boundary.** The API connects as `stoke_app`, which is a member of `stoke_runtime` and does not own the tables. Every request runs inside a transaction that sets `app.user_id`, and policies compare against `app_user_id()`. Shared catalogue rows (`owner_user_id IS NULL`) are readable by all. A separate owner connection is used only for auth, shared-catalogue upserts and named jobs. A forgotten `WHERE user_id = …` therefore cannot leak data. Tests try exactly that.
 
 **ADR-4: Deterministic core; the LLM never does arithmetic.** Models return structured observations: food identity, portion estimates with ranges, label fields, and coach tool calls. Code computes nutrients, targets, trends and progression. Model output is validated against zod schemas, and invalid output is rejected rather than repaired.
 
@@ -57,11 +57,11 @@ packages/contracts  zod request/response schemas shared by API and app
 
 **ADR-8: Food data by provenance.** Generic foods come from USDA FoodData Central (CC0, bulk-imported). Packaged foods come from Open Food Facts by barcode (ODbL; attributed; stored with source and id). Private foods are user-owned. Each diary entry stores a nutrient snapshot, so catalogue corrections never change history.
 
-**ADR-9: Original exercise catalogue.** wger's exercise data is CC BY-SA, which would put a share-alike obligation on a proprietary dataset. exercemus and free-exercise-db have unclear provenance. MOO therefore ships its own 83-exercise catalogue. See `repository-evaluation.md`.
+**ADR-9: Original exercise catalogue.** wger's exercise data is CC BY-SA, which would put a share-alike obligation on a proprietary dataset. exercemus and free-exercise-db have unclear provenance. Stoke therefore ships its own 83-exercise catalogue. See `repository-evaluation.md`.
 
 **ADR-10: No synthetic recovery score.** Sleep, resting heart rate, HRV, training load and check-ins are each compared with the user's own baseline and explained in words. A single opaque number would imply precision the inputs don't have.
 
-**ADR-11: Form check runs MediaPipe's web runtime in a WebView.** The research recommended a thin native Expo module around MediaPipe Pose Landmarker. Instead, one self-contained page (MediaPipe tasks-vision, version-pinned) runs in a WebView on iOS and Android and in an iframe on web. The trade-off: likely lower frame rate than native GPU code, and a first-use download of about 6 MB. In exchange, the tracking code is identical on every platform and was verified end to end here with real footage, which a native module could not be. Only landmark coordinates cross into the app; analysis is the tested `@moo/core` code running locally. If device frame rates prove too low, the page's message contract (`start`/`stop` in, `frames`/`status` out) is the seam a native module would implement.
+**ADR-11: Form check runs MediaPipe's web runtime in a WebView.** The research recommended a thin native Expo module around MediaPipe Pose Landmarker. Instead, one self-contained page (MediaPipe tasks-vision, version-pinned) runs in a WebView on iOS and Android and in an iframe on web. The trade-off: likely lower frame rate than native GPU code, and a first-use download of about 6 MB. In exchange, the tracking code is identical on every platform and was verified end to end here with real footage, which a native module could not be. Only landmark coordinates cross into the app; analysis is the tested `@stoke/core` code running locally. If device frame rates prove too low, the page's message contract (`start`/`stop` in, `frames`/`status` out) is the seam a native module would implement.
 
 **ADR-12: Food matches are suggested, never substituted.** Ingredient and spoken-food matching pre-selects only the best-ranked food, and only if it shares a real word with what the user wrote. Amounts are converted only through the food's own data (servings, volume servings). Anything else is shown as "needs your choice" rather than filled in, because a confident wrong match (e.g. "za'atar" → a cup of currants) fabricates nutrition.
 

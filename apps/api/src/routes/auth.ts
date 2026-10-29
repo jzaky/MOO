@@ -1,4 +1,4 @@
-import { LoginRequest, RefreshRequest, RegisterRequest } from "@moo/contracts";
+import { LoginRequest, RefreshRequest, RegisterRequest } from "@stoke/contracts";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { parse } from "../http/errors";

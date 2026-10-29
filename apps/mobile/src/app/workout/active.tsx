@@ -1,4 +1,4 @@
-import { summarizeWorkout } from "@moo/core";
+import { summarizeWorkout } from "@stoke/core";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";

@@ -1,4 +1,4 @@
-import { parseIngredientLine } from "@moo/core";
+import { parseIngredientLine } from "@stoke/core";
 
 /**
  * Extract a schema.org Recipe from HTML JSON-LD. Clean-room implementation

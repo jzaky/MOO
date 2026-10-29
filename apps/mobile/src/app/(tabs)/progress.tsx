@@ -1,4 +1,4 @@
-import { displayBodyWeight, kgToLb, round } from "@moo/core";
+import { displayBodyWeight, kgToLb, round } from "@stoke/core";
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";

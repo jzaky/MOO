@@ -31,7 +31,7 @@ export async function deliverDueNotifications(db: Database, now = new Date(), wi
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  const db = createDatabase(process.env.DATABASE_URL ?? "postgres://moo_app:moo_app@localhost:5432/moo_dev", process.env.DATABASE_OWNER_URL ?? "postgres://moo_owner:moo_owner@localhost:5432/moo_dev", { max: 3 });
+  const db = createDatabase(process.env.DATABASE_URL ?? "postgres://stoke_app:stoke_app@localhost:5432/stoke_dev", process.env.DATABASE_OWNER_URL ?? "postgres://stoke_owner:stoke_owner@localhost:5432/stoke_dev", { max: 3 });
   deliverDueNotifications(db)
     .then((r) => console.log(`notifications: ${r.sent} sent for ${r.users} users`))
     .finally(() => db.close());

@@ -7,7 +7,7 @@ import type { AiPart } from "./provider";
  * perception: identify visible components, give a generic name to search the
  * food database with, and estimate portion RANGES with confidences. It never
  * returns calories — nutrition comes from the database and arithmetic from
- * @moo/core.
+ * @stoke/core.
  */
 
 export const MealPhotoAnalysis = z.object({

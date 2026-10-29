@@ -39,7 +39,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm -r typecheck
-      - name: Create roles and databases (moo_owner, moo_app / moo_dev, moo_test)
+      - name: Create roles and databases (stoke_owner, stoke_app / stoke_dev, stoke_test)
         run: bash scripts/dev-db-setup.sh
       - name: Tests (core unit, API integration against Postgres, mobile unit)
         run: pnpm test

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-  <!-- MOO glyph: the energy ring, nearly closed, around an M. Transparent background. -->
+  <!-- Stoke glyph: the energy ring, nearly closed, around a flame. Transparent background. -->
   <path d="M 677.0 226.2 A 330 330 0 1 1 512 182" fill="none" stroke="#7CF0B4" stroke-width="76" stroke-linecap="round"/>
-  <polyline points="352,652 352,392 512,548 672,392 672,652" fill="none" stroke="#F2F3F5" stroke-width="76" stroke-linecap="round" stroke-linejoin="round"/>
+  <path transform="translate(512 522) scale(1.12) translate(-512 -522)" fill="#F2F3F5" fill-rule="evenodd" d="M 520 318 C 548 392 648 452 648 584 C 648 676 588 726 512 726 C 436 726 376 676 376 590 C 376 526 404 482 440 448 C 444 498 462 528 490 540 C 478 470 490 384 520 318 Z M 512 702 C 556 702 584 672 584 628 C 584 578 548 552 528 512 C 516 552 480 572 466 606 C 452 640 466 702 512 702 Z"/>
 </svg>

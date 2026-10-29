@@ -1,4 +1,4 @@
-import { addDays, dayKeyInZone } from "@moo/core";
+import { addDays, dayKeyInZone } from "@stoke/core";
 import { and, asc, desc, eq, gte, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { Database, Tx } from "../db/client";
@@ -9,7 +9,7 @@ import { weightOverview } from "../routes/progress";
 import { buildProgramProposal, exerciseHistory, loadProgram } from "../routes/training";
 import { recoverySnapshot } from "../services/recovery";
 import { mealSuggestions, nutritionSummary, proposeTargetsFromAdaptive, weeklyReview } from "../services/insights";
-import { bestE1rm } from "@moo/core";
+import { bestE1rm } from "@stoke/core";
 
 /**
  * Coach tools. Read tools return the user's actual stored data; propose

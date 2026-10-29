@@ -14,7 +14,7 @@ import {
   type IntakeDay,
   type NutrientValues,
   type Sex,
-} from "@moo/core";
+} from "@stoke/core";
 import { and, asc, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import type { Tx } from "../db/client";
 import { coachRecommendations, diaryDays, foodLogs, personalRecords, savedMeals, workoutPrograms, workoutSessions, workoutTemplates } from "../db/schema";

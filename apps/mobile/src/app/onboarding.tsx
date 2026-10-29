@@ -1,5 +1,5 @@
-import type { OnboardingPlanRequest } from "@moo/contracts";
-import { lbToKg, round, toCm } from "@moo/core";
+import type { OnboardingPlanRequest } from "@stoke/contracts";
+import { lbToKg, round, toCm } from "@stoke/core";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Pressable, Switch, View } from "react-native";

@@ -1,4 +1,4 @@
-import { estimateMeal, isKnown, type NutrientValues } from "@moo/core";
+import { estimateMeal, isKnown, type NutrientValues } from "@stoke/core";
 import { router } from "expo-router";
 import { useMemo, useState } from "react";
 import { Pressable, Switch, View } from "react-native";

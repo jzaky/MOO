@@ -4,7 +4,7 @@ import { runMigrations } from "../src/db/migrate";
 import { seedExercises } from "../src/db/seed";
 import * as schema from "../src/db/schema";
 
-export const TEST_OWNER_URL = process.env.TEST_DATABASE_OWNER_URL ?? "postgres://moo_owner:moo_owner@localhost:5432/moo_test";
+export const TEST_OWNER_URL = process.env.TEST_DATABASE_OWNER_URL ?? "postgres://stoke_owner:stoke_owner@localhost:5432/stoke_test";
 
 /** Recreate the test schema from migrations, exactly as production would apply them. */
 export default async function setup() {

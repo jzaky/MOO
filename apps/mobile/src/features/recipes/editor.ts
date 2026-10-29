@@ -1,10 +1,10 @@
-import { computeRecipeNutrition, isKnown, type PortionInput } from "@moo/core";
-import type { PortionDto } from "@moo/contracts";
+import { computeRecipeNutrition, isKnown, type PortionInput } from "@stoke/core";
+import type { PortionDto } from "@stoke/contracts";
 import type { Food, Recipe, RecipeDraft } from "../../lib/types";
 
 /**
  * Recipe editor state and the arithmetic behind its live preview. Kept free
- * of React so it can be unit-tested; the preview uses the same @moo/core
+ * of React so it can be unit-tested; the preview uses the same @stoke/core
  * function the server uses to store the recipe.
  */
 

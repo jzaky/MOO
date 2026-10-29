@@ -1,4 +1,4 @@
-import { checkEnergyConsistency, completeness, isKnown, kjToKcal, type NutrientValues } from "@moo/core";
+import { checkEnergyConsistency, completeness, isKnown, kjToKcal, type NutrientValues } from "@stoke/core";
 
 /**
  * Normalized food record produced by every source adapter, before it is

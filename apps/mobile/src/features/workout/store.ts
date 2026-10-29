@@ -1,5 +1,5 @@
-import type { PrescriptionDto } from "@moo/contracts";
-import type { LoggedSet, ProgressionRecommendation } from "@moo/core";
+import type { PrescriptionDto } from "@stoke/contracts";
+import type { LoggedSet, ProgressionRecommendation } from "@stoke/core";
 import { useSyncExternalStore } from "react";
 import { haptic } from "../../lib/haptics";
 import { nowIso, todayKey, uuid } from "../../lib/ids";

@@ -1,4 +1,4 @@
-import { completeness, rankFoods, SEARCH_DESCRIPTORS, stem, words, type FoodNutritionBasis, type NutrientValues } from "@moo/core";
+import { completeness, rankFoods, SEARCH_DESCRIPTORS, stem, words, type FoodNutritionBasis, type NutrientValues } from "@stoke/core";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { Db, Tx } from "../db/client";
 import { foodLogs, foodServings, foods } from "../db/schema";
@@ -161,7 +161,7 @@ const CANDIDATES = 300;
 /**
  * Local search over the user's private foods and the shared catalogue.
  * Postgres finds candidates (word prefixes and pg_trgm similarity); the
- * ranking itself lives in @moo/core so it can be unit-tested.
+ * ranking itself lives in @stoke/core so it can be unit-tested.
  */
 export async function searchLocalFoods(tx: Tx, userId: string, query: string, limit = 20, opts: { excludeSources?: string[] } = {}): Promise<FoodDto[]> {
   const q = query.trim().toLowerCase();
@@ -198,7 +198,7 @@ export async function searchLocalFoods(tx: Tx, userId: string, query: string, li
     )
     .orderBy(desc(hits), desc(sql`${foods.ownerUserId} is not null`), desc(sql`coalesce(${usage.uses}, 0)`), desc(similarity), sql`length(${foods.name})`)
     .limit(CANDIDATES);
-  // Final order: relevance rules from @moo/core (head food, extra words, processed forms, history).
+  // Final order: relevance rules from @stoke/core (head food, extra words, processed forms, history).
   const ranked = rankFoods(
     q,
     rows.map((r) => ({ name: r.food.name, brand: r.food.brand, isPrivate: r.food.ownerUserId != null, uses: Number(r.uses ?? 0), completeness: r.food.completeness ?? 0, similarity: Number(r.similarity), row: r })),

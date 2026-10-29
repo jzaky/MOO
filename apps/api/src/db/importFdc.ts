@@ -11,7 +11,7 @@ import { mapFdcFood } from "../foods/sources";
  *
  *   curl -O https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_json_2018-04.zip
  *   unzip FoodData_Central_sr_legacy_food_json_2018-04.zip
- *   pnpm --filter @moo/api import:fdc FoodData_Central_sr_legacy_food_json_2018-04.json
+ *   pnpm --filter @stoke/api import:fdc FoodData_Central_sr_legacy_food_json_2018-04.json
  *
  * Re-running is safe: records are upserted by (source, fdcId).
  */
@@ -44,8 +44,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
     console.error("usage: import:fdc <FoodData_Central_*.json>");
     process.exit(1);
   }
-  const owner = process.env.DATABASE_OWNER_URL ?? "postgres://moo_owner:moo_owner@localhost:5432/moo_dev";
-  const app = process.env.DATABASE_URL ?? "postgres://moo_app:moo_app@localhost:5432/moo_dev";
+  const owner = process.env.DATABASE_OWNER_URL ?? "postgres://stoke_owner:stoke_owner@localhost:5432/stoke_dev";
+  const app = process.env.DATABASE_URL ?? "postgres://stoke_app:stoke_app@localhost:5432/stoke_dev";
   const started = Date.now();
   importFdcFile(file, owner, app)
     .then((r) => console.log(`FDC import: ${r.imported} foods imported, ${r.skipped} skipped (incomplete macros) in ${Math.round((Date.now() - started) / 1000)} s`))

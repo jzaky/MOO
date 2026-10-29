@@ -1,5 +1,5 @@
-import { MeasurementUpsert } from "@moo/contracts";
-import { addDays, clampClientTimestamp, dayKeyInZone, estimateRate, ewmaTrend, goalProgress, sevenDayAverage } from "@moo/core";
+import { MeasurementUpsert } from "@stoke/contracts";
+import { addDays, clampClientTimestamp, dayKeyInZone, estimateRate, ewmaTrend, goalProgress, sevenDayAverage } from "@stoke/core";
 import type { MultipartFile } from "@fastify/multipart";
 import { and, asc, desc, eq, gte, isNull, lte } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";

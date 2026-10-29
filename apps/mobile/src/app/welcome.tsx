@@ -18,7 +18,7 @@ export default function Welcome() {
       <Stack gap={28} style={{ maxWidth: 520, width: "100%", alignSelf: "center" }}>
         <View style={{ gap: 10 }}>
           <T variant="label" color="accent">
-            MOO
+            Stoke
           </T>
           <T variant="display" style={{ fontSize: 40, lineHeight: 46 }}>
             Your nutrition, training and progress in one place.

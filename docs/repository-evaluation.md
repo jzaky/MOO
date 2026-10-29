@@ -12,15 +12,15 @@ A summary of the due diligence in `docs/research/01–04`, which hold each repos
 
 ## Decision matrix
 
-| # | Repository | Code licence | Data licence | Classification | What MOO takes from it |
+| # | Repository | Code licence | Data licence | Classification | What Stoke takes from it |
 | --- | --- | --- | --- | --- | --- |
 | 1 | CodeWithCJ/SparkyFitness | Custom non-commercial, source-available | – | **REJECT** | Nothing. The licence forbids commercial derivative use. |
 | 2 | simonoppowa/OpenNutriTracker | GPL-3.0 | FDC CC0; BLS/INDB CC BY 4.0 | **REFERENCE** | Design ideas only: offline diary, a canonical per-100 g nutrient vector. |
-| 3 | wger-project/wger | AGPL-3.0+ | Exercises mostly CC BY-SA | **REFERENCE** | Progression and routine concepts. Exercise data **not** imported (share-alike); MOO wrote its own catalogue. |
+| 3 | wger-project/wger | AGPL-3.0+ | Exercises mostly CC BY-SA | **REFERENCE** | Progression and routine concepts. Exercise data **not** imported (share-alike); Stoke wrote its own catalogue. |
 | 4 | Snouzy/workout-cool | MIT | None stated | **REFERENCE** | Nothing copied. Its training engine is too thin to base ours on. |
 | 5 | wger-project/flutter | AGPL-3.0+ (store exception) | Per entry | **REFERENCE** | Gym-mode interaction and offline-first sync shape. |
 | 6 | openfoodfacts/openfoodfacts-server | AGPL-3.0 | ODbL + DbCL; images CC BY-SA | **ADOPT data and API; REJECT code** | Live barcode lookup with attribution. Products stored with source and id. |
-| 7 | openfoodfacts/openfoodfacts-dart | Apache-2.0 | – | **REFERENCE** | Field semantics. MOO calls the REST API directly from TypeScript. |
+| 7 | openfoodfacts/openfoodfacts-dart | Apache-2.0 | – | **REFERENCE** | Field semantics. Stoke calls the REST API directly from TypeScript. |
 | 8 | openfoodfacts/openfoodfacts-androidapp | Apache-2.0 | – | **REFERENCE** | Scan-flow UX: continuous scan, quick-view card, "add missing product". |
 | 9 | openfoodfacts/openfoodfacts-ios | Apache-2.0 (archived 2023) | – | **REJECT** | Nothing. Archived; Expo's camera covers scanning. |
 | 10 | openfoodfacts/robotoff | AGPL-3.0 | Models AGPL / CC BY-NC-SA | **REFERENCE** (architecture) | The idea of separate prediction stages with human confirmation. No code or models. |
@@ -47,13 +47,13 @@ A summary of the due diligence in `docs/research/01–04`, which hold each repos
 | react-native-vision-camera v5 | MIT | **REFERENCE / fallback** | Only if `CameraView` scanning proves insufficient. |
 | expo-speech-recognition | MIT | **ADOPT (optional)** | On-device dictation fallback. Not yet wired. |
 | whisper.rn | MIT | **ADAPT (later)** | On-device transcription, if server STT is unavailable. |
-| wger exercise data | CC BY-SA 3.0/4.0 (some CC0) | **Not used** | The research suggested it as attributed seed data. MOO chose an original catalogue to keep the dataset free of share-alike obligations (ADR-9). |
+| wger exercise data | CC BY-SA 3.0/4.0 (some CC0) | **Not used** | The research suggested it as attributed seed data. Stoke chose an original catalogue to keep the dataset free of share-alike obligations (ADR-9). |
 
 ## Notable findings that shaped the build
-- **Open Food Facts in the UAE.** About 9,500 products; 51.8% have complete macros. Anonymous search is unreliable (about 10 requests/minute, frequent 503s), but product reads by barcode work (about 15/minute). MOO therefore uses barcode lookup live, searches its local catalogue first, and caches products.
+- **Open Food Facts in the UAE.** About 9,500 products; 51.8% have complete macros. Anonymous search is unreliable (about 10 requests/minute, frequent 503s), but product reads by barcode work (about 15/minute). Stoke therefore uses barcode lookup live, searches its local catalogue first, and caches products.
 - **OFF data quality.**
-  - Energy can be present only as kJ; MOO converts it and flags it.
-  - Sodium is stored in grams; MOO converts it to mg.
+  - Energy can be present only as kJ; Stoke converts it and flags it.
+  - Sodium is stored in grams; Stoke converts it to mg.
   - Serving units sometimes contradict the per-100 basis; such servings are dropped.
 
   All three behaviours are tested against real recorded responses.

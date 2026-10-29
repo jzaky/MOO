@@ -95,7 +95,7 @@ export class AuthService {
 
   async verifyAccessToken(token: string): Promise<{ userId: string }> {
     try {
-      const { payload } = await jwtVerify(token, this.key, { algorithms: ["HS256"], issuer: "moo", audience: "moo-api" });
+      const { payload } = await jwtVerify(token, this.key, { algorithms: ["HS256"], issuer: "stoke", audience: "stoke-api" });
       if (typeof payload.sub !== "string") throw new Error("no sub");
       return { userId: payload.sub };
     } catch {
@@ -126,8 +126,8 @@ export class AuthService {
     const accessToken = await new SignJWT({})
       .setProtectedHeader({ alg: "HS256" })
       .setSubject(userId)
-      .setIssuer("moo")
-      .setAudience("moo-api")
+      .setIssuer("stoke")
+      .setAudience("stoke-api")
       .setIssuedAt()
       .setExpirationTime(Math.floor(accessExp.getTime() / 1000))
       .setJti(randomUUID())

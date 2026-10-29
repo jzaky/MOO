@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "MOO",
-    "slug": "moo",
+    "name": "Stoke",
+    "slug": "stoke",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "moo",
+    "scheme": "stoke",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0B0C0E",
     "ios": {
-      "bundleIdentifier": "com.moo.fitness",
+      "bundleIdentifier": "com.stoke.fitness",
       "supportsTablet": false,
       "icon": "./assets/expo.icon",
       "infoPlist": {
@@ -17,7 +17,7 @@
       }
     },
     "android": {
-      "package": "com.moo.fitness",
+      "package": "com.stoke.fitness",
       "adaptiveIcon": {
         "backgroundColor": "#0B0C0E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -42,12 +42,12 @@
       ["expo-splash-screen", { "backgroundColor": "#0B0C0E", "image": "./assets/images/splash-icon.png", "imageWidth": 76 }],
       "expo-secure-store",
       "expo-sqlite",
-      ["expo-camera", { "cameraPermission": "MOO uses the camera to scan barcodes and photograph meals or nutrition labels you choose to log.", "recordAudioAndroid": false }],
-      ["expo-image-picker", { "photosPermission": "MOO lets you choose meal photos and progress photos from your library." }],
-      ["expo-audio", { "microphonePermission": "MOO records short voice notes only when you hold the microphone button to log food or workouts." }],
+      ["expo-camera", { "cameraPermission": "Stoke uses the camera to scan barcodes and photograph meals or nutrition labels you choose to log.", "recordAudioAndroid": false }],
+      ["expo-image-picker", { "photosPermission": "Stoke lets you choose meal photos and progress photos from your library." }],
+      ["expo-audio", { "microphonePermission": "Stoke records short voice notes only when you hold the microphone button to log food or workouts." }],
       "expo-localization",
       ["expo-notifications", { "color": "#7CF0B4" }],
-      ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "MOO reads steps, active energy, sleep, resting heart rate, heart rate variability, walking distance and body weight that you choose to share, to show recovery trends and keep your weight log in sync.", "NSHealthUpdateUsageDescription": "MOO only reads from Apple Health. It does not write any data to it.", "background": true }],
+      ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "Stoke reads steps, active energy, sleep, resting heart rate, heart rate variability, walking distance and body weight that you choose to share, to show recovery trends and keep your weight log in sync.", "NSHealthUpdateUsageDescription": "Stoke only reads from Apple Health. It does not write any data to it.", "background": true }],
       "react-native-health-connect",
       ["expo-build-properties", { "android": { "minSdkVersion": 26, "compileSdkVersion": 36, "targetSdkVersion": 36 } }]
     ],

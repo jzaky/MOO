@@ -1,5 +1,5 @@
-import { CustomFoodCreate, NutrientValuesSchema } from "@moo/contracts";
-import type { NutrientValues } from "@moo/core";
+import { CustomFoodCreate, NutrientValuesSchema } from "@stoke/contracts";
+import type { NutrientValues } from "@stoke/core";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";

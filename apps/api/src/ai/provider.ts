@@ -7,7 +7,7 @@ import type { z } from "zod";
  *
  * Rules enforced by callers, not providers:
  *  - Model output is always validated against a schema before use.
- *  - Arithmetic (nutrition totals, progression, trends) is done in @moo/core.
+ *  - Arithmetic (nutrition totals, progression, trends) is done in @stoke/core.
  *  - Nothing the model returns is written to user records without the user's
  *    confirmation.
  */

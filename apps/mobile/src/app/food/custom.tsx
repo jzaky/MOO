@@ -1,4 +1,4 @@
-import { perServingToPer100, type NutrientValues } from "@moo/core";
+import { perServingToPer100, type NutrientValues } from "@stoke/core";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";

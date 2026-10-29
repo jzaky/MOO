@@ -9,7 +9,7 @@ CREATE TABLE "diary_days" (
 ALTER TABLE "recipes" ADD COLUMN "food_id" uuid;--> statement-breakpoint
 ALTER TABLE "diary_days" ADD CONSTRAINT "diary_days_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "recipes" ADD CONSTRAINT "recipes_food_id_foods_id_fk" FOREIGN KEY ("food_id") REFERENCES "public"."foods"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
-GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE diary_days TO moo_runtime;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE diary_days TO stoke_runtime;
 --> statement-breakpoint
 ALTER TABLE diary_days ENABLE ROW LEVEL SECURITY;
 --> statement-breakpoint

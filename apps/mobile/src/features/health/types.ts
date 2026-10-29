@@ -1,4 +1,4 @@
-/** Shape accepted by POST /v1/health/observations (see @moo/contracts HealthIngestRequest). */
+/** Shape accepted by POST /v1/health/observations (see @stoke/contracts HealthIngestRequest). */
 export type HealthObservationType = "steps" | "active_energy_kcal" | "resting_hr" | "hrv_sdnn_ms" | "sleep_minutes" | "walking_distance_m" | "body_mass_kg" | "workout_minutes";
 
 export interface HealthObservation {

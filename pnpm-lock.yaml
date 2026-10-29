@@ -25,15 +25,15 @@ importers:
       '@fastify/rate-limit':
         specifier: 11.2.1
         version: 11.2.1
-      '@moo/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@moo/core':
-        specifier: workspace:*
-        version: link:../../packages/core
       '@node-rs/argon2':
         specifier: 2.2.2
         version: 2.2.2
+      '@stoke/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@stoke/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       drizzle-orm:
         specifier: 0.45.4
         version: 0.45.4(@opentelemetry/api@1.10.0)(expo-sqlite@58.0.14(expo@58.0.21)(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(postgres@3.4.9)
@@ -74,10 +74,10 @@ importers:
       '@kingstinct/react-native-healthkit':
         specifier: 16.2.0
         version: 16.2.0(react-native-nitro-modules@0.37.1(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
-      '@moo/contracts':
+      '@stoke/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@moo/core':
+      '@stoke/core':
         specifier: workspace:*
         version: link:../../packages/core
       '@tanstack/react-query':

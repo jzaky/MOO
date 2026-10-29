@@ -1,4 +1,4 @@
-import { addDays, buildGroceryList, isKnown, scalePer100, type IngredientNeed, type NutrientValues } from "@moo/core";
+import { addDays, buildGroceryList, isKnown, scalePer100, type IngredientNeed, type NutrientValues } from "@stoke/core";
 import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";

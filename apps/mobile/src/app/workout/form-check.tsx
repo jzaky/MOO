@@ -1,4 +1,4 @@
-import type { MovementAnalysis, MovementKind } from "@moo/core";
+import type { MovementAnalysis, MovementKind } from "@stoke/core";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { addDays, dayKeyInZone } from "@moo/core";
+import { addDays, dayKeyInZone } from "@stoke/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { FakeAiProvider } from "../src/ai/fake";
 import { DisabledAiProvider } from "../src/ai/provider";

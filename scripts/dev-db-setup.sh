@@ -5,15 +5,15 @@ set -euo pipefail
 psql=${PSQL:-"psql -v ON_ERROR_STOP=1"}
 $psql <<'SQL'
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'moo_owner') THEN CREATE ROLE moo_owner LOGIN PASSWORD 'moo_owner' CREATEDB; END IF;
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'moo_runtime') THEN CREATE ROLE moo_runtime NOLOGIN; END IF;
-  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'moo_app') THEN CREATE ROLE moo_app LOGIN PASSWORD 'moo_app'; END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'stoke_owner') THEN CREATE ROLE stoke_owner LOGIN PASSWORD 'stoke_owner' CREATEDB; END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'stoke_runtime') THEN CREATE ROLE stoke_runtime NOLOGIN; END IF;
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'stoke_app') THEN CREATE ROLE stoke_app LOGIN PASSWORD 'stoke_app'; END IF;
 END $$;
-GRANT moo_runtime TO moo_app;
+GRANT stoke_runtime TO stoke_app;
 SQL
-for db in moo_dev moo_test; do
+for db in stoke_dev stoke_test; do
   if ! $psql -tAc "SELECT 1 FROM pg_database WHERE datname='$db'" | grep -q 1; then
-    $psql -c "CREATE DATABASE $db OWNER moo_owner"
+    $psql -c "CREATE DATABASE $db OWNER stoke_owner"
   fi
 done
-echo "Databases ready: moo_dev, moo_test"
+echo "Databases ready: stoke_dev, stoke_test"

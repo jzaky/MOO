@@ -1,5 +1,5 @@
-import type { PortionDto } from "@moo/contracts";
-import { isKnown, NUTRIENT_META, nutrientsForPortion, PortionError, type NutrientKey, type PortionInput } from "@moo/core";
+import type { PortionDto } from "@stoke/contracts";
+import { isKnown, NUTRIENT_META, nutrientsForPortion, PortionError, type NutrientKey, type PortionInput } from "@stoke/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";

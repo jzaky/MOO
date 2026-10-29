@@ -1,4 +1,4 @@
-import { ParseLogRequest, RecognitionConfirmRequest } from "@moo/contracts";
+import { ParseLogRequest, RecognitionConfirmRequest } from "@stoke/contracts";
 import {
   checkEnergyConsistency,
   sharesKeyWord,
@@ -14,7 +14,7 @@ import {
   type NutrientValues,
   type ParsedFoodItem,
   type ParsedIntent,
-} from "@moo/core";
+} from "@stoke/core";
 import type { MultipartFile } from "@fastify/multipart";
 import { eq, sql } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";

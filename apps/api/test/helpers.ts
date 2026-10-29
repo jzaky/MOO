@@ -9,8 +9,8 @@ import { createDatabase, type Database } from "../src/db/client";
 import { StaticFoodSources } from "../src/foods/sources";
 import type { AppContext } from "../src/http/context";
 
-export const TEST_APP_URL = process.env.TEST_DATABASE_URL ?? "postgres://moo_app:moo_app@localhost:5432/moo_test";
-export const TEST_OWNER_URL = process.env.TEST_DATABASE_OWNER_URL ?? "postgres://moo_owner:moo_owner@localhost:5432/moo_test";
+export const TEST_APP_URL = process.env.TEST_DATABASE_URL ?? "postgres://stoke_app:stoke_app@localhost:5432/stoke_test";
+export const TEST_OWNER_URL = process.env.TEST_DATABASE_OWNER_URL ?? "postgres://stoke_owner:stoke_owner@localhost:5432/stoke_test";
 
 export interface TestApp {
   app: FastifyInstance;
@@ -21,7 +21,7 @@ export interface TestApp {
 }
 
 export async function makeTestApp(o: AppOverrides = {}): Promise<TestApp> {
-  const storage = mkdtempSync(path.join(tmpdir(), "moo-media-"));
+  const storage = mkdtempSync(path.join(tmpdir(), "stoke-media-"));
   const cfg = loadConfig({ NODE_ENV: "test", DATABASE_URL: TEST_APP_URL, DATABASE_OWNER_URL: TEST_OWNER_URL, STORAGE_DIR: storage, RATE_LIMIT_PER_MIN: "100000", AUTH_RATE_LIMIT_PER_MIN: "100000" } as NodeJS.ProcessEnv);
   const db = createDatabase(TEST_APP_URL, TEST_OWNER_URL, { max: 5 });
   const ai = (o.ai as FakeAiProvider | undefined) ?? new FakeAiProvider();

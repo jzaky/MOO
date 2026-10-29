@@ -1,4 +1,4 @@
-import type { NutrientValues } from "@moo/core";
+import type { NutrientValues } from "@stoke/core";
 import { assessQuality, energyKcalFrom, num, type NormalizedFood } from "./normalize";
 
 /** External food databases. Each adapter returns NormalizedFood records. */

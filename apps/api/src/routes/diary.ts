@@ -1,4 +1,4 @@
-import { FoodLogUpsert, SavedMealCreate, SavedMealLogRequest, WaterLogUpsert, type PortionDto } from "@moo/contracts";
+import { FoodLogUpsert, SavedMealCreate, SavedMealLogRequest, WaterLogUpsert, type PortionDto } from "@stoke/contracts";
 import {
   clampClientTimestamp,
   DEFAULT_MEALS,
@@ -8,7 +8,7 @@ import {
   summarizeDay,
   type NutrientValues,
   type PortionInput,
-} from "@moo/core";
+} from "@stoke/core";
 import { and, asc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -52,7 +52,7 @@ function describePortion(food: FoodDto, portion: PortionDto): string {
   return `${Math.round(portion.quantity * 10) / 10} ${portion.unit}`;
 }
 
-/** Compute the nutrient snapshot for a food + portion. All arithmetic in @moo/core. */
+/** Compute the nutrient snapshot for a food + portion. All arithmetic in @stoke/core. */
 export function computeFoodEntry(food: FoodDto, portion: PortionDto) {
   try {
     const { baseAmount, nutrients } = nutrientsForPortion(toNutritionBasis(food), portion as PortionInput);

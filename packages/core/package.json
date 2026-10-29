@@ -1,5 +1,5 @@
 {
-  "name": "@moo/core",
+  "name": "@stoke/core",
   "version": "0.1.0",
   "private": true,
   "description": "Pure, deterministic domain logic: nutrition math, training progression, trends, parsing. No I/O.",

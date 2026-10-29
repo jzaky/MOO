@@ -1,4 +1,4 @@
-import { CALORIE_FLOOR } from "@moo/core";
+import { CALORIE_FLOOR } from "@stoke/core";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { File, Paths } from "expo-file-system";
@@ -299,7 +299,7 @@ function DataSection() {
     try {
       const data = await api<unknown>("/v1/me/export");
       const json = JSON.stringify(data, null, 2);
-      const name = `moo-export-${new Date().toISOString().slice(0, 10)}.json`;
+      const name = `stoke-export-${new Date().toISOString().slice(0, 10)}.json`;
       if (Platform.OS === "web") {
         const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
         const a = document.createElement("a");
@@ -374,7 +374,7 @@ export default function Settings() {
           <PrivacySection profile={profile.data} />
           <SectionHeader title="Your data" />
           <DataSection />
-          <T variant="caption" color="textTertiary" align="center">MOO {Constants.expoConfig?.version ?? ""} · Estimates are not medical advice.</T>
+          <T variant="caption" color="textTertiary" align="center">Stoke {Constants.expoConfig?.version ?? ""} · Estimates are not medical advice.</T>
         </>
       )}
     </Screen>
