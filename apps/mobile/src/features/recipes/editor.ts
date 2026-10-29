@@ -95,13 +95,14 @@ function basis(f: Food) {
   return { baseUnit: f.baseUnit, per100: f.per100, servings: f.servings.map((s) => ({ id: s.id, label: s.label, baseAmount: s.baseAmount })), densityGPerMl: f.densityGPerMl };
 }
 
-export function toRecipeBody(args: { name: string; servings: number; cookedYieldG: number | null; instructions: string; sourceUrl: string | null; rows: readonly IngredientRow[] }) {
+export function toRecipeBody(args: { name: string; servings: number; cookedYieldG: number | null; instructions: string; sourceUrl: string | null; meals?: readonly string[]; rows: readonly IngredientRow[] }) {
   return {
     name: args.name.trim(),
     servings: args.servings,
     cookedYieldG: args.cookedYieldG,
     instructions: args.instructions.trim() || null,
     sourceUrl: args.sourceUrl,
+    meals: [...(args.meals ?? [])],
     ingredients: args.rows.map((r) => ({ foodId: r.food && r.portion ? r.food.id : null, rawText: r.rawText.slice(0, 300), portion: r.food ? r.portion : null })),
   };
 }

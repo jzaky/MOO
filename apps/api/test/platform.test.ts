@@ -76,6 +76,18 @@ describe("meal plan assembly", () => {
   });
 });
 
+describe("recipe meal tags", () => {
+  it("saves tags and only plans a tagged recipe at its meals", async () => {
+    const u = await user();
+    const r = await t.app.inject({ method: "POST", url: "/v1/recipes", headers: u.headers, payload: { name: "Lentil soup", servings: 4, meals: ["lunch", "dinner"], ingredients: [{ foodId: f.rice, rawText: "400 g rice", portion: { kind: "amount", quantity: 400, unit: "g" } }] } });
+    expect(r.json().meals).toEqual(["lunch", "dinner"]);
+    await t.app.inject({ method: "POST", url: "/v1/recipes", headers: u.headers, payload: { name: "Yogurt pot", servings: 1, meals: ["breakfast"], ingredients: [{ foodId: f.yogurt, rawText: "300 g yogurt", portion: { kind: "amount", quantity: 300, unit: "g" } }] } });
+    const plan = (await t.app.inject({ method: "POST", url: "/v1/meal-plans/generate", headers: u.headers, payload: { startDay: "2026-11-02", days: 3, meals: ["breakfast", "lunch", "dinner"] } })).json();
+    expect(plan.items.filter((i: { name: string }) => i.name === "Lentil soup").every((i: { meal: string }) => i.meal !== "breakfast")).toBe(true);
+    expect(plan.items.filter((i: { name: string }) => i.name === "Yogurt pot").every((i: { meal: string }) => i.meal === "breakfast")).toBe(true);
+  });
+});
+
 describe("restaurant menus", () => {
   it("keeps printed values separate from labelled estimates", async () => {
     const u = await user();

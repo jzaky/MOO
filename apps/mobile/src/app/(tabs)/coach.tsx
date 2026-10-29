@@ -58,13 +58,16 @@ function RecommendationCard({ r }: { r: Recommendation }) {
   );
 }
 
+const fmtDay = (d: string, withMonth = true) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, withMonth ? { month: "short", day: "numeric", timeZone: "UTC" } : { day: "numeric", timeZone: "UTC" });
+const fmtRange = (a: string, b: string) => (a.slice(0, 7) === b.slice(0, 7) ? `${fmtDay(a)} – ${fmtDay(b, false)}` : `${fmtDay(a)} – ${fmtDay(b)}`);
+
 export default function Coach() {
   const th = useTheme();
   const [tab, setTab] = useState<"chat" | "suggestions" | "week">("chat");
   const [conversationId, setConversationId] = useState<string | null>(() => kv.get<string>("coach.conversation"));
   const [text, setText] = useState("");
   const recs = useQuery({ queryKey: qk.recommendations, queryFn: async () => (await api<{ items: Recommendation[] }>("/v1/coach/recommendations")).items });
-  const weekly = useQuery({ queryKey: qk.weekly, queryFn: () => api<{ week: { start: string; end: string }; nutrition: { daysLogged: number; completeDays: number; averages: { energyKcal: number | null; proteinG: number | null }; targets: { energyKcal: number; proteinG: number } | null; proteinTargetHitDays: number | null }; training: { sessionsCompleted: number; sessionsPlannedPerWeek: number | null; personalRecords: number }; weight: { kgPerWeek: number | null; sufficiency: string }; adaptive: { status: string; reasons: string[] } }>("/v1/coach/weekly-review"), enabled: tab === "week" });
+  const weekly = useQuery({ queryKey: qk.weekly, queryFn: () => api<{ week: { start: string; end: string }; nutrition: { daysLogged: number; completeDays: number; averages: { energyKcal: number | null; proteinG: number | null }; targets: { energyKcal: number; proteinG: number } | null; proteinTargetHitDays: number | null }; training: { sessionsCompleted: number; sessionsPlannedPerWeek: number | null; personalRecords: number; prExercises: string[] }; weight: { kgPerWeek: number | null; sufficiency: string }; adaptive: { status: string; reasons: string[] } }>("/v1/coach/weekly-review"), enabled: tab === "week" });
   const messages = useQuery({ queryKey: qk.messages(conversationId ?? "none"), queryFn: async () => (await api<{ items: Message[] }>(`/v1/coach/conversations/${conversationId}/messages`)).items, enabled: !!conversationId });
   useEffect(() => {
     if (messages.isError && messages.error instanceof ApiError && messages.error.status === 404) {
@@ -154,19 +157,20 @@ export default function Coach() {
       {tab === "week" ? (
         weekly.data ? (
           <Stack gap={12}>
-            <T variant="footnote" color="textSecondary">{weekly.data.week.start} – {weekly.data.week.end}</T>
+            <T variant="footnote" color="textSecondary">{fmtRange(weekly.data.week.start, weekly.data.week.end)}</T>
             <Card>
               <Stack gap={6}>
                 <T variant="label" color="textTertiary">Nutrition · logged</T>
                 <T variant="subhead">{weekly.data.nutrition.daysLogged} days logged, {weekly.data.nutrition.completeDays} complete.</T>
                 {weekly.data.nutrition.averages.energyKcal != null ? <T variant="subhead">Averaged {weekly.data.nutrition.averages.energyKcal} kcal{weekly.data.nutrition.targets ? ` (target ${weekly.data.nutrition.targets.energyKcal})` : ""} and {weekly.data.nutrition.averages.proteinG} g protein.</T> : null}
-                {weekly.data.nutrition.proteinTargetHitDays != null ? <T variant="footnote" color="textSecondary">Protein target reached on {weekly.data.nutrition.proteinTargetHitDays} of {weekly.data.nutrition.completeDays} complete days.</T> : null}
+                {weekly.data.nutrition.proteinTargetHitDays != null && weekly.data.nutrition.completeDays > 0 ? <T variant="footnote" color="textSecondary">Protein target reached on {weekly.data.nutrition.proteinTargetHitDays} of {weekly.data.nutrition.completeDays} complete days.</T> : null}
               </Stack>
             </Card>
             <Card>
               <Stack gap={6}>
                 <T variant="label" color="textTertiary">Training · logged</T>
-                <T variant="subhead">{weekly.data.training.sessionsCompleted} session{weekly.data.training.sessionsCompleted === 1 ? "" : "s"}{weekly.data.training.sessionsPlannedPerWeek ? ` of ${weekly.data.training.sessionsPlannedPerWeek} planned` : ""} · {weekly.data.training.personalRecords} PR{weekly.data.training.personalRecords === 1 ? "" : "s"}</T>
+                <T variant="subhead">{weekly.data.training.sessionsCompleted} session{weekly.data.training.sessionsCompleted === 1 ? "" : "s"}{weekly.data.training.sessionsPlannedPerWeek ? ` of ${weekly.data.training.sessionsPlannedPerWeek} planned` : ""}</T>
+                {weekly.data.training.prExercises.length ? <T variant="footnote" color="accent">New records on {weekly.data.training.prExercises.slice(0, 4).join(", ")}{weekly.data.training.prExercises.length > 4 ? ` and ${weekly.data.training.prExercises.length - 4} more` : ""}.</T> : null}
               </Stack>
             </Card>
             <Card>

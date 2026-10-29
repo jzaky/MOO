@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
-import { FoodPicker } from "../../features/foods/FoodPicker";
+import { FoodPicker, MEALS } from "../../features/foods/FoodPicker";
 import { describePortion, portionForSwap, previewNutrition, rowForFood, rowsFromDraft, rowsFromRecipe, toRecipeBody, withQuantity, type IngredientRow } from "../../features/recipes/editor";
 import { api, ApiError } from "../../lib/api";
 import { qk } from "../../lib/data";
@@ -86,6 +86,7 @@ export default function RecipeEditor() {
   const [servings, setServings] = useState("4");
   const [yieldG, setYieldG] = useState("");
   const [instructions, setInstructions] = useState("");
+  const [meals, setMeals] = useState<string[]>([]);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [rows, setRows] = useState<IngredientRow[] | null>(null);
   const [adding, setAdding] = useState(false);
@@ -101,6 +102,7 @@ export default function RecipeEditor() {
       setServings(String(r.servings));
       setYieldG(r.cookedYieldG ? String(Math.round(r.cookedYieldG)) : "");
       setInstructions(r.instructions ?? "");
+      setMeals(r.meals ?? []);
       setSourceUrl(r.sourceUrl);
       setRows(rowsFromRecipe(r, foods));
     })();
@@ -125,7 +127,7 @@ export default function RecipeEditor() {
 
   const save = useMutation({
     mutationFn: () => {
-      const body = toRecipeBody({ name, servings: s, cookedYieldG: y, instructions, sourceUrl, rows: rows ?? [] });
+      const body = toRecipeBody({ name, servings: s, cookedYieldG: y, instructions, sourceUrl, meals, rows: rows ?? [] });
       return editing ? api<Recipe>(`/v1/recipes/${id}`, { method: "PUT", body }) : api<Recipe>("/v1/recipes", { body });
     },
     onSuccess: (r) => {
@@ -188,6 +190,12 @@ export default function RecipeEditor() {
           {rows.map((r) => (
             <IngredientCard key={r.key} row={r} onChange={(nr) => setRows((rs) => rs!.map((x) => (x.key === r.key ? nr : x)))} onRemove={() => setRows((rs) => rs!.filter((x) => x.key !== r.key))} />
           ))}
+
+          <SectionHeader title="Good for" />
+          <Row gap={8} wrap>
+            {MEALS.map((m) => <Chip key={m.value} label={m.label} selected={meals.includes(m.value)} onPress={() => setMeals((ms) => (ms.includes(m.value) ? ms.filter((x) => x !== m.value) : [...ms, m.value]))} />)}
+          </Row>
+          <T variant="caption" color="textTertiary">Meal plans only schedule this recipe at the meals you pick. None picked means any meal.</T>
 
           <SectionHeader title="Method" />
           <Field value={instructions} onChangeText={setInstructions} multiline numberOfLines={6} style={{ minHeight: 120, textAlignVertical: "top" }} placeholder="Optional" />

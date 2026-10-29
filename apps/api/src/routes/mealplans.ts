@@ -25,7 +25,7 @@ async function candidates(tx: Tx, userId: string): Promise<Candidate[]> {
   for (const r of await tx.select().from(recipes).where(and(eq(recipes.userId, userId), isNull(recipes.deletedAt)))) {
     const ps = r.nutritionPerServing as NutrientValues;
     if (!isKnown(ps.energyKcal) || ps.energyKcal <= 0) continue;
-    out.push({ kind: "recipe", id: r.id, name: r.name, perUnit: { energyKcal: ps.energyKcal, proteinG: isKnown(ps.proteinG) ? ps.proteinG : 0 }, meals: null, scales: [0.5, 1, 1.5, 2] });
+    out.push({ kind: "recipe", id: r.id, name: r.name, perUnit: { energyKcal: ps.energyKcal, proteinG: isKnown(ps.proteinG) ? ps.proteinG : 0 }, meals: r.meals?.length ? r.meals : null, scales: [0.5, 1, 1.5, 2] });
   }
   const sms = await tx.select().from(savedMeals).where(and(eq(savedMeals.userId, userId), isNull(savedMeals.deletedAt)));
   const fm = await loadFoods(tx, sms.flatMap((m) => (m.items as { foodId: string }[]).map((i) => i.foodId)));

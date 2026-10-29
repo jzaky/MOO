@@ -40,13 +40,13 @@ async function computeAndStore(tx: Tx, userId: string, body: RecipeInput, existi
     } else {
       foodId = (await createPrivateFood(tx, userId, { name: body.name, baseUnit: "g", per100, servings: [{ label: "1 serving", baseAmount: yieldG / body.servings }], source: "recipe", quality: { flags } })).id;
     }
-    await tx.update(recipes).set({ name: body.name, servings: body.servings, cookedYieldG: body.cookedYieldG ?? null, instructions: body.instructions ?? null, sourceUrl: body.sourceUrl ?? null, foodId, nutritionTotal: nutrition.total, nutritionPerServing: nutrition.perServing, missingIngredientCount: missing, updatedAt: new Date() }).where(eq(recipes.id, existingId));
+    await tx.update(recipes).set({ name: body.name, servings: body.servings, cookedYieldG: body.cookedYieldG ?? null, instructions: body.instructions ?? null, sourceUrl: body.sourceUrl ?? null, meals: body.meals?.length ? body.meals : null, foodId, nutritionTotal: nutrition.total, nutritionPerServing: nutrition.perServing, missingIngredientCount: missing, updatedAt: new Date() }).where(eq(recipes.id, existingId));
     await tx.delete(recipeIngredients).where(eq(recipeIngredients.recipeId, existingId));
   } else {
     foodId = (await createPrivateFood(tx, userId, { name: body.name, baseUnit: "g", per100, servings: [{ label: "1 serving", baseAmount: yieldG / body.servings }], source: "recipe", quality: { flags } })).id;
     const [r] = await tx
       .insert(recipes)
-      .values({ userId, name: body.name, servings: body.servings, cookedYieldG: body.cookedYieldG ?? null, instructions: body.instructions ?? null, sourceUrl: body.sourceUrl ?? null, foodId, nutritionTotal: nutrition.total, nutritionPerServing: nutrition.perServing, missingIngredientCount: missing })
+      .values({ userId, name: body.name, servings: body.servings, cookedYieldG: body.cookedYieldG ?? null, instructions: body.instructions ?? null, sourceUrl: body.sourceUrl ?? null, meals: body.meals?.length ? body.meals : null, foodId, nutritionTotal: nutrition.total, nutritionPerServing: nutrition.perServing, missingIngredientCount: missing })
       .returning();
     recipeId = r!.id;
   }
@@ -73,6 +73,7 @@ async function getRecipe(tx: Tx, id: string) {
     cookedYieldG: r.cookedYieldG,
     instructions: r.instructions,
     sourceUrl: r.sourceUrl,
+    meals: r.meals ?? [],
     foodId: r.foodId,
     servingId: servingRows.find((s) => s.isDefault)?.id ?? null,
     total: r.nutritionTotal as NutrientValues,
@@ -141,7 +142,7 @@ export function registerRecipeRoutes(app: FastifyInstance, ctx: AppContext): voi
   app.get("/v1/recipes", auth, async (req) =>
     ctx.db.asUser(req.userId, async (tx) => {
       const rows = await tx.select().from(recipes).where(and(eq(recipes.userId, req.userId), isNull(recipes.deletedAt))).orderBy(asc(recipes.name));
-      return { items: rows.map((r) => ({ id: r.id, name: r.name, servings: r.servings, foodId: r.foodId, perServing: r.nutritionPerServing, missingIngredientCount: r.missingIngredientCount })) };
+      return { items: rows.map((r) => ({ id: r.id, name: r.name, servings: r.servings, meals: r.meals ?? [], foodId: r.foodId, perServing: r.nutritionPerServing, missingIngredientCount: r.missingIngredientCount })) };
     }),
   );
 

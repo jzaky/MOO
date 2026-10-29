@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { addDays, dayKeyInZone } from "@stoke/core";
+import { addDays, dayKeyInZone, startOfIsoWeek } from "@stoke/core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { FakeAiProvider } from "../src/ai/fake";
 import { DisabledAiProvider } from "../src/ai/provider";
@@ -169,6 +169,19 @@ describe("today and weekly review", () => {
     expect(day.insights.find((i: { id: string }) => i.id === "protein_remaining")).toBeTruthy();
     const review = (await t.app.inject({ method: "GET", url: "/v1/coach/weekly-review", headers: u.headers })).json();
     expect(review.labels.observed).toContain("sessionsCompleted");
+  });
+
+  it("names the exercises that set records instead of counting every record type", async () => {
+    const u = await user();
+    const weekStart = startOfIsoWeek(addDays(today, -7));
+    const ex = (await t.app.inject({ method: "GET", url: "/v1/exercises?q=barbell%20bench%20press", headers: u.headers })).json().items[0];
+    const session = (day: string, kg: number, reps: number) => ({ name: "Push", day, startedAt: `${day}T06:00:00Z`, endedAt: `${day}T07:00:00Z`, pausedSec: 0, status: "completed", clientUpdatedAt: `${day}T07:00:00Z`, exercises: [{ id: randomUUID(), exerciseId: ex.id, position: 0, sets: [0, 1, 2].map((i) => ({ id: randomUUID(), position: i, kind: "working", weightKg: kg, reps, completed: true, completedAt: null, originalUnit: "kg" })) }] });
+    await t.app.inject({ method: "PUT", url: `/v1/workouts/${randomUUID()}`, headers: u.headers, payload: session(weekStart, 80, 8) });
+    await t.app.inject({ method: "PUT", url: `/v1/workouts/${randomUUID()}`, headers: u.headers, payload: session(addDays(weekStart, 2), 90, 8) });
+    const review = (await t.app.inject({ method: "GET", url: "/v1/coach/weekly-review", headers: u.headers })).json();
+    expect(review.training.sessionsCompleted).toBe(2);
+    expect(review.training.personalRecords).toBeGreaterThan(1);
+    expect(review.training.prExercises).toEqual([ex.name]);
   });
 });
 

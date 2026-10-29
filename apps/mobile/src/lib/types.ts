@@ -195,6 +195,7 @@ export interface RecipeSummary {
 }
 
 export interface Recipe extends RecipeSummary {
+  meals: string[];
   cookedYieldG: number | null;
   instructions: string | null;
   sourceUrl: string | null;

@@ -221,6 +221,8 @@ export const RecipeCreate = z.object({
   cookedYieldG: z.number().positive().max(50000).nullable().optional(),
   instructions: z.string().max(20000).nullable().optional(),
   sourceUrl: z.url().max(2000).nullable().optional(),
+  /** Meals this recipe suits; omitted or empty = any meal. */
+  meals: z.array(z.enum(["breakfast", "lunch", "dinner", "snacks"])).max(4).optional(),
   ingredients: z
     .array(z.object({ foodId: Id.nullable(), rawText: z.string().max(300), portion: PortionSchema.nullable() }))
     .min(1)

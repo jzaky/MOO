@@ -17,7 +17,7 @@ import {
 } from "@stoke/core";
 import { and, asc, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import type { Tx } from "../db/client";
-import { coachRecommendations, diaryDays, foodLogs, personalRecords, savedMeals, workoutPrograms, workoutSessions, workoutTemplates } from "../db/schema";
+import { coachRecommendations, diaryDays, exercises, foodLogs, personalRecords, savedMeals, workoutPrograms, workoutSessions, workoutTemplates } from "../db/schema";
 import { loadFoods } from "../foods/repository";
 import { daySummary } from "../routes/diary";
 import { currentTargets, getProfile, profileToDto } from "../routes/profile";
@@ -255,7 +255,10 @@ export async function weeklyReview(tx: Tx, userId: string, now: Date) {
   const weekEnd = addDays(weekStart, 6);
   const nutrition = await nutritionSummary(tx, userId, weekStart, weekEnd);
   const sessions = await tx.select().from(workoutSessions).where(and(eq(workoutSessions.userId, userId), eq(workoutSessions.status, "completed"), isNull(workoutSessions.deletedAt), gte(workoutSessions.day, weekStart), lte(workoutSessions.day, weekEnd)));
-  const prs = await tx.select().from(personalRecords).where(and(eq(personalRecords.userId, userId), gte(personalRecords.day, weekStart), lte(personalRecords.day, weekEnd)));
+  // One exercise can set several record types at once (weight, estimated 1RM, volume), so report
+  // which exercises set records rather than a raw count that reads as inflated.
+  const prs = await tx.select({ exerciseId: personalRecords.exerciseId, name: exercises.name }).from(personalRecords).innerJoin(exercises, eq(exercises.id, personalRecords.exerciseId)).where(and(eq(personalRecords.userId, userId), gte(personalRecords.day, weekStart), lte(personalRecords.day, weekEnd)));
+  const prExercises = [...new Map(prs.map((r) => [r.exerciseId, r.name])).values()];
   const planned = await plannedWorkoutFor(tx, userId, today);
   let plannedCount: number | null = null;
   if (planned) {
@@ -268,7 +271,7 @@ export async function weeklyReview(tx: Tx, userId: string, now: Date) {
   return {
     week: { start: weekStart, end: weekEnd },
     nutrition: { daysLogged: nutrition.daysLogged, completeDays: nutrition.completeDays, averages: nutrition.averagesOverCompleteDays, targets: nutrition.targets, proteinTargetHitDays: nutrition.proteinTargetHitDays },
-    training: { sessionsCompleted: sessions.length, sessionsPlannedPerWeek: plannedCount, personalRecords: prs.length },
+    training: { sessionsCompleted: sessions.length, sessionsPlannedPerWeek: plannedCount, personalRecords: prs.length, prExercises },
     weight: { kgPerWeek: weight.kgPerWeek, sufficiency: weight.sufficiency, latestTrendKg: weight.latestTrendKg },
     recovery: { readiness: recovery.readiness, insights: recovery.insights },
     adaptive: { status: adaptive.status, reasons: adaptive.reasons },

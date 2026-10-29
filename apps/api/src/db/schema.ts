@@ -230,6 +230,8 @@ export const recipes = pgTable("recipes", {
   nutritionTotal: jsonb("nutrition_total").notNull(),
   nutritionPerServing: jsonb("nutrition_per_serving").notNull(),
   missingIngredientCount: integer("missing_ingredient_count").notNull().default(0),
+  /** Meals this recipe suits (breakfast, lunch, dinner, snacks); null = any. Used by meal planning. */
+  meals: text("meals").array(),
   deletedAt: ts("deleted_at"),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
@@ -299,6 +301,11 @@ export const workoutPrograms = pgTable("workout_programs", {
   createdBy: text("created_by").notNull().default("user"), // user | ai | template
   changeReason: text("change_reason"),
   notes: text("notes"),
+  /** Training blocks: block length in weeks (last week is a deload); null = no blocks. */
+  blockWeeks: integer("block_weeks"),
+  blockStart: date("block_start", { mode: "string" }),
+  /** A one-off deload week the user scheduled (e.g. after a fatigue suggestion). */
+  deloadWeekStart: date("deload_week_start", { mode: "string" }),
   createdAt: createdAt(),
   updatedAt: updatedAt(),
 }, (t) => [index("workout_programs_user_idx").on(t.userId)]);
