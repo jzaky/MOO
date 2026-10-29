@@ -1,5 +1,5 @@
 import { RecipeCreate, type PortionDto } from "@moo/contracts";
-import { computeRecipeNutrition, multiplyNutrients, portionToBaseAmount, type NutrientValues, type ParsedFoodItem, type PortionInput } from "@moo/core";
+import { computeRecipeNutrition, isVolumeUnit, sharesKeyWord, ML_PER, multiplyNutrients, normalizeUnitToken, portionToBaseAmount, type MassUnit, type NutrientValues, type ParsedFoodItem, type PortionInput, type VolumeUnit } from "@moo/core";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -82,19 +82,56 @@ async function getRecipe(tx: Tx, id: string) {
   };
 }
 
-/** Suggest a portion for a parsed ingredient against a candidate food. */
+/** Count and volume unit in a database serving label ("1 tablespoon", "1 cup, chopped", "1/2 cup"). */
+export function servingVolume(label: string): { count: number; unit: VolumeUnit } | null {
+  const m = /^\s*(\d+(?:[.,]\d+)?(?:\s*\/\s*\d+)?)?\s*(fl\.?\s*oz|[a-z]+)/i.exec(label);
+  if (!m) return null;
+  const unit = normalizeUnitToken(m[2]!.replace(/\s+/g, " "));
+  if (!unit || !isVolumeUnit(unit)) return null;
+  const raw = (m[1] ?? "1").replace(",", ".").replace(/\s+/g, "");
+  const count = raw.includes("/") ? Number(raw.split("/")[0]) / Number(raw.split("/")[1]) : Number(raw);
+  return count > 0 && Number.isFinite(count) ? { count, unit } : null;
+}
+
+/**
+ * Suggest a portion of `food` for a parsed ingredient, or null when the amount
+ * cannot be expressed without guessing. Volume amounts for foods stored by
+ * weight use a serving in the same unit when there is one, otherwise a density
+ * derived from the food's own volume servings ("1 cup = 244 g").
+ */
 export function suggestPortion(item: ParsedFoodItem, food: FoodDto): PortionDto | null {
   if (typeof item.unit === "string") {
-    const isVol = ["ml", "l", "tsp", "tbsp", "cup", "fl_oz"].includes(item.unit);
-    if (isVol && food.baseUnit === "g" && !food.densityGPerMl) {
-      const serving = food.servings.find((s) => s.label.toLowerCase().includes(item.unit as string));
-      return serving ? { kind: "serving", servingId: serving.id, quantity: item.quantity } : null;
-    }
-    return { kind: "amount", quantity: item.quantity, unit: item.unit as Extract<PortionDto, { kind: "amount" }>["unit"] };
+    const unit = item.unit as MassUnit | VolumeUnit;
+    if (!isVolumeUnit(unit) || food.baseUnit === "ml" || food.densityGPerMl) return { kind: "amount", quantity: item.quantity, unit };
+    const volumes = food.servings.map((s) => ({ s, v: servingVolume(s.label) })).filter((x): x is { s: FoodDto["servings"][number]; v: { count: number; unit: VolumeUnit } } => !!x.v && x.s.baseAmount > 0);
+    const same = volumes.find((x) => x.v.unit === unit);
+    if (same) return { kind: "serving", servingId: same.s.id, quantity: Math.round((item.quantity / same.v.count) * 100) / 100 };
+    const ref = volumes[0];
+    if (!ref) return null;
+    const gPerMl = ref.s.baseAmount / (ref.v.count * ML_PER[ref.v.unit]);
+    return { kind: "amount", quantity: Math.round(item.quantity * ML_PER[unit] * gPerMl * 10) / 10, unit: "g" };
   }
   const countUnit = item.unit.count;
-  const serving = (countUnit && food.servings.find((s) => s.label.toLowerCase().includes(countUnit))) || food.servings[0];
-  return serving ? { kind: "serving", servingId: serving.id, quantity: item.quantity } : null;
+  if (countUnit) {
+    // A named unit ("slice", "clove", "pinch") must exist as a serving; otherwise ask.
+    const named = food.servings.find((s) => new RegExp(`\\b${countUnit}s?\\b`, "i").test(s.label));
+    return named ? { kind: "serving", servingId: named.id, quantity: item.quantity } : null;
+  }
+  const whole = wholeItemServing(food);
+  return whole ? { kind: "serving", servingId: whole.id, quantity: item.quantity } : null;
+}
+
+/**
+ * The serving that means "one of these" for a bare count ("1 onion", "2 eggs").
+ * Prefers medium, then large, then small; never a slice, a cup or a spoon.
+ */
+export function wholeItemServing(food: FoodDto): FoodDto["servings"][number] | null {
+  const partial = /\b(slices?|chopped|diced|sliced|pieces?|rings?|strips?|oz|g|grams?|cups?|tbsp|tsp|tablespoons?|teaspoons?|nlea|serving|portion|package|container|bag|can)\b/i;
+  const ranked = food.servings
+    .filter((s) => s.baseAmount > 0 && !servingVolume(s.label) && !partial.test(s.label))
+    .map((s) => ({ s, score: /\bmedium\b/i.test(s.label) ? 3 : /\blarge\b/i.test(s.label) ? 2 : /\bsmall\b/i.test(s.label) ? 1 : s.isDefault ? 0.5 : 0 }))
+    .sort((a, b) => b.score - a.score);
+  return ranked[0]?.s ?? null;
 }
 
 export function registerRecipeRoutes(app: FastifyInstance, ctx: AppContext): void {
@@ -162,7 +199,9 @@ export function registerRecipeRoutes(app: FastifyInstance, ctx: AppContext): voi
           continue;
         }
         const candidates = (await searchLocalFoods(tx, req.userId, parsed.name, 3, { excludeSources: ["recipe"] })).map((f) => ({ food: f, portion: suggestPortion(parsed, f) }));
-        const best = candidates.find((c) => c.portion);
+        // The best-ranked food is the suggestion even when its amount needs the user's input;
+        // a different food is never substituted just because its amount converts.
+        const best = candidates[0] && sharesKeyWord(parsed.name, candidates[0].food.name) ? candidates[0] : undefined;
         ingredients.push({
           rawText: line,
           parsed: { quantity: parsed.quantity, unit: parsed.unit, name: parsed.name, preparation: parsed.preparation, quantityAssumed: parsed.quantityAssumed },

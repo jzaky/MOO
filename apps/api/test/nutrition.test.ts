@@ -102,6 +102,17 @@ describe("diary entries", () => {
     expect((await t.app.inject({ method: "GET", url: "/v1/diary/2026-10-28", headers: u.headers })).json().entries).toHaveLength(0);
   });
 
+  it("keeps the estimate label on quick adds whose numbers came from AI", async () => {
+    const u = await user();
+    const id = randomUUID();
+    const res = await t.app.inject({ method: "PUT", url: `/v1/food-logs/${id}`, headers: u.headers, payload: { day: "2026-10-28", loggedAt: now(), clientUpdatedAt: now(), meal: "dinner", description: "Shawarma plate (menu estimate)", nutrients: { energyKcal: 780, proteinG: 42 }, provenance: "ai_estimate" } });
+    expect(res.statusCode).toBe(200);
+    const plain = await t.app.inject({ method: "PUT", url: `/v1/food-logs/${randomUUID()}`, headers: u.headers, payload: { day: "2026-10-28", loggedAt: now(), clientUpdatedAt: now(), meal: "dinner", description: "Snack", nutrients: { energyKcal: 120 } } });
+    const day = (await t.app.inject({ method: "GET", url: "/v1/diary/2026-10-28", headers: u.headers })).json();
+    expect(day.entries.find((e: { id: string }) => e.id === id).provenance).toBe("ai_estimate");
+    expect(day.entries.find((e: { id: string }) => e.id === plain.json().entry.id).provenance).toBe("user");
+  });
+
   it("rejects quick adds without energy and portions without a density", async () => {
     const u = await user();
     const noEnergy = await t.app.inject({ method: "PUT", url: `/v1/food-logs/${randomUUID()}`, headers: u.headers, payload: { day: "2026-10-28", loggedAt: now(), clientUpdatedAt: now(), meal: "snacks", description: "Coffee", nutrients: { proteinG: 1 } } });

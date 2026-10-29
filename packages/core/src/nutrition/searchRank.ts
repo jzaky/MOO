@@ -136,3 +136,15 @@ export function rankFoods<T extends SearchCandidate>(query: string, candidates: 
     .sort((a, b) => b.s - a.s || b.c.completeness - a.c.completeness || a.c.name.length - b.c.name.length)
     .map((x) => x.c);
 }
+
+/**
+ * Whether a food name shares at least one real (non-descriptive) word with
+ * the query. Trigram search also returns look-alikes ("za'atar" → "zante
+ * currants"); those may be offered as choices but must never be pre-selected.
+ */
+export function sharesKeyWord(query: string, name: string): boolean {
+  const q = [...new Set(words(query))].filter((w) => w.length >= 2);
+  const key = q.filter((t) => !SEARCH_DESCRIPTORS.has(t));
+  const nameWords = words(name);
+  return (key.length ? key : q).some((t) => nameWords.some((w) => wordMatches(t, w)));
+}

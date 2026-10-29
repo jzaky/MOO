@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { rankFoods, stem, wordMatches, type SearchCandidate } from "../src";
+import { rankFoods, sharesKeyWord, stem, wordMatches, type SearchCandidate } from "../src";
 
 const c = (name: string, extra: Partial<SearchCandidate> = {}): SearchCandidate => ({ name, brand: null, isPrivate: false, uses: 0, completeness: 0.9, similarity: 0.5, ...extra });
 const top = (q: string, names: (string | SearchCandidate)[]) => rankFoods(q, names.map((n) => (typeof n === "string" ? c(n) : n)))[0]!.name;
@@ -66,5 +66,14 @@ describe("food search ranking: head matching", () => {
   it("still completes a word being typed", () => {
     expect(top("chick", ["Chickpeas, mature seeds, raw", "Chicken, ground, raw", "Pepper, banana, raw"])).toMatch(/^Chick/);
     expect(top("banan", ["Pepper, banana, raw", "Bananas, raw"])).toBe("Bananas, raw");
+  });
+});
+
+describe("suggestion guard", () => {
+  it("accepts real word matches and rejects trigram look-alikes", () => {
+    expect(sharesKeyWord("olive oil", "Oil, olive, salad or cooking")).toBe(true);
+    expect(sharesKeyWord("chiken breast", "Chicken, broilers or fryers, breast")).toBe(true);
+    expect(sharesKeyWord("za'atar", "Currants, zante, dried")).toBe(false);
+    expect(sharesKeyWord("raw", "Bananas, raw")).toBe(true);
   });
 });

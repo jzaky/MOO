@@ -44,11 +44,16 @@ async function candidates(tx: Tx, userId: string): Promise<Candidate[]> {
   return out;
 }
 
-/** Deterministic plan: per meal, pick the candidate/scale closest to that meal's energy share, avoiding repeats on consecutive days. */
+/**
+ * Deterministic plan: per meal, pick the candidate/scale closest to that meal's
+ * energy share. Repeats are discouraged within a day (the same dish at two
+ * meals) and at the same meal on consecutive days.
+ */
 export function assemblePlan(cands: readonly Candidate[], targetKcal: number, targetProtein: number, days: string[], meals: string[]) {
   const items: { day: string; meal: string; candidate: Candidate; scale: number; energyKcal: number; proteinG: number }[] = [];
   const lastUse = new Map<string, number>();
   days.forEach((day, di) => {
+    const usedToday = new Set<string>();
     for (const meal of meals) {
       const goalE = targetKcal * (MEAL_SHARE[meal] ?? 0.25);
       const goalP = targetProtein * (MEAL_SHARE[meal] ?? 0.25);
@@ -58,7 +63,7 @@ export function assemblePlan(cands: readonly Candidate[], targetKcal: number, ta
         for (const s of c.scales) {
           const e = c.perUnit.energyKcal * s, p = c.perUnit.proteinG * s;
           const used = lastUse.get(`${c.id}:${meal}`);
-          const repeatPenalty = used !== undefined && di - used < 2 ? 0.5 : 0;
+          const repeatPenalty = (used !== undefined && di - used < 2 ? 0.5 : 0) + (usedToday.has(c.id) ? 0.6 : 0);
           const score = Math.abs(e - goalE) / goalE + Math.max(0, goalP - p) / Math.max(goalP, 1) * 0.5 + repeatPenalty;
           if (!best || score < best.score) best = { c, s, score };
         }
@@ -66,15 +71,22 @@ export function assemblePlan(cands: readonly Candidate[], targetKcal: number, ta
       if (best && best.score < 1.5) {
         items.push({ day, meal, candidate: best.c, scale: best.s, energyKcal: Math.round(best.c.perUnit.energyKcal * best.s), proteinG: Math.round(best.c.perUnit.proteinG * best.s) });
         lastUse.set(`${best.c.id}:${meal}`, di);
+        usedToday.add(best.c.id);
       }
     }
   });
   return items;
 }
 
+function nutritionFor(u: Candidate["perUnit"] | undefined, servings: number) {
+  return { energyKcal: u ? Math.round(u.energyKcal * servings) : null, proteinG: u ? Math.round(u.proteinG * servings) : null };
+}
+
 async function loadPlan(tx: Tx, id: string) {
   const [p] = await tx.select().from(mealPlans).where(eq(mealPlans.id, id));
   if (!p) throw notFound("Meal plan");
+  // Current per-serving values of the planned recipes and meals (null if one was since removed).
+  const perUnit = new Map((await candidates(tx, p.userId)).map((c) => [c.id, c.perUnit]));
   const items = await tx.select().from(mealPlanItems).where(eq(mealPlanItems.planId, id)).orderBy(asc(mealPlanItems.day));
   const rec = items.some((i) => i.recipeId) ? await tx.select().from(recipes).where(inArray(recipes.id, items.flatMap((i) => (i.recipeId ? [i.recipeId] : [])))) : [];
   const sm = items.some((i) => i.savedMealId) ? await tx.select().from(savedMeals).where(inArray(savedMeals.id, items.flatMap((i) => (i.savedMealId ? [i.savedMealId] : [])))) : [];
@@ -83,7 +95,7 @@ async function loadPlan(tx: Tx, id: string) {
     startDay: p.startDay,
     days: p.days,
     status: p.status,
-    items: items.map((i) => ({ id: i.id, day: i.day, meal: i.meal, recipeId: i.recipeId, savedMealId: i.savedMealId, servings: i.servings, name: rec.find((r) => r.id === i.recipeId)?.name ?? sm.find((s) => s.id === i.savedMealId)?.name ?? "(removed)", notes: i.notes })),
+    items: items.map((i) => ({ id: i.id, day: i.day, meal: i.meal, recipeId: i.recipeId, savedMealId: i.savedMealId, servings: i.servings, name: rec.find((r) => r.id === i.recipeId)?.name ?? sm.find((s) => s.id === i.savedMealId)?.name ?? "(removed)", notes: i.notes, ...nutritionFor(perUnit.get(i.recipeId ?? i.savedMealId ?? ""), i.servings) })),
   };
 }
 
@@ -152,7 +164,8 @@ export function registerMealPlanRoutes(app: FastifyInstance, ctx: AppContext): v
         }
       }
       const fmap = needs.length ? await tx.select().from(foods).where(inArray(foods.id, [...new Set(needs.map((n) => n.foodId))])) : [];
-      const byId = new Map(fmap.filter((f) => f.source !== "recipe").map((f) => [f.id, f]));
+      // Drinking water (tap or bottled) is not a grocery item.
+      const byId = new Map(fmap.filter((f) => f.source !== "recipe" && !/^water\b/i.test(f.name)).map((f) => [f.id, f]));
       const ingredientNeeds: IngredientNeed[] = needs.filter((n) => byId.has(n.foodId)).map((n) => {
         const f = byId.get(n.foodId)!;
         const category = ((f.sourcePayload as { category?: string } | null)?.category as string | undefined) ?? "Other";

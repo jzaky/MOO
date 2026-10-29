@@ -1,6 +1,7 @@
 import { ParseLogRequest, RecognitionConfirmRequest } from "@moo/contracts";
 import {
   checkEnergyConsistency,
+  sharesKeyWord,
   dayKeyInZone,
   consumedFraction,
   estimateMeal,
@@ -377,7 +378,8 @@ export async function parseAndMatch(ctx: AppContext, userId: string, text: strin
       for (const item of intent.items) {
         const candidates = await searchLocalFoods(tx, userId, item.name, 3);
         const withPortions = candidates.map((f) => ({ food: f, portion: suggestPortion(item, f) }));
-        items.push({ parsed: item, candidates: withPortions, suggestion: withPortions.find((c) => c.portion) ?? null });
+        // Suggest the best-ranked food; if its amount can't be derived, the client asks for one.
+        items.push({ parsed: item, candidates: withPortions, suggestion: withPortions[0] && sharesKeyWord(item.name, withPortions[0].food.name) ? withPortions[0] : null });
       }
       return { parser, kind: intent.kind, meal, items, issues: intent.issues, requiresConfirmation: true };
     }

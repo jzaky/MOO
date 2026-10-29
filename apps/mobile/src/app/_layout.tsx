@@ -84,6 +84,13 @@ function Gate() {
         <Stack.Screen name="workout/exercise-picker" options={modal} />
         <Stack.Screen name="weigh-in" options={sheet} />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="food/menu" options={modal} />
+        <Stack.Screen name="recipes/index" />
+        <Stack.Screen name="recipes/[id]" />
+        <Stack.Screen name="recipes/edit" options={modal} />
+        <Stack.Screen name="plan/index" />
+        <Stack.Screen name="plan/grocery/[id]" />
+        <Stack.Screen name="plan/pantry" />
       </Stack.Protected>
     </Stack>
   );

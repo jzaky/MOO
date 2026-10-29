@@ -184,3 +184,101 @@ export interface Recommendation {
   createdAt: string;
   actions: { action: string; before: unknown; after: unknown; createdAt: string }[];
 }
+
+export interface RecipeSummary {
+  id: string;
+  name: string;
+  servings: number;
+  foodId: string | null;
+  perServing: NutrientValues;
+  missingIngredientCount: number;
+}
+
+export interface Recipe extends RecipeSummary {
+  cookedYieldG: number | null;
+  instructions: string | null;
+  sourceUrl: string | null;
+  servingId: string | null;
+  total: NutrientValues;
+  ingredients: { id: string; foodId: string | null; rawText: string; portion: PortionDto | null; baseAmount: number | null }[];
+}
+
+export interface RecipeDraft {
+  name: string;
+  servings: number;
+  sourceUrl: string | null;
+  instructions: string[];
+  ingredients: {
+    rawText: string;
+    parsed: { quantity: number; name: string; quantityAssumed: boolean } | null;
+    candidates: { food: Food; portion: PortionDto | null }[];
+    /** Best-ranked food; portion is null when the amount needs the user's input. */
+    suggestion: { foodId: string; portion: PortionDto | null } | null;
+  }[];
+  note: string;
+}
+
+export interface MealPlanItem {
+  id: string;
+  day: string;
+  meal: string;
+  recipeId: string | null;
+  savedMealId: string | null;
+  servings: number;
+  name: string;
+  energyKcal: number | null;
+  proteinG: number | null;
+}
+
+export interface MealPlan {
+  id: string;
+  startDay: string;
+  days: number;
+  status: string;
+  items: MealPlanItem[];
+  note?: string;
+}
+
+export interface GroceryItem {
+  id: string;
+  key: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  category: string;
+  checked: boolean;
+}
+
+export interface GroceryList {
+  id: string;
+  name: string;
+  items: GroceryItem[];
+}
+
+export interface PantryItem {
+  id: string;
+  key: string;
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
+export interface MenuDish {
+  name: string;
+  description: string | null;
+  basis: "printed" | "estimate";
+  energyKcal: number | null;
+  energyRangeKcal: { low: number; high: number } | null;
+  proteinG: number | null;
+  carbsG: number | null;
+  fatG: number | null;
+  unmatchedComponents: string[];
+  fit: number | null;
+}
+
+export interface MenuResult {
+  restaurant: string | null;
+  remaining: { energyKcal: number; proteinG: number } | null;
+  dishes: MenuDish[];
+  disclaimer: string;
+}

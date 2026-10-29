@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { FakeAiProvider } from "../src/ai/fake";
 import { upsertSharedFood } from "../src/foods/repository";
 import { mapFdcFood } from "../src/foods/sources";
+import { assemblePlan } from "../src/routes/mealplans";
 import { sendExpoPush } from "../src/routes/platform";
 import { makeTestApp, onboard, registerUser, type TestApp } from "./helpers";
 
@@ -43,6 +44,10 @@ describe("meal planning and groceries", () => {
     expect(p.items).toHaveLength(9);
     expect(p.items.some((i: { name: string }) => i.name === "Chicken & rice")).toBe(true);
     expect(p.perDay[0].energyKcal).toBeGreaterThan(0);
+    // A reloaded plan carries per-item nutrition, so day totals survive a refresh.
+    const reloaded = (await t.app.inject({ method: "GET", url: `/v1/meal-plans/${p.id}`, headers: u.headers })).json();
+    const day0 = reloaded.items.filter((i: { day: string }) => i.day === "2026-11-02");
+    expect(day0.reduce((a: number, i: { energyKcal: number }) => a + i.energyKcal, 0)).toBe(p.perDay[0].energyKcal);
 
     await t.app.inject({ method: "PUT", url: "/v1/pantry", headers: u.headers, payload: { key: f.rice, name: "Rice", quantity: 300, unit: "g" } });
     const list = await t.app.inject({ method: "POST", url: `/v1/meal-plans/${p.id}/grocery-list`, headers: u.headers });
@@ -57,6 +62,17 @@ describe("meal planning and groceries", () => {
     if (riceNeeded > 300) expect(riceLine!.quantity).toBe(Math.round(riceNeeded - 300));
     const check = await t.app.inject({ method: "PATCH", url: `/v1/grocery-items/${(list.json().items[0] as { id: string }).id}`, headers: u.headers, payload: { checked: true } });
     expect(check.json().checked).toBe(true);
+  });
+});
+
+describe("meal plan assembly", () => {
+  const cand = (id: string, kcal: number, meals: string[] | null = null) => ({ kind: "recipe" as const, id, name: id, perUnit: { energyKcal: kcal, proteinG: kcal / 20 }, meals, scales: [0.5, 1, 1.5, 2] });
+  it("does not serve the same dish at several meals of one day when alternatives exist", () => {
+    const plan = assemblePlan([cand("bowl", 500), cand("soup", 330), cand("oats", 450)], 2300, 150, ["2026-11-02", "2026-11-03"], ["breakfast", "lunch", "dinner"]);
+    for (const day of ["2026-11-02", "2026-11-03"]) {
+      const ids = plan.filter((i) => i.day === day).map((i) => i.candidate.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
   });
 });
 

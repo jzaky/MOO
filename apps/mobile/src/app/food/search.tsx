@@ -150,6 +150,12 @@ export default function FoodSearch() {
               </Card>
             </>
           ) : null}
+          <SectionHeader title="More ways to log" />
+          <Card padded={false} style={{ paddingHorizontal: 14 }}>
+            <ListRow icon="recipe" title="From a recipe" onPress={() => router.push("/recipes")} />
+            <Divider />
+            <ListRow icon="restaurant" title="Restaurant menu" subtitle="Photo or text of a menu" onPress={() => router.push({ pathname: "/food/menu", params: { day, meal } })} />
+          </Card>
         </>
       )}
       <T variant="caption" color="textTertiary">

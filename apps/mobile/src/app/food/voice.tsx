@@ -16,7 +16,7 @@ import { Screen } from "../../ui/Screen";
 interface FoodDraftItem {
   parsed: { name: string; quantity: number; quantityAssumed: boolean };
   candidates: { food: Food; portion: PortionDto | null }[];
-  suggestion: { food: Food; portion: PortionDto } | null;
+  suggestion: { food: Food; portion: PortionDto | null } | null;
 }
 type Draft =
   | { kind: "food"; parser: string; meal: string | null; items: FoodDraftItem[]; issues: string[] }
@@ -87,15 +87,18 @@ export default function VoiceLog() {
     }
   };
 
+  // Pre-select the server's suggestion only; a look-alike candidate must be chosen by the user.
+  const pick = (i: number) => chosen[i] ?? (draft?.kind === "food" && draft.items[i]?.suggestion ? 0 : -1);
+
   const commit = () => {
     if (!draft) return;
     if (draft.kind === "food") {
       const meal = draft.meal ?? defaultMealForNow();
       draft.items.forEach((it, i) => {
         if (off[i]) return;
-        const c = it.candidates[chosen[i] ?? 0];
-        const portion = c?.portion ?? it.suggestion?.portion;
-        if (c && portion) logFood({ food: c.food, portion, day, meal });
+        const c = it.candidates[pick(i)];
+        // Only the chosen food's own portion; never another candidate's.
+        if (c?.portion) logFood({ food: c.food, portion: c.portion, day, meal });
       });
     } else if (draft.kind === "body_weight") logWeight(day, draft.weightKg);
     else if (draft.kind === "water") logWater(day, draft.ml);
@@ -117,7 +120,10 @@ export default function VoiceLog() {
     router.back();
   };
 
-  const foodReady = draft?.kind === "food" && draft.items.some((it, i) => !off[i] && (it.candidates[chosen[i] ?? 0]?.portion ?? it.suggestion?.portion));
+  // Every included item must have an amount, so nothing is silently dropped.
+  const included = draft?.kind === "food" ? draft.items.filter((_, i) => !off[i]) : [];
+  const needsAmount = draft?.kind === "food" ? draft.items.filter((it, i) => !off[i] && !it.candidates[pick(i)]?.portion).length : 0;
+  const foodReady = included.length > 0 && needsAmount === 0;
   const canLog = draft && draft.kind !== "unrecognized" && (draft.kind !== "food" || foodReady);
 
   return (
@@ -151,8 +157,8 @@ export default function VoiceLog() {
                     {it.candidates.length ? (
                       <Row gap={6} wrap>
                         {it.candidates.map((c, j) => (
-                          <Pressable key={c.food.id} onPress={() => setChosen((s) => ({ ...s, [i]: j }))} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: (chosen[i] ?? 0) === j ? th.c.accent : th.c.border }}>
-                            <T variant="footnote" color={(chosen[i] ?? 0) === j ? "accent" : "text"}>{c.food.name.slice(0, 40)}{c.portion ? "" : " (choose amount)"}</T>
+                          <Pressable key={c.food.id} onPress={() => setChosen((s) => ({ ...s, [i]: j }))} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, borderWidth: 1, borderColor: (pick(i)) === j ? th.c.accent : th.c.border }}>
+                            <T variant="footnote" color={(pick(i)) === j ? "accent" : "text"}>{c.food.name.slice(0, 40)}{c.portion ? "" : " (choose amount)"}</T>
                           </Pressable>
                         ))}
                       </Row>
@@ -169,6 +175,7 @@ export default function VoiceLog() {
                     ? draft.entries.map((e, i) => <T key={i} variant="headline">{e.matches[0]?.name ?? e.parsed.exerciseName}: {e.parsed.sets} × {e.parsed.reps ?? "?"}{e.parsed.weightKg ? ` @ ${e.parsed.weightKg} kg` : ""}</T>)
                     : null}
             {draft.issues.map((iss) => <T key={iss} variant="footnote" color="warning">{iss}</T>)}
+            {needsAmount ? <T variant="footnote" color="warning">{needsAmount === 1 ? "One item needs" : `${needsAmount} items need`} a choice: pick the right food (with an amount), skip it, or add it from search.</T> : null}
           </Stack>
         </Card>
       ) : null}

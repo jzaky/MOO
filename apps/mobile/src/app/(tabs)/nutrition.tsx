@@ -99,7 +99,7 @@ export default function Nutrition() {
                         {i ? <Divider /> : null}
                         <ListRow
                           title={e.description}
-                          subtitle={[e.note ?? (e.baseAmount ? `${Math.round(e.baseAmount)} ${e.baseUnit}` : null), e.provenance === "ai_estimate" ? "photo estimate" : null, e.pending ? "saving…" : null].filter(Boolean).join(" · ")}
+                          subtitle={[e.note ?? (e.baseAmount ? `${Math.round(e.baseAmount)} ${e.baseUnit}` : null), e.provenance === "ai_estimate" ? "estimate" : null, e.pending ? "saving…" : null].filter(Boolean).join(" · ")}
                           right={<T variant="metricS" color="textSecondary">{kcal(e.nutrients) ?? "–"}</T>}
                           onPress={() => setSelected(e)}
                           accessibilityHint="Opens actions for this entry"
@@ -167,6 +167,17 @@ export default function Nutrition() {
           ) : null}
         </>
       ) : null}
+
+      <SectionHeader title="Plan & cook" />
+      <Card padded={false} style={{ paddingHorizontal: 14 }}>
+        <ListRow icon="recipe" title="Recipes" subtitle="Nutrition per serving from matched ingredients" onPress={() => router.push("/recipes")} />
+        <Divider />
+        <ListRow icon="calendar" title="Meal plan" subtitle="A week built from your recipes and saved meals" onPress={() => router.push("/plan")} />
+        <Divider />
+        <ListRow icon="cart" title="Pantry" subtitle="Subtracted from grocery lists" onPress={() => router.push("/plan/pantry")} />
+        <Divider />
+        <ListRow icon="restaurant" title="Restaurant menu" subtitle="Find dishes that fit what's left today" onPress={() => router.push({ pathname: "/food/menu", params: { day } })} />
+      </Card>
 
       <ActionSheet
         visible={!!selected}

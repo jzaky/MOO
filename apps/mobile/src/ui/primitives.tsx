@@ -76,6 +76,7 @@ export const ICONS = {
   history: ["clock.arrow.circlepath", "history"],
   recipe: ["book.fill", "menu_book"],
   cart: ["cart.fill", "shopping_cart"],
+  restaurant: ["fork.knife.circle", "restaurant_menu"],
   info: ["info.circle", "info"],
   lock: ["lock.fill", "lock"],
   offline: ["icloud.slash", "cloud_off"],

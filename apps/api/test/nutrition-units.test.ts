@@ -6,6 +6,7 @@ import { buildLabelDraft } from "../src/routes/ai";
 import { extractRecipeFromHtml } from "../src/foods/recipeImport";
 import { isValidGtin, normalizeBarcode } from "../src/foods/normalize";
 import { mapFdcFood, mapOffProduct } from "../src/foods/sources";
+import { servingVolume, suggestPortion } from "../src/routes/recipes";
 import { assertPublicUrl } from "../src/util/safeFetch";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -134,5 +135,44 @@ describe("label draft", () => {
     expect(d.draft.per100.sodiumMg).toBeCloseTo(200, 0);
     expect(d.flags).toEqual(expect.arrayContaining(["per100_derived_from_serving", "sodium_from_salt"]));
     expect(d.needsReview).toBe(true);
+  });
+});
+
+describe("ingredient amount suggestions", () => {
+  const dto = (name: string, servings: [string, number][], extra: Record<string, unknown> = {}) =>
+    ({ id: name, name, baseUnit: "g", densityGPerMl: null, per100: { energyKcal: 100 }, servings: servings.map(([label, baseAmount], i) => ({ id: `${name}-${i}`, label, baseAmount })), ...extra }) as unknown as Parameters<typeof suggestPortion>[1];
+  const oil = dto("olive oil", [["1 tablespoon", 13.5], ["1 tsp", 4.5], ["1 cup", 216]]);
+  const milk = dto("milk", [["1 fl oz", 30.5], ["1 cup", 244], ["1 quart", 976]]);
+  const item = (quantity: number, unit: string) => ({ text: "", name: "x", quantity, unit, quantityAssumed: false }) as unknown as Parameters<typeof suggestPortion>[0];
+
+  it("reads volume servings from USDA labels", () => {
+    expect(servingVolume("1 tablespoon")).toEqual({ count: 1, unit: "tbsp" });
+    expect(servingVolume("1 cup, chopped")).toEqual({ count: 1, unit: "cup" });
+    expect(servingVolume("1/2 cup")).toEqual({ count: 0.5, unit: "cup" });
+    expect(servingVolume("1 medium (2-1/2\" dia)")).toBeNull();
+  });
+
+  it("uses a serving in the same unit (tbsp = tablespoon)", () => {
+    expect(suggestPortion(item(2, "tbsp"), oil)).toEqual({ kind: "serving", servingId: "olive oil-0", quantity: 2 });
+  });
+
+  it("derives grams from the food's own volume serving when no serving matches the unit", () => {
+    // 200 ml × (244 g / 240 ml per cup)
+    expect(suggestPortion(item(200, "ml"), milk)).toEqual({ kind: "amount", quantity: Math.round(200 * (244 / 240) * 10) / 10, unit: "g" });
+  });
+
+  it("counts whole items with a whole-item serving, never a slice", () => {
+    const onion = dto("onion", [["1 slice, thin", 9], ["1 cup, chopped", 160], ["1 small", 70], ["1 medium (2-1/2\" dia)", 110], ["1 large", 150], ["10 rings", 60]]);
+    const count = (n: number, unit = "") => ({ text: "", name: "onion", quantity: n, unit: { count: unit }, quantityAssumed: false }) as unknown as Parameters<typeof suggestPortion>[0];
+    expect(suggestPortion(count(1), onion)).toEqual({ kind: "serving", servingId: "onion-3", quantity: 1 });
+    expect(suggestPortion(count(2, "slice"), onion)).toEqual({ kind: "serving", servingId: "onion-0", quantity: 2 });
+    // A unit the food has no serving for ("pinch") needs the user's amount.
+    expect(suggestPortion(count(1, "pinch"), onion)).toBeNull();
+    expect(suggestPortion(count(1), dto("flour", [["1 cup", 125]]))).toBeNull();
+  });
+
+  it("returns no amount rather than guessing when the food has no volume data", () => {
+    expect(suggestPortion(item(1, "cup"), dto("chicken", [["1 breast", 172]]))).toBeNull();
+    expect(suggestPortion(item(150, "g"), dto("chicken", []))).toEqual({ kind: "amount", quantity: 150, unit: "g" });
   });
 });

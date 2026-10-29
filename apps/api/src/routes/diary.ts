@@ -91,7 +91,8 @@ export async function upsertFoodLog(tx: Tx, userId: string, id: string, body: z.
   } else {
     const n = body.nutrients as NutrientValues;
     if (!isKnown(n.energyKcal)) throw badRequest("Quick add requires at least an energy value");
-    computed = { description: body.description!, nutrients: n, baseAmount: null, baseUnit: null, provenance: "user", foodId: null, recipeId: null };
+    // A quick add keeps the "estimate" label when its numbers came from AI (e.g. a restaurant menu).
+    computed = { description: body.description!, nutrients: n, baseAmount: null, baseUnit: null, provenance: body.provenance === "ai_estimate" ? "ai_estimate" : "user", foodId: null, recipeId: null };
   }
 
   const [existing] = await tx.select().from(foodLogs).where(eq(foodLogs.id, id));

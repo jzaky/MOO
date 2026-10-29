@@ -19,6 +19,10 @@ export const qk = {
   search: (q: string) => ["foods", "search", q] as const,
   savedMeals: ["saved-meals"] as const,
   recipes: ["recipes"] as const,
+  recipe: (id: string) => ["recipes", id] as const,
+  mealPlans: ["meal-plans"] as const,
+  grocery: (id: string) => ["grocery", id] as const,
+  pantry: ["pantry"] as const,
   targets: ["targets"] as const,
   programs: ["programs"] as const,
   workouts: ["workouts"] as const,
@@ -44,7 +48,7 @@ export const useToday = () => useQuery({ queryKey: qk.today, queryFn: () => api<
 export const useDiary = (day: string) => useQuery({ queryKey: qk.diary(day), queryFn: () => api<Diary>(`/v1/diary/${day}`) });
 export const useRecentFoods = () => useQuery({ queryKey: qk.recent, queryFn: async () => (await api<{ items: RecentFood[] }>("/v1/foods/recent")).items, staleTime: 5 * 60_000 });
 export const useFavorites = () => useQuery({ queryKey: qk.favorites, queryFn: async () => (await api<{ items: Food[] }>("/v1/foods/favorites")).items, staleTime: 5 * 60_000 });
-export const useFood = (id: string) => useQuery({ queryKey: qk.food(id), queryFn: () => api<Food>(`/v1/foods/${id}`), staleTime: 60 * 60_000 });
+export const useFood = (id: string) => useQuery({ queryKey: qk.food(id), queryFn: () => api<Food>(`/v1/foods/${id}`), staleTime: 60 * 60_000, enabled: !!id });
 export const useWeight = () => useQuery({ queryKey: qk.weight, queryFn: () => api<WeightOverview>("/v1/progress/weight") });
 
 /* ───────── Writes (offline-first) ───────── */
@@ -86,12 +90,27 @@ export function logFood(args: { food: Food; portion: PortionDto; day: string; me
   return id;
 }
 
-export function quickAdd(args: { day: string; meal: string; description: string; energyKcal: number; proteinG?: number | null; carbsG?: number | null; fatG?: number | null }): string {
+export function quickAdd(args: { day: string; meal: string; description: string; energyKcal: number; proteinG?: number | null; carbsG?: number | null; fatG?: number | null; provenance?: "ai_estimate" }): string {
   const id = uuid();
   const at = nowIso();
   const nutrients = { energyKcal: args.energyKcal, ...(args.proteinG != null ? { proteinG: args.proteinG } : {}), ...(args.carbsG != null ? { carbsG: args.carbsG } : {}), ...(args.fatG != null ? { fatG: args.fatG } : {}) };
-  patchDiary(args.day, (d) => ({ ...d, entries: [...d.entries, { id, day: args.day, loggedAt: at, meal: args.meal, foodId: null, recipeId: null, description: args.description, portion: null, baseAmount: null, baseUnit: null, nutrients, provenance: "user", note: null, clientUpdatedAt: at, pending: true }] }));
-  enqueue({ method: "PUT", path: `/v1/food-logs/${id}`, body: { day: args.day, loggedAt: at, clientUpdatedAt: at, meal: args.meal, description: args.description, nutrients } });
+  patchDiary(args.day, (d) => ({ ...d, entries: [...d.entries, { id, day: args.day, loggedAt: at, meal: args.meal, foodId: null, recipeId: null, description: args.description, portion: null, baseAmount: null, baseUnit: null, nutrients, provenance: args.provenance ?? "user", note: null, clientUpdatedAt: at, pending: true }] }));
+  enqueue({ method: "PUT", path: `/v1/food-logs/${id}`, body: { day: args.day, loggedAt: at, clientUpdatedAt: at, meal: args.meal, description: args.description, nutrients, ...(args.provenance ? { provenance: args.provenance } : {}) } });
+  return id;
+}
+
+/**
+ * Log servings of a saved recipe. `food` is the recipe's private food (its
+ * per-100 values and "1 serving" size), used for the optimistic entry; the
+ * server recomputes from the recipe.
+ */
+export function logRecipe(args: { recipeId: string; food: Food; servingId: string; servings: number; day: string; meal: string }): string {
+  const id = uuid();
+  const at = nowIso();
+  const portion: PortionDto = { kind: "serving", servingId: args.servingId, quantity: args.servings };
+  const { baseAmount, nutrients } = nutrientsForPortion({ baseUnit: args.food.baseUnit, per100: args.food.per100, servings: args.food.servings.map((s) => ({ id: s.id, label: s.label, baseAmount: s.baseAmount })), densityGPerMl: args.food.densityGPerMl }, portion as PortionInput);
+  patchDiary(args.day, (d) => ({ ...d, entries: [...d.entries, { id, day: args.day, loggedAt: at, meal: args.meal, foodId: args.food.id, recipeId: args.recipeId, description: args.food.name, portion, baseAmount, baseUnit: args.food.baseUnit, nutrients, provenance: "recipe", note: `${args.servings} × serving`, clientUpdatedAt: at, pending: true }] }));
+  enqueue({ method: "PUT", path: `/v1/food-logs/${id}`, body: { day: args.day, loggedAt: at, clientUpdatedAt: at, meal: args.meal, recipeId: args.recipeId, portion } });
   return id;
 }
 
