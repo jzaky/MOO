@@ -1,4 +1,4 @@
-import { completeness, type FoodNutritionBasis, type NutrientValues } from "@moo/core";
+import { completeness, rankFoods, SEARCH_DESCRIPTORS, stem, words, type FoodNutritionBasis, type NutrientValues } from "@moo/core";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { Db, Tx } from "../db/client";
 import { foodLogs, foodServings, foods } from "../db/schema";
@@ -155,15 +155,18 @@ export async function createPrivateFood(tx: Tx, userId: string, input: CreatePri
   return toFoodDto(row!, servings);
 }
 
+/** How many candidates the database hands to the ranker. */
+const CANDIDATES = 300;
+
 /**
- * Local search: user's private foods first, then shared catalogue, ranked by
- * trigram similarity (pg_trgm) plus how often the user logged the food.
+ * Local search over the user's private foods and the shared catalogue.
+ * Postgres finds candidates (word prefixes and pg_trgm similarity); the
+ * ranking itself lives in @moo/core so it can be unit-tested.
  */
 export async function searchLocalFoods(tx: Tx, userId: string, query: string, limit = 20, opts: { excludeSources?: string[] } = {}): Promise<FoodDto[]> {
-  const q = query.trim().toLowerCase().replace(/[%_]/g, "");
+  const q = query.trim().toLowerCase();
   if (!q) return [];
-  // Naive singular form so "eggs" also matches "egg, whole".
-  const singular = q.split(/\s+/).map((w) => (w.length > 3 && w.endsWith("s") && !w.endsWith("ss") ? w.slice(0, -1) : w)).join(" ");
+  const likeQ = q.replace(/[\\%_]/g, (m) => `\\${m}`);
   const usage = tx
     .select({ foodId: foodLogs.foodId, uses: sql<number>`count(*)::int`.as("uses") })
     .from(foodLogs)
@@ -173,36 +176,34 @@ export async function searchLocalFoods(tx: Tx, userId: string, query: string, li
   // Word similarity tolerates typos ("chiken") against long names; 0.45 balances recall and noise.
   await tx.execute(sql`select set_config('pg_trgm.word_similarity_threshold', '0.45', true)`);
   const hay = sql`lower(${foods.name} || ' ' || coalesce(${foods.brand}, ''))`;
-  const tokens = [...new Set(singular.split(/\s+/).filter((w) => w.length >= 2))].slice(0, 6);
+  // Candidate retrieval: names containing a query word (as a word prefix, plural or
+  // singular) or close by trigram. Descriptive words ("raw", "cooked") alone would
+  // match thousands of foods, so they only count when nothing else is typed.
+  const all = [...new Set(words(q).filter((w) => w.length >= 2))].slice(0, 6);
+  const keyWords = all.filter((w) => !SEARCH_DESCRIPTORS.has(w));
+  const retrieval = (keyWords.length ? keyWords : all).flatMap((w) => [w, stem(w)]);
   const escape = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  // Fraction of query words present as whole-word prefixes ("egg" matches "Egg, whole" and "eggs").
-  const tokenHits = tokens.length
-    ? sql`(${sql.join(tokens.map((w) => sql`case when ${hay} ~ ${"\\m" + escape(w)} then 1 else 0 end`), sql` + `)})::float8 / ${tokens.length}`
-    : sql`0`;
-  const score = sql`(
-      1.0 * ${tokenHits}
-    + 0.5 * greatest(word_similarity(${q}, ${hay}), word_similarity(${singular}, ${hay}))
-    + case when lower(${foods.name}) like ${q + "%"} or lower(${foods.name}) like ${singular + "%"} then 0.3 else 0 end
-    - least(0.4, length(${foods.name}) * 0.004)
-    - case when ${foods.name} ~ '[A-Z]{4,}' and ${foods.ownerUserId} is null then 0.25 else 0 end
-    - case when lower(${foods.name}) ~ '(dry mix|baby food|infant formula|babyfood)' then 0.3 else 0 end
-    + case when lower(${foods.name}) ~ '\\m(whole|raw|fresh|plain|cooked|boiled|roasted|grilled)\\M' then 0.08 else 0 end
-    - case when lower(${foods.name}) ~ '\\m(dried|dehydrated|powder|powdered|substitute|imitation)\\M' and ${q} !~ '(dried|powder)' then 0.12 else 0 end
-  )`;
+  const pattern = retrieval.length ? `\\m(${[...new Set(retrieval)].map(escape).join("|")})` : null;
+  const hits = retrieval.length ? sql`(${sql.join([...new Set(keyWords.length ? keyWords : all)].map((w) => sql`case when ${hay} ~ ${"\\m(" + escape(w) + "|" + escape(stem(w)) + ")"} then 1 else 0 end`), sql` + `)})` : sql`0`;
+  const similarity = sql<number>`word_similarity(${q}, ${hay})`;
   const rows = await tx
-    .select({ food: foods, uses: usage.uses })
+    .select({ food: foods, uses: usage.uses, similarity })
     .from(foods)
     .leftJoin(usage, eq(usage.foodId, foods.id))
     .where(
       and(
-        or(sql`${q} <% ${hay}`, sql`${singular} <% ${hay}`, sql`${hay} like ${"%" + q + "%"}`),
+        or(sql`${q} <% ${hay}`, sql`${hay} like ${"%" + likeQ + "%"}`, pattern ? sql`${hay} ~ ${pattern}` : undefined),
         opts.excludeSources?.length ? sql`${foods.source} not in (${sql.join(opts.excludeSources.map((x) => sql`${x}`), sql`, `)})` : undefined,
       ),
     )
-    // Relevance first, nudged by personal history: own foods and frequently logged foods rank higher.
-    .orderBy(desc(sql`${score} + case when ${foods.ownerUserId} is not null then 0.15 else 0 end + least(0.3, ln(1 + coalesce(${usage.uses}, 0)) * 0.1)`), desc(foods.completeness))
-    .limit(limit);
-  const list = rows.map((r) => r.food);
+    .orderBy(desc(hits), desc(sql`${foods.ownerUserId} is not null`), desc(sql`coalesce(${usage.uses}, 0)`), desc(similarity), sql`length(${foods.name})`)
+    .limit(CANDIDATES);
+  // Final order: relevance rules from @moo/core (head food, extra words, processed forms, history).
+  const ranked = rankFoods(
+    q,
+    rows.map((r) => ({ name: r.food.name, brand: r.food.brand, isPrivate: r.food.ownerUserId != null, uses: Number(r.uses ?? 0), completeness: r.food.completeness ?? 0, similarity: Number(r.similarity), row: r })),
+  ).slice(0, limit);
+  const list = ranked.map((r) => r.row.food);
   const servings = list.length ? await tx.select().from(foodServings).where(inArray(foodServings.foodId, list.map((f) => f.id))) : [];
   return list.map((f) => toFoodDto(f, servings));
 }

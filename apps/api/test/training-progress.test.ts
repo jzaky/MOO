@@ -230,4 +230,24 @@ describe("health integrations", () => {
     expect(rec.explanation).toMatch(/no single recovery score/i);
     expect(rec.readiness).toBeDefined();
   });
+
+  it("does not double count steps and sleep recorded by both phone and watch", async () => {
+    const u = await user();
+    // Noon UTC yesterday falls on yesterday's date in the default profile time zone.
+    const y = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const at = (h: number) => `${y}T${String(h).padStart(2, "0")}:00:00Z`;
+    const obs = [
+      { sourceRecordId: "p-1", type: "steps", startAt: at(9), endAt: at(10), value: 2500, sourceName: "iPhone" },
+      { sourceRecordId: "p-2", type: "steps", startAt: at(11), endAt: at(12), value: 3500, sourceName: "iPhone" },
+      { sourceRecordId: "w-1", type: "steps", startAt: at(9), endAt: at(12), value: 7000, sourceName: "Apple Watch" },
+      { sourceRecordId: "ps-1", type: "sleep_minutes", startAt: at(1), endAt: at(8), value: 420, sourceName: "iPhone" },
+      { sourceRecordId: "ws-1", type: "sleep_minutes", startAt: at(1), endAt: at(4), value: 180, sourceName: "Apple Watch" },
+      { sourceRecordId: "ws-2", type: "sleep_minutes", startAt: at(4), endAt: at(8), value: 210, sourceName: "Apple Watch" },
+    ];
+    expect((await t.app.inject({ method: "POST", url: "/v1/health/observations", headers: u.headers, payload: { provider: "healthkit", observations: obs } })).json()).toMatchObject({ inserted: 6 });
+    const rec = (await t.app.inject({ method: "GET", url: "/v1/recovery/summary", headers: u.headers })).json();
+    expect(rec.steps.find((s: { day: string }) => s.day === y)?.steps).toBe(7000);
+    const sig = rec.signals.find((s: { day: string }) => s.day === y);
+    expect(sig.sleepMinutes).toBe(420);
+  });
 });

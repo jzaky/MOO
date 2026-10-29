@@ -6,7 +6,7 @@ import { z } from "zod";
 import { bodyMeasurements, dailyCheckins, healthObservations } from "../db/schema";
 import { badRequest, parse } from "../http/errors";
 import { makeRequireAuth, type AppContext } from "../http/context";
-import { recoverySnapshot } from "../services/recovery";
+import { dailyTotalsBySource, recoverySnapshot } from "../services/recovery";
 import { getProfile } from "./profile";
 
 export function registerHealthRoutes(app: FastifyInstance, ctx: AppContext): void {
@@ -70,11 +70,7 @@ export function registerHealthRoutes(app: FastifyInstance, ctx: AppContext): voi
       const last7 = snap.signals.filter((s) => s.day > addDays(today, -7));
       const base = snap.signals.filter((s) => s.day <= addDays(today, -7));
       const avg = (xs: typeof snap.signals, k: "sleepMinutes" | "restingHr" | "trainingLoad") => mean(xs.map((x) => x[k]).filter((v): v is number => typeof v === "number"));
-      const steps = await tx
-        .select({ day: healthObservations.day, steps: sql<number>`sum(${healthObservations.value})` })
-        .from(healthObservations)
-        .where(and(eq(healthObservations.userId, req.userId), eq(healthObservations.type, "steps"), gte(healthObservations.day, addDays(today, -13))))
-        .groupBy(healthObservations.day);
+      const steps = [...(await dailyTotalsBySource(tx, req.userId, "steps", addDays(today, -13), today))].map(([day, total]) => ({ day, steps: total }));
       return {
         day: today,
         readiness: snap.readiness,

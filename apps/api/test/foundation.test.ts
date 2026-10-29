@@ -149,3 +149,17 @@ describe("account deletion", () => {
     expect(login.statusCode).toBe(401);
   });
 });
+
+describe("web client access (CORS)", () => {
+  it("allows the write methods the offline outbox uses from an allowed origin", async () => {
+    const res = await t.app.inject({ method: "OPTIONS", url: "/v1/food-logs/00000000-0000-4000-8000-000000000000", headers: { origin: "http://localhost:8081", "access-control-request-method": "PUT", "access-control-request-headers": "authorization,content-type" } });
+    expect(res.statusCode).toBe(204);
+    expect(res.headers["access-control-allow-origin"]).toBe("http://localhost:8081");
+    expect(String(res.headers["access-control-allow-methods"])).toMatch(/PUT/);
+    expect(String(res.headers["access-control-allow-methods"])).toMatch(/DELETE/);
+  });
+  it("does not grant other origins", async () => {
+    const res = await t.app.inject({ method: "OPTIONS", url: "/v1/profile", headers: { origin: "https://evil.example", "access-control-request-method": "PUT" } });
+    expect(res.headers["access-control-allow-origin"]).toBeUndefined();
+  });
+});

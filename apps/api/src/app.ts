@@ -67,7 +67,9 @@ export async function buildApp(cfg: Config, o: AppOverrides = {}): Promise<{ app
   });
   registerErrorHandler(app);
   await app.register(helmet, { contentSecurityPolicy: false });
-  await app.register(cors, { origin: cfg.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean), credentials: false });
+  // Native apps are not subject to CORS; this serves the web build. The plugin's
+  // default (GET, HEAD, POST) would block the PUT upserts and DELETEs.
+  await app.register(cors, { origin: cfg.CORS_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean), methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"], credentials: false });
   await app.register(rateLimit, { max: cfg.RATE_LIMIT_PER_MIN, timeWindow: "1 minute" });
   await app.register(multipart, { limits: { fileSize: 12 * 1024 * 1024, files: 4 } });
   app.get("/health", async () => ({ ok: true }));
