@@ -160,3 +160,15 @@ describe("training analytics", () => {
     expect(s).toEqual({ durationSec: 3300, exercises: 1, workSets: 1, totalReps: 8, volumeKg: 640 });
   });
 });
+
+import { suggestSplit } from "../src";
+describe("split suggestion", () => {
+  it("chooses structure by availability and caps beginners", () => {
+    expect(suggestSplit([1, 3, 5], "beginner").split).toBe("full_body");
+    expect(suggestSplit([1, 2, 4, 5], "intermediate")).toMatchObject({ split: "upper_lower", weekdays: [1, 2, 4, 5] });
+    const b = suggestSplit([1, 2, 3, 4, 5, 6], "beginner");
+    expect(b.daysPerWeek).toBe(4);
+    expect(suggestSplit([1, 2, 3, 4, 5, 6], "advanced").split).toBe("push_pull_legs");
+    expect(suggestSplit([], "new").weekdays).toEqual([1, 3, 5]);
+  });
+});

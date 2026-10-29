@@ -17,3 +17,4 @@ export * from "./parse/logParser";
 export * from "./mealplan/grocery";
 export * from "./recovery/insights";
 export * from "./sync/merge";
+export * from "./training/splits";
