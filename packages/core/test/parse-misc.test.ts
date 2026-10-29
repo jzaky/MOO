@@ -159,3 +159,14 @@ describe("time and sync", () => {
     expect(clampClientTimestamp("2027-01-01T00:00:00Z", now)).toBe(now.toISOString());
   });
 });
+
+import { parseIngredientLine } from "../src";
+describe("ingredient lines", () => {
+  it("parses quantities, fractions and preparation notes", () => {
+    expect(parseIngredientLine("2 cups rolled oats")).toMatchObject({ quantity: 2, unit: "cup", name: "rolled oats" });
+    expect(parseIngredientLine("½ tsp salt")).toMatchObject({ quantity: 0.5, unit: "tsp", name: "salt" });
+    expect(parseIngredientLine("200g chicken thighs, diced")).toMatchObject({ quantity: 200, unit: "g", name: "chicken thighs", preparation: "diced" });
+    expect(parseIngredientLine("1 1/2 cups milk (whole)")).toMatchObject({ quantity: 1.5, unit: "cup", name: "milk" });
+    expect(parseIngredientLine("salt to taste")).toMatchObject({ quantity: 1, quantityAssumed: true });
+  });
+});

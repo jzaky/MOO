@@ -15,6 +15,20 @@
       "when": 1793259028858,
       "tag": "0001_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793259888347,
+      "tag": "0002_nutrition",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793260094468,
+      "tag": "0003_search_index",
+      "breakpoints": true
     }
   ]
 }

@@ -66,7 +66,7 @@ function parseNumberToken(tok: string): number | null {
   return NUMBER_WORDS[t] ?? null;
 }
 
-const NUM = String.raw`(\d+(?:[.,]\d+)?|\d+\/\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|half|a half|couple|a couple of|dozen|a dozen)`;
+const NUM = String.raw`(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:[.,]\d+)?|a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|half|a half|couple|a couple of|dozen|a dozen)`;
 const WEIGHT_UNIT = String.raw`(kg|kgs|kilo|kilos|kilograms?|lb|lbs|pounds?)`;
 
 function toKg(value: number, unitTok: string): { kg: number; unit: "kg" | "lb" } {
@@ -239,4 +239,23 @@ export function mealFromUtterance(input: string): "breakfast" | "lunch" | "dinne
   if (/\b(dinner|supper)\b/.test(t)) return "dinner";
   if (/\bsnacks?\b/.test(t)) return "snacks";
   return null;
+}
+
+/**
+ * Parse one recipe ingredient line ("2 cups rolled oats", "1/2 tsp salt",
+ * "200g chicken thighs, diced"). Preparation notes after a comma are split off.
+ */
+export function parseIngredientLine(line: string): (ParsedFoodItem & { preparation: string | null }) | null {
+  const cleaned = line
+    .toLowerCase()
+    .replace(/\(([^)]*)\)/g, " ")
+    .replace(/[▢•*·-]\s*/g, " ")
+    .replace(/½/g, "1/2").replace(/¼/g, "1/4").replace(/¾/g, "3/4").replace(/⅓/g, "1/3").replace(/⅔/g, "2/3")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return null;
+  const [main, ...prep] = cleaned.split(",");
+  const { item } = parseFoodItem(main!);
+  if (!item) return null;
+  return { ...item, text: line.trim(), preparation: prep.join(",").trim() || null };
 }

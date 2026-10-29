@@ -146,7 +146,7 @@ export const foods = pgTable("foods", {
   uniqueIndex("foods_source_ref_uq").on(t.source, t.sourceRef).where(sql`${t.ownerUserId} is null and ${t.sourceRef} is not null`),
   index("foods_barcode_idx").on(t.barcode),
   index("foods_owner_idx").on(t.ownerUserId),
-  index("foods_name_trgm_idx").using("gin", sql`lower(${t.name}) gin_trgm_ops`),
+  index("foods_search_trgm_idx").using("gin", sql`lower(${t.name} || ' ' || coalesce(${t.brand}, '')) gin_trgm_ops`),
 ]);
 
 export const foodServings = pgTable("food_servings", {
@@ -196,6 +196,14 @@ export const waterLogs = pgTable("water_logs", {
   ...syncCols(),
 }, (t) => [index("water_logs_user_day_idx").on(t.userId, t.day)]);
 
+/** Per-day logging status; "complete" days feed the adaptive engine. */
+export const diaryDays = pgTable("diary_days", {
+  userId: userRef(),
+  day: day().notNull(),
+  status: text("status").notNull(), // complete | incomplete
+  updatedAt: updatedAt(),
+}, (t) => [primaryKey({ columns: [t.userId, t.day] })]);
+
 export const savedMeals = pgTable("saved_meals", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: userRef(),
@@ -217,6 +225,8 @@ export const recipes = pgTable("recipes", {
   cookedYieldG: doublePrecision("cooked_yield_g"),
   instructions: text("instructions"),
   sourceUrl: text("source_url"),
+  /** Private food row materialized from this recipe so it can be searched and logged like any food. */
+  foodId: uuid("food_id").references(() => foods.id, { onDelete: "set null" }),
   nutritionTotal: jsonb("nutrition_total").notNull(),
   nutritionPerServing: jsonb("nutrition_per_serving").notNull(),
   missingIngredientCount: integer("missing_ingredient_count").notNull().default(0),

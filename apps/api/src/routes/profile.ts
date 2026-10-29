@@ -48,7 +48,8 @@ export async function getProfile(tx: Tx, userId: string): Promise<ProfileRow> {
 
 export async function currentTargets(tx: Tx, userId: string, onDay?: string) {
   const rows = await tx.select().from(nutritionTargets).where(eq(nutritionTargets.userId, userId)).orderBy(desc(nutritionTargets.effectiveFrom), desc(nutritionTargets.createdAt));
-  return rows.find((r) => !onDay || r.effectiveFrom <= onDay) ?? null;
+  // Days logged before the first target existed (e.g. backfilling) use the earliest target.
+  return rows.find((r) => !onDay || r.effectiveFrom <= onDay) ?? rows.at(-1) ?? null;
 }
 
 export function targetsToDto(t: typeof nutritionTargets.$inferSelect) {
