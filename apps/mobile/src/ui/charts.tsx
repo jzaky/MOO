@@ -60,7 +60,7 @@ export function MacroBar({ label, consumed, target, unit, color, missing = 0 }: 
         <View style={{ width: `${pct * 100}%`, height: 6, borderRadius: 3, backgroundColor: frac > 1.05 ? th.c.warning : color }} />
       </View>
       <T variant="caption" color="textTertiary">
-        {remaining >= 0 ? `${remaining} ${unit} left` : `${-remaining} ${unit} over`}
+        {remaining >= 0 ? t("{amount} {unit} left", { amount: remaining, unit }) : t("{amount} {unit} over", { amount: -remaining, unit })}
         {missing ? " · partial data" : ""}
       </T>
     </View>
@@ -128,7 +128,7 @@ export function LineChart({ series, height = 180, formatY = (v: number) => Strin
 
   if (!all.length) return null;
   return (
-    <View accessible accessibilityLabel={`${title}. ${series.map((s) => t("{label}: latest {value}", { label: s.label, value: formatY(s.points.at(-1)?.y ?? 0) })).join(". ")}`} onLayout={onLayout} style={{ height }} onStartShouldSetResponder={() => true} onResponderGrant={handleTouch} onResponderMove={handleTouch} onResponderRelease={() => setScrubX(null)} onResponderTerminate={() => setScrubX(null)}>
+    <View accessible accessibilityLabel={`${title}. ${series.map((s) => t("{label}: latest {value}", { label: s.label, value: formatY(s.points.at(-1)?.y ?? 0) })).join(". ")}`} onLayout={onLayout} style={{ height, direction: "ltr" }} onStartShouldSetResponder={() => true} onResponderGrant={handleTouch} onResponderMove={handleTouch} onResponderRelease={() => setScrubX(null)} onResponderTerminate={() => setScrubX(null)}>
       {geom ? (
         <Svg width={width} height={height}>
           {geom.ticks.map((tk) => (

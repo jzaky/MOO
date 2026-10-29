@@ -4,19 +4,22 @@ import { useState } from "react";
 import { View } from "react-native";
 import { logMeasurement, logWeight, useProfile } from "../lib/data";
 import { haptic } from "../lib/haptics";
+import { t } from "../i18n";
 import { todayKey } from "../lib/ids";
 import { Button, Field, Row, SectionHeader, T } from "../ui/primitives";
 import { Screen } from "../ui/Screen";
 
-const SITES = [
-  ["waist", "Waist"],
-  ["neck", "Neck"],
-  ["hips", "Hips"],
-  ["chest", "Chest"],
-  ["left_arm", "Arm (left)"],
-  ["right_arm", "Arm (right)"],
-  ["left_thigh", "Thigh (left)"],
-] as const;
+function sites(): [string, string][] {
+  return [
+    ["waist", t("Waist")],
+    ["neck", t("Neck")],
+    ["hips", t("Hips")],
+    ["chest", t("Chest")],
+    ["left_arm", t("Arm (left)")],
+    ["right_arm", t("Arm (right)")],
+    ["left_thigh", t("Thigh (left)")],
+  ];
+}
 
 export default function WeighIn() {
   const params = useLocalSearchParams<{ measurements?: string }>();
@@ -37,20 +40,20 @@ export default function WeighIn() {
     router.back();
   };
   return (
-    <Screen close title={showM ? "Measurements" : "Weigh-in"} footer={<Button title="Save" onPress={save} disabled={!valid} />}>
+    <Screen close title={showM ? t("Measurements") : t("Weigh-in")} footer={<Button title={t("Save")} onPress={save} disabled={!valid} />}>
       {!showM ? (
         <>
-          <Field label="Body weight" value={weight} onChangeText={setWeight} keyboardType="decimal-pad" suffix={units === "imperial" ? "lb" : "kg"} autoFocus placeholder="0.0" />
-          <T variant="footnote" color="textSecondary">For comparable readings, weigh in the morning after using the bathroom and before eating. Single readings move with water and food; the trend is what matters.</T>
+          <Field label={t("Body weight")} value={weight} onChangeText={setWeight} keyboardType="decimal-pad" suffix={units === "imperial" ? "lb" : "kg"} autoFocus placeholder="0.0" />
+          <T variant="footnote" color="textSecondary">{t("For comparable readings, weigh in the morning after using the bathroom and before eating. Single readings move with water and food; the trend is what matters.")}</T>
         </>
       ) : null}
-      <SectionHeader title={showM ? "Circumferences" : "Measurements (optional)"} />
-      {SITES.map(([k, l]) => (
+      <SectionHeader title={showM ? t("Circumferences") : t("Measurements (optional)")} />
+      {sites().map(([k, l]) => (
         <View key={k}>
           <Field label={l} value={m[k] ?? ""} onChangeText={(v) => setM((x) => ({ ...x, [k]: v }))} keyboardType="decimal-pad" suffix={units === "imperial" ? "in" : "cm"} />
         </View>
       ))}
-      <Row><T variant="caption" color="textTertiary">Saved offline if needed and synced automatically.</T></Row>
+      <Row><T variant="caption" color="textTertiary">{t("Saved offline if needed and synced automatically.")}</T></Row>
     </Screen>
   );
 }

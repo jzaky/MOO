@@ -7,6 +7,7 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview";
 const PoseWebView = WebView<object>;
 import { useTheme } from "../../theme/theme";
 import { Button, Stack, T } from "../../ui/primitives";
+import { t } from "../../i18n";
 import { poseHtml } from "./poseHtml";
 import { parsePoseMessage, type PoseCameraHandle, type PoseCameraProps } from "./types";
 
@@ -19,7 +20,7 @@ export const PoseCamera = forwardRef<PoseCameraHandle, PoseCameraProps>(function
   const th = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
   const web = useRef<InstanceType<typeof PoseWebView>>(null);
-  const html = useMemo(() => poseHtml({ facing: props.facing, accent: th.c.accent }), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const html = useMemo(() => poseHtml({ facing: props.facing, accent: th.c.accent, messages: { loading: t("Loading pose model"), modelError: t("Couldn't load the pose model. Check your connection and try again."), cameraError: t("Camera unavailable. Allow camera access in settings."), switchError: t("Couldn't switch camera.") } }), []); // eslint-disable-line react-hooks/exhaustive-deps
   const send = (m: object) => web.current?.injectJavaScript(`window.__cmd && window.__cmd(${JSON.stringify(JSON.stringify(m))}); true;`);
   useImperativeHandle(ref, () => ({ start: () => send({ type: "start" }), stop: () => send({ type: "stop" }) }));
   useEffect(() => send({ type: "facing", facing: props.facing }), [props.facing]);
@@ -29,9 +30,9 @@ export const PoseCamera = forwardRef<PoseCameraHandle, PoseCameraProps>(function
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, backgroundColor: th.c.bg }}>
         <Stack gap={12} style={{ alignItems: "center" }}>
-          <T variant="headline" align="center">Camera access is needed to track your movement</T>
-          <T variant="footnote" color="textSecondary" align="center">Video is analysed on this phone and never uploaded.</T>
-          <Button title="Allow camera" onPress={() => void requestPermission()} />
+          <T variant="headline" align="center">{t("Camera access is needed to track your movement")}</T>
+          <T variant="footnote" color="textSecondary" align="center">{t("Video is analysed on this phone and never uploaded.")}</T>
+          <Button title={t("Allow camera")} onPress={() => void requestPermission()} />
         </Stack>
       </View>
     );

@@ -8,13 +8,15 @@ import { deleteFoodLog, logWater, MEAL_ORDER, moveFoodLog, useDiary } from "../.
 import { haptic } from "../../lib/haptics";
 import { formatDayLabel, todayKey } from "../../lib/ids";
 import type { FoodLog } from "../../lib/types";
+import { mealLabel } from "../../features/food/diet";
+import { fmtNum, t, tn } from "../../i18n";
 import { useTheme } from "../../theme/theme";
 import { ActionSheet } from "../../ui/ActionSheet";
 import { MacroBar, ProgressRing } from "../../ui/charts";
 import { Badge, Button, Card, Divider, ErrorState, IconButton, ListRow, Row, SectionHeader, Skeleton, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
 
-const MEAL_LABEL: Record<string, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snacks: "Snacks" };
+
 const kcal = (n: NutrientValues) => (typeof n.energyKcal === "number" ? Math.round(n.energyKcal) : null);
 
 export default function Nutrition() {
@@ -29,25 +31,25 @@ export default function Nutrition() {
   });
 
   const d = diary.data;
-  const t = d?.targets;
+  const tg = d?.targets;
   // Summaries are computed on-device from the (possibly optimistic) entries with the shared core logic.
-  const s = d ? summarizeDay(d.entries.map((e) => ({ id: e.id, meal: e.meal, nutrients: e.nutrients, loggedAt: e.loggedAt })), t ? { energyKcal: t.energyKcal, proteinG: t.proteinG, carbsG: t.carbsG, fatG: t.fatG, ...(t.fiberG != null ? { fiberG: t.fiberG } : {}) } : { energyKcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }, [...MEAL_ORDER, ...new Set(d.entries.map((e) => e.meal).filter((m) => !MEAL_ORDER.includes(m)))]) : null;
+  const s = d ? summarizeDay(d.entries.map((e) => ({ id: e.id, meal: e.meal, nutrients: e.nutrients, loggedAt: e.loggedAt })), tg ? { energyKcal: tg.energyKcal, proteinG: tg.proteinG, carbsG: tg.carbsG, fatG: tg.fatG, ...(tg.fiberG != null ? { fiberG: tg.fiberG } : {}) } : { energyKcal: 0, proteinG: 0, carbsG: 0, fatG: 0 }, [...MEAL_ORDER, ...new Set(d.entries.map((e) => e.meal).filter((m) => !MEAL_ORDER.includes(m)))]) : null;
   const p = (k: string) => s?.progress.find((x) => x.key === k);
 
   return (
     <Screen
       tabBar
-      title="Nutrition"
-      right={<IconButton icon="add" label="Log food" onPress={() => router.push({ pathname: "/food/search", params: { day } })} bg="surfaceRaised" />}
+      title={t("Nutrition")}
+      right={<IconButton icon="add" label={t("Log food")} onPress={() => router.push({ pathname: "/food/search", params: { day } })} bg="surfaceRaised" />}
       onRefresh={() => void diary.refetch()}
       refreshing={diary.isRefetching}
     >
       <Row justify="space-between">
-        <IconButton icon="back" label="Previous day" onPress={() => setDay(addDays(day, -1))} />
-        <Pressable accessibilityRole="button" accessibilityLabel="Go to today" onPress={() => setDay(todayKey())}>
+        <IconButton icon="back" label={t("Previous day")} onPress={() => setDay(addDays(day, -1))} />
+        <Pressable accessibilityRole="button" accessibilityLabel={t("Go to today")} onPress={() => setDay(todayKey())}>
           <T variant="headline">{formatDayLabel(day)}</T>
         </Pressable>
-        <IconButton icon="chevron" label="Next day" onPress={() => setDay(addDays(day, 1))} />
+        <IconButton icon="chevron" label={t("Next day")} onPress={() => setDay(addDays(day, 1))} />
       </Row>
 
       {diary.isPending && !d ? (
@@ -65,24 +67,24 @@ export default function Nutrition() {
         <>
           <Card>
             <Row gap={16}>
-              <ProgressRing value={s.totals.energyKcal.value} target={t?.energyKcal ?? 0} color={th.c.energy} size={104} stroke={9} label="Energy" center={<View style={{ alignItems: "center" }}><T variant="metric">{Math.round(s.totals.energyKcal.value).toLocaleString()}</T><T variant="caption" color="textSecondary">of {t?.energyKcal?.toLocaleString() ?? "–"}</T></View>} />
+              <ProgressRing value={s.totals.energyKcal.value} target={tg?.energyKcal ?? 0} color={th.c.energy} size={104} stroke={9} label={t("Energy")} center={<View style={{ alignItems: "center" }}><T variant="metric">{fmtNum(Math.round(s.totals.energyKcal.value))}</T><T variant="caption" color="textSecondary">{t("of {target}", { target: tg?.energyKcal != null ? fmtNum(tg.energyKcal) : "–" })}</T></View>} />
               <Stack gap={8} style={{ flex: 1 }}>
-                {t ? (
+                {tg ? (
                   <>
-                    <MacroBar label="Protein" consumed={p("proteinG")?.consumed ?? 0} target={t.proteinG} unit="g" color={th.c.protein} missing={p("proteinG")?.missingEntries} />
+                    <MacroBar label={t("Protein")} consumed={p("proteinG")?.consumed ?? 0} target={tg.proteinG} unit="g" color={th.c.protein} missing={p("proteinG")?.missingEntries} />
                     <Row gap={12}>
-                      <MacroBar label="Carbs" consumed={p("carbsG")?.consumed ?? 0} target={t.carbsG} unit="g" color={th.c.carbs} />
-                      <MacroBar label="Fat" consumed={p("fatG")?.consumed ?? 0} target={t.fatG} unit="g" color={th.c.fat} />
+                      <MacroBar label={t("Carbs")} consumed={p("carbsG")?.consumed ?? 0} target={tg.carbsG} unit="g" color={th.c.carbs} />
+                      <MacroBar label={t("Fat")} consumed={p("fatG")?.consumed ?? 0} target={tg.fatG} unit="g" color={th.c.fat} />
                     </Row>
                   </>
                 ) : (
-                  <T color="textSecondary">No targets set.</T>
+                  <T color="textSecondary">{t("No targets set.")}</T>
                 )}
               </Stack>
             </Row>
-            {t?.fiberG ? (
+            {tg?.fiberG ? (
               <T variant="caption" color="textTertiary" style={{ marginTop: 10 }}>
-                Fibre {Math.round(p("fiberG")?.consumed ?? 0)} / {Math.round(t.fiberG)} g{(p("fiberG")?.missingEntries ?? 0) > 0 ? " (some foods lack fibre data)" : ""} · targets {t.basis === "estimated" ? "estimated" : t.basis === "adapted" ? "adapted to your trend" : "set by you"}
+                {(p("fiberG")?.missingEntries ?? 0) > 0 ? t("Fibre {eaten} / {target} g (some foods lack fibre data)", { eaten: Math.round(p("fiberG")?.consumed ?? 0), target: Math.round(tg.fiberG) }) : t("Fibre {eaten} / {target} g", { eaten: Math.round(p("fiberG")?.consumed ?? 0), target: Math.round(tg.fiberG) })} · {tg.basis === "estimated" ? t("targets estimated") : tg.basis === "adapted" ? t("targets adapted to your trend") : t("targets set by you")}
               </T>
             ) : null}
           </Card>
@@ -91,7 +93,7 @@ export default function Nutrition() {
             const entries = d.entries.filter((e) => e.meal === m.meal);
             return (
               <View key={m.meal}>
-                <SectionHeader title={`${MEAL_LABEL[m.meal] ?? m.meal}${m.totals.energyKcal.value ? ` · ${Math.round(m.totals.energyKcal.value)} kcal` : ""}`} action="Add" onAction={() => router.push({ pathname: "/food/search", params: { day, meal: m.meal } })} />
+                <SectionHeader title={m.totals.energyKcal.value ? `${mealLabel(m.meal)} · ${Math.round(m.totals.energyKcal.value)} kcal` : mealLabel(m.meal)} action={t("Add")} onAction={() => router.push({ pathname: "/food/search", params: { day, meal: m.meal } })} />
                 <Card padded={false} style={{ paddingHorizontal: 14 }}>
                   {entries.length ? (
                     entries.map((e, i) => (
@@ -99,17 +101,17 @@ export default function Nutrition() {
                         {i ? <Divider /> : null}
                         <ListRow
                           title={e.description}
-                          subtitle={[e.note ?? (e.baseAmount ? `${Math.round(e.baseAmount)} ${e.baseUnit}` : null), e.provenance === "ai_estimate" ? "estimate" : null, e.pending ? "saving…" : null].filter(Boolean).join(" · ")}
+                          subtitle={[e.note ?? (e.baseAmount ? `${Math.round(e.baseAmount)} ${e.baseUnit}` : null), e.provenance === "ai_estimate" ? t("estimate") : null, e.pending ? t("saving…") : null].filter(Boolean).join(" · ")}
                           right={<T variant="metricS" color="textSecondary">{kcal(e.nutrients) ?? "–"}</T>}
                           onPress={() => setSelected(e)}
-                          accessibilityHint="Opens actions for this entry"
+                          accessibilityHint={t("Opens actions for this entry")}
                         />
                       </View>
                     ))
                   ) : (
                     <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: "/food/search", params: { day, meal: m.meal } })} style={{ paddingVertical: 14 }}>
                       <T variant="subhead" color="textTertiary">
-                        Nothing logged · tap to add
+                        {t("Nothing logged · tap to add")}
                       </T>
                     </Pressable>
                   )}
@@ -118,13 +120,13 @@ export default function Nutrition() {
             );
           })}
 
-          <SectionHeader title="Water" />
+          <SectionHeader title={t("Water")} />
           <Card>
             <Row justify="space-between">
               <T variant="headline">
-                {d.water.totalMl.toLocaleString()}
+                {fmtNum(d.water.totalMl)}
                 <T variant="footnote" color="textTertiary">
-                  {d.water.targetMl ? ` / ${d.water.targetMl.toLocaleString()} ml` : " ml"}
+                  {d.water.targetMl ? ` / ${fmtNum(d.water.targetMl)} ml` : " ml"}
                 </T>
               </T>
               <Row gap={6}>
@@ -136,47 +138,47 @@ export default function Nutrition() {
           </Card>
 
           <Row gap={8} wrap>
-            <Button title="Quick add" icon="edit" kind="secondary" size="sm" onPress={() => router.push({ pathname: "/food/quick-add", params: { day } })} />
-            <Button title="Custom food" icon="add" kind="secondary" size="sm" onPress={() => router.push("/food/custom")} />
-            <Button title="Copy yesterday" icon="history" kind="secondary" size="sm" onPress={async () => { await api("/v1/diary/copy", { body: { fromDay: addDays(day, -1), toDay: day, loggedAt: new Date().toISOString() } }); void diary.refetch(); }} />
+            <Button title={t("Quick add")} icon="edit" kind="secondary" size="sm" onPress={() => router.push({ pathname: "/food/quick-add", params: { day } })} />
+            <Button title={t("Custom food")} icon="add" kind="secondary" size="sm" onPress={() => router.push("/food/custom")} />
+            <Button title={t("Copy yesterday")} icon="history" kind="secondary" size="sm" onPress={async () => { await api("/v1/diary/copy", { body: { fromDay: addDays(day, -1), toDay: day, loggedAt: new Date().toISOString() } }); void diary.refetch(); }} />
           </Row>
 
           <Card>
             <Row justify="space-between">
               <Stack gap={2} style={{ flex: 1 }}>
-                <T variant="headline">Finished logging this day?</T>
+                <T variant="headline">{t("Finished logging this day?")}</T>
                 <T variant="footnote" color="textSecondary">
-                  Complete days are used to adapt your targets.
+                  {t("Complete days are used to adapt your targets.")}
                 </T>
               </Stack>
-              {d.status === "complete" ? <Badge label="Complete" tone="accent" /> : <Button title="Mark complete" size="sm" onPress={async () => { await api(`/v1/diary/${day}/status`, { method: "PUT", body: { status: "complete" } }); haptic("success"); void diary.refetch(); }} />}
+              {d.status === "complete" ? <Badge label={t("Complete")} tone="accent" /> : <Button title={t("Mark complete")} size="sm" onPress={async () => { await api(`/v1/diary/${day}/status`, { method: "PUT", body: { status: "complete" } }); haptic("success"); void diary.refetch(); }} />}
             </Row>
           </Card>
 
           {weekly.data ? (
             <Card>
               <T variant="label" color="textTertiary">
-                Last 7 days
+                {t("Last 7 days")}
               </T>
               <T variant="subhead" style={{ marginTop: 6 }}>
                 {weekly.data.completeDays
-                  ? `Averaged ${weekly.data.averagesOverCompleteDays.energyKcal?.toLocaleString()} kcal and ${weekly.data.averagesOverCompleteDays.proteinG} g protein over ${weekly.data.completeDays} complete day${weekly.data.completeDays > 1 ? "s" : ""}.`
-                  : `${weekly.data.daysLogged} day${weekly.data.daysLogged === 1 ? "" : "s"} logged; mark days complete to see averages.`}
+                  ? tn(weekly.data.completeDays, "Averaged {kcal} kcal and {protein} g protein over {n} complete day.", "Averaged {kcal} kcal and {protein} g protein over {n} complete days.", { kcal: weekly.data.averagesOverCompleteDays.energyKcal != null ? fmtNum(weekly.data.averagesOverCompleteDays.energyKcal) : "–", protein: weekly.data.averagesOverCompleteDays.proteinG ?? "–" })
+                  : tn(weekly.data.daysLogged, "{n} day logged; mark days complete to see averages.", "{n} days logged; mark days complete to see averages.")}
               </T>
             </Card>
           ) : null}
         </>
       ) : null}
 
-      <SectionHeader title="Plan & cook" />
+      <SectionHeader title={t("Plan & cook")} />
       <Card padded={false} style={{ paddingHorizontal: 14 }}>
-        <ListRow icon="recipe" title="Recipes" subtitle="Nutrition per serving from matched ingredients" onPress={() => router.push("/recipes")} />
+        <ListRow icon="recipe" title={t("Recipes")} subtitle={t("Nutrition per serving from matched ingredients")} onPress={() => router.push("/recipes")} />
         <Divider />
-        <ListRow icon="calendar" title="Meal plan" subtitle="A week built from your recipes and saved meals" onPress={() => router.push("/plan")} />
+        <ListRow icon="calendar" title={t("Meal plan")} subtitle={t("A week built from your recipes and saved meals")} onPress={() => router.push("/plan")} />
         <Divider />
-        <ListRow icon="cart" title="Pantry" subtitle="Subtracted from grocery lists" onPress={() => router.push("/plan/pantry")} />
+        <ListRow icon="cart" title={t("Pantry")} subtitle={t("Subtracted from grocery lists")} onPress={() => router.push("/plan/pantry")} />
         <Divider />
-        <ListRow icon="restaurant" title="Restaurant menu" subtitle="Find dishes that fit what's left today" onPress={() => router.push({ pathname: "/food/menu", params: { day } })} />
+        <ListRow icon="restaurant" title={t("Restaurant menu")} subtitle={t("Find dishes that fit what's left today")} onPress={() => router.push({ pathname: "/food/menu", params: { day } })} />
       </Card>
 
       <ActionSheet
@@ -186,9 +188,9 @@ export default function Nutrition() {
         actions={
           selected
             ? [
-                ...(selected.foodId ? [{ label: "Change amount", icon: "edit" as const, onPress: () => router.push({ pathname: "/food/[id]", params: { id: selected.foodId!, day, meal: selected.meal, entryId: selected.id } }) }] : []),
-                ...MEAL_ORDER.filter((m) => m !== selected.meal && selected.foodId).map((m) => ({ label: `Move to ${MEAL_LABEL[m]}`, onPress: () => moveFoodLog(selected, m) })),
-                { label: "Delete", icon: "trash" as const, destructive: true, onPress: () => { deleteFoodLog(selected); haptic("warning"); } },
+                ...(selected.foodId ? [{ label: t("Change amount"), icon: "edit" as const, onPress: () => router.push({ pathname: "/food/[id]", params: { id: selected.foodId!, day, meal: selected.meal, entryId: selected.id } }) }] : []),
+                ...MEAL_ORDER.filter((m) => m !== selected.meal && selected.foodId).map((m) => ({ label: t("Move to {meal}", { meal: mealLabel(m) }), onPress: () => moveFoodLog(selected, m) })),
+                { label: t("Delete"), icon: "trash" as const, destructive: true, onPress: () => { deleteFoodLog(selected); haptic("warning"); } },
               ]
             : []
         }

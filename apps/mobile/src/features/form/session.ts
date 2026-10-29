@@ -21,8 +21,3 @@ export function analyzeSession(movement: MovementKind, frames: readonly PoseFram
   if (trackedFrameCount(frames) < MIN_TRACKED_FRAMES) return null;
   return analyzeMovement(movement, toCoreFrames(frames));
 }
-
-export const MOVEMENT_GUIDE: Record<MovementKind, { label: string; setup: string; measures: string }> = {
-  squat: { label: "Squat", setup: "Stand side-on to the camera, 2–3 m away, with your whole body in frame. Prop the phone at about hip height.", measures: "knee angle at the bottom of each rep" },
-  push_up: { label: "Push-up", setup: "Place the phone on the floor side-on, 1.5–2 m away, so your head, hands and feet are all in frame.", measures: "elbow angle at the bottom of each rep" },
-};

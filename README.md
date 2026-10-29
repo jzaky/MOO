@@ -1,6 +1,6 @@
 # Stoke
 
-A private, AI-native fitness and nutrition app: food logging (search, barcode, photo, label, voice), a workout tracker with deterministic progression, progress and recovery tracking, adaptive nutrition targets, and a coach that works from your own data and only proposes changes. It is built for one user now and structured to become a multi-user service later.
+A private, AI-native fitness and nutrition app: food logging (search, barcode, photo, label, voice, UAE dishes), a workout tracker with deterministic progression, training blocks and a plate calculator, progress and recovery tracking, adaptive nutrition targets, import from Strong, Hevy and MyFitnessPal, and a coach that works from your own data and only proposes changes. English and Arabic (right-to-left). iPhone widgets, a rest-timer Live Activity, an Apple Watch companion and Siri shortcuts are written but not yet compiled (see `docs/STATUS.md`). It is built for one user now and structured to become a multi-user service later.
 
 | Doc | What it covers |
 | --- | --- |
@@ -35,7 +35,9 @@ sudo -u postgres ./scripts/dev-db-setup.sh
 pnpm --filter @stoke/api db:migrate
 pnpm --filter @stoke/api seed
 
-# 3. Optional: generic foods from USDA FoodData Central (CC0)
+# 3. Optional: generic foods from USDA FoodData Central (CC0).
+#    This also builds the UAE standard-recipe dishes from those ingredients
+#    (re-run them alone with `pnpm --filter @stoke/api import:dishes`).
 curl -O https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_json_2018-04.zip
 unzip FoodData_Central_sr_legacy_food_json_2018-04.zip
 pnpm --filter @stoke/api import:fdc "$PWD/FoodData_Central_sr_legacy_food_json_2018-04.json"

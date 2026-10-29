@@ -14,7 +14,23 @@ export const MEDIAPIPE_VERSION = "1.1.1";
 const CDN = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}`;
 const MODEL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task";
 
-export function poseHtml(opts: { facing: "user" | "environment"; accent: string }): string {
+/** Status texts shown by the app, passed in already translated. */
+export interface PoseMessages {
+  loading: string;
+  modelError: string;
+  cameraError: string;
+  switchError: string;
+}
+
+const EN_MESSAGES: PoseMessages = {
+  loading: "Loading pose model",
+  modelError: "Couldn't load the pose model. Check your connection and try again.",
+  cameraError: "Camera unavailable. Allow camera access in settings.",
+  switchError: "Couldn't switch camera.",
+};
+
+export function poseHtml(opts: { facing: "user" | "environment"; accent: string; messages?: PoseMessages }): string {
+  const msg = opts.messages ?? EN_MESSAGES;
   return `<!doctype html>
 <html><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -45,18 +61,18 @@ async function openCamera() {
 }
 
 async function init() {
-  post({ type: "status", status: "loading", message: "Loading pose model" });
+  post({ type: "status", status: "loading", message: ${JSON.stringify(msg.loading)} });
   try {
     const { PoseLandmarker, FilesetResolver } = await import("${CDN}/vision_bundle.mjs");
     const files = await FilesetResolver.forVisionTasks("${CDN}/wasm");
     const make = (delegate) => PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: "${MODEL}", delegate }, runningMode: "VIDEO", numPoses: 1 });
     try { landmarker = await make("GPU"); } catch { landmarker = await make("CPU"); }
   } catch (e) {
-    post({ type: "status", status: "error", message: "Couldn't load the pose model. Check your connection and try again." });
+    post({ type: "status", status: "error", message: ${JSON.stringify(msg.modelError)} });
     return;
   }
   try { await openCamera(); } catch (e) {
-    post({ type: "status", status: "error", message: "Camera unavailable. Allow camera access in settings." });
+    post({ type: "status", status: "error", message: ${JSON.stringify(msg.cameraError)} });
     return;
   }
   post({ type: "status", status: "ready" });
@@ -108,7 +124,7 @@ function handle(raw) {
   if (!m || typeof m !== "object") return;
   if (m.type === "start") { running = true; t0 = 0; buffer = []; }
   if (m.type === "stop") { running = false; if (buffer.length) post({ type: "frames", frames: buffer }); buffer = []; post({ type: "status", status: "stopped" }); }
-  if (m.type === "facing" && m.facing !== facing) { facing = m.facing; openCamera().catch(() => post({ type: "status", status: "error", message: "Couldn't switch camera." })); }
+  if (m.type === "facing" && m.facing !== facing) { facing = m.facing; openCamera().catch(() => post({ type: "status", status: "error", message: ${JSON.stringify(msg.switchError)} })); }
 }
 window.__cmd = handle;
 window.addEventListener("message", (e) => handle(e.data));

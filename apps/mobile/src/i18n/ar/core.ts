@@ -188,4 +188,19 @@ export const core: Dict = {
   'Type "DELETE" to confirm': 'اكتب "DELETE" للتأكيد',
   "Delete forever": "حذف نهائي",
   "Estimates are not medical advice.": "التقديرات ليست نصيحة طبية.",
+
+  // Shared between areas
+  "Start": "بدء",
+  "This week": "هذا الأسبوع",
+  "{n} sessions": {"zero":"{n} جلسة","one":"جلسة واحدة","two":"جلستان","few":"{n} جلسات","many":"{n} جلسة","other":"{n} جلسة"},
+  "Barbell": "بار حديد",
+  "Bodyweight": "وزن الجسم",
+  "Cable": "كيبل",
+  "Cardio machine": "جهاز كارديو",
+  "Kettlebell": "كيتل بل",
+  "Pull-up bar": "عقلة",
+  "History": "السجل",
+  "good": "جيد",
+  "{amount} {unit} left": "متبقٍ {amount} {unit}",
+  "{amount} {unit} over": "زيادة {amount} {unit}",
 };

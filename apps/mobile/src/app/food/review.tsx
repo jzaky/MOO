@@ -8,6 +8,8 @@ import { haptic } from "../../lib/haptics";
 import { todayKey, uuid } from "../../lib/ids";
 import { queryClient } from "../../lib/query";
 import { kv } from "../../lib/storage";
+import { mealLabel } from "../../features/food/diet";
+import { t, tn } from "../../i18n";
 import { useTheme } from "../../theme/theme";
 import { Badge, Button, Card, Chip, EmptyState, Row, SectionHeader, Stack, Stepper, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
@@ -45,7 +47,9 @@ interface Recognition {
   meal: string | null;
 }
 
-const TIER_LABEL = { high: "Likely", medium: "Check this", low: "Unsure" } as const;
+function tierLabel(tier: "high" | "medium" | "low"): string {
+  return tier === "high" ? t("Likely") : tier === "medium" ? t("Check this") : t("Unsure");
+}
 
 export default function Review() {
   const th = useTheme();
@@ -69,8 +73,8 @@ export default function Review() {
     );
   }, [rec, choice]);
 
-  if (!rec) return <Screen close title="Review"><EmptyState title="Nothing to review" body="Take a meal photo to start." /></Screen>;
-  if (!rec.isFood) return <Screen close title="Review"><EmptyState icon="camera" title="No food found in the photo" body="Try again with the whole plate in view, or log it manually." action="Log manually" onAction={() => router.replace("/food/search")} /></Screen>;
+  if (!rec) return <Screen close title={t("Review")}><EmptyState title={t("Nothing to review")} body={t("Take a meal photo to start.")} /></Screen>;
+  if (!rec.isFood) return <Screen close title={t("Review")}><EmptyState icon="camera" title={t("No food found in the photo")} body={t("Try again with the whole plate in view, or log it manually.")} action={t("Log manually")} onAction={() => router.replace("/food/search")} /></Screen>;
 
   const included = rec.components.filter((c) => choice[c.id]?.include && choice[c.id]?.foodId);
   const confirm = async () => {
@@ -87,7 +91,7 @@ export default function Review() {
       void queryClient.invalidateQueries({ queryKey: qk.today });
       router.dismissAll();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Couldn't save. Check your connection.");
+      setError(e instanceof ApiError ? e.message : t("Couldn't save. Check your connection."));
     } finally {
       setBusy(false);
     }
@@ -100,32 +104,32 @@ export default function Review() {
 
   const range = estimate?.energyRangeKcal;
   return (
-    <Screen close title="Check your meal" subtitle="Estimated from your photo — adjust anything that looks off." footer={<Row gap={10}><Button title="Discard" kind="secondary" onPress={() => void discard()} style={{ flex: 1 }} /><Button title={`Log ${included.length} item${included.length === 1 ? "" : "s"}`} onPress={() => void confirm()} loading={busy} disabled={!included.length} style={{ flex: 2 }} /></Row>}>
+    <Screen close title={t("Check your meal")} subtitle={t("Estimated from your photo — adjust anything that looks off.")} footer={<Row gap={10}><Button title={t("Discard")} kind="secondary" onPress={() => void discard()} style={{ flex: 1 }} /><Button title={tn(included.length, "Log {n} item", "Log {n} items")} onPress={() => void confirm()} loading={busy} disabled={!included.length} style={{ flex: 2 }} /></Row>}>
       <Card>
         <Row justify="space-between" align="flex-end">
           <View>
-            <T variant="footnote" color="textSecondary">Estimated energy</T>
+            <T variant="footnote" color="textSecondary">{t("Estimated energy")}</T>
             <T variant="metricL">{range ? `${range.low}–${range.high}` : "—"}</T>
-            <T variant="caption" color="textTertiary">kcal · best estimate {isKnown(estimate?.totals.energyKcal) ? Math.round(estimate!.totals.energyKcal as number) : "—"}</T>
+            <T variant="caption" color="textTertiary">{t("kcal · best estimate {kcal}", { kcal: isKnown(estimate?.totals.energyKcal) ? Math.round(estimate!.totals.energyKcal as number) : "—" })}</T>
           </View>
           <Stack gap={2} style={{ alignItems: "flex-end" }}>
-            <T variant="footnote" color="textSecondary">Protein</T>
+            <T variant="footnote" color="textSecondary">{t("Protein")}</T>
             <T variant="headline">{isKnown(estimate?.totals.proteinG) ? `${Math.round(estimate!.totals.proteinG as number)} g` : "—"}</T>
           </Stack>
         </Row>
-        {rec.consumedFactor < 1 ? <T variant="caption" color="textTertiary" style={{ marginTop: 8 }}>Adjusted for about {Math.round((1 - rec.consumedFactor) * 100)}% left on the plate.</T> : null}
+        {rec.consumedFactor < 1 ? <T variant="caption" color="textTertiary" style={{ marginTop: 8 }}>{t("Adjusted for about {pct}% left on the plate.", { pct: Math.round((1 - rec.consumedFactor) * 100) })}</T> : null}
       </Card>
 
       {rec.clarifyingQuestions.length ? (
         <Card>
           <Stack gap={6}>
-            <T variant="label" color="textTertiary">Worth checking</T>
+            <T variant="label" color="textTertiary">{t("Worth checking")}</T>
             {rec.clarifyingQuestions.map((q) => <T key={q} variant="subhead">• {q}</T>)}
           </Stack>
         </Card>
       ) : null}
 
-      <SectionHeader title="Items" />
+      <SectionHeader title={t("Items")} />
       {rec.components.map((c) => {
         const ch = choice[c.id]!;
         return (
@@ -135,11 +139,11 @@ export default function Review() {
                 <View style={{ flex: 1, gap: 4 }}>
                   <Row gap={8}>
                     <T variant="headline" style={{ flexShrink: 1 }}>{c.label}</T>
-                    <Badge label={TIER_LABEL[c.tier]} tone={c.tier === "high" ? "accent" : c.tier === "medium" ? "info" : "warning"} />
+                    <Badge label={tierLabel(c.tier)} tone={c.tier === "high" ? "accent" : c.tier === "medium" ? "info" : "warning"} />
                   </Row>
                   <T variant="caption" color="textTertiary">{c.portionBasis}</T>
                 </View>
-                <Switch value={ch.include} onValueChange={(v) => setChoice((s) => ({ ...s, [c.id]: { ...ch, include: v } }))} trackColor={{ true: th.c.accent, false: th.c.track }} accessibilityLabel={`Include ${c.label}`} />
+                <Switch value={ch.include} onValueChange={(v) => setChoice((s) => ({ ...s, [c.id]: { ...ch, include: v } }))} trackColor={{ true: th.c.accent, false: th.c.track }} accessibilityLabel={t("Include {item}", { item: c.label })} />
               </Row>
               {c.candidates.length ? (
                 <Row gap={6} wrap>
@@ -147,23 +151,23 @@ export default function Review() {
                 </Row>
               ) : (
                 <Pressable onPress={() => router.push({ pathname: "/food/search", params: { day: rec.day ?? "", meal } })}>
-                  <T variant="footnote" color="warning">No database match. Tap to search and add it yourself.</T>
+                  <T variant="footnote" color="warning">{t("No database match. Tap to search and add it yourself.")}</T>
                 </Pressable>
               )}
-              {c.alternatives.length && c.tier !== "high" ? <T variant="caption" color="textTertiary">Could also be: {c.alternatives.join(", ")}</T> : null}
-              <Stepper value={ch.grams} onChange={(g) => setChoice((s) => ({ ...s, [c.id]: { ...ch, grams: g } }))} step={10} min={5} max={2000} label={`${c.label} amount`} format={(g) => `${Math.round(g)} g`} />
-              <T variant="caption" color="textTertiary">Plausible range {c.grams.low}–{c.grams.high} g{c.hiddenIngredientRisk ? ` · ${c.hiddenIngredientRisk}` : ""}</T>
+              {c.alternatives.length && c.tier !== "high" ? <T variant="caption" color="textTertiary">{t("Could also be: {items}", { items: c.alternatives.join(", ") })}</T> : null}
+              <Stepper value={ch.grams} onChange={(g) => setChoice((s) => ({ ...s, [c.id]: { ...ch, grams: g } }))} step={10} min={5} max={2000} label={t("{item} amount", { item: c.label })} format={(g) => `${Math.round(g)} g`} />
+              <T variant="caption" color="textTertiary">{t("Plausible range {low}–{high} g", { low: c.grams.low, high: c.grams.high })}{c.hiddenIngredientRisk ? ` · ${c.hiddenIngredientRisk}` : ""}</T>
             </Stack>
           </Card>
         );
       })}
 
-      <SectionHeader title="Meal" />
+      <SectionHeader title={t("Meal")} />
       <Row gap={8} wrap>
-        {["breakfast", "lunch", "dinner", "snacks"].map((m) => <Chip key={m} label={m[0]!.toUpperCase() + m.slice(1)} selected={meal === m} onPress={() => setMeal(m)} />)}
+        {["breakfast", "lunch", "dinner", "snacks"].map((m) => <Chip key={m} label={mealLabel(m)} selected={meal === m} onPress={() => setMeal(m)} />)}
       </Row>
       {error ? <T variant="footnote" color="danger">{error}</T> : null}
-      <T variant="caption" color="textTertiary">{rec.disclaimer} Saved entries are marked as photo estimates. Photos are deleted after you log or discard.</T>
+      <T variant="caption" color="textTertiary">{rec.disclaimer} {t("Saved entries are marked as photo estimates. Photos are deleted after you log or discard.")}</T>
     </Screen>
   );
 }

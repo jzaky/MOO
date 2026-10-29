@@ -15,6 +15,7 @@ import { useTheme } from "../../theme/theme";
 import { Legend, LineChart, StatTile } from "../../ui/charts";
 import { Badge, Button, Card, Chip, EmptyState, Row, Segmented, SectionHeader, Skeleton, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
+import { fmtDay, locale, t, tn } from "../../i18n";
 
 interface Photo {
   id: string;
@@ -23,9 +24,34 @@ interface Photo {
   url: string;
 }
 const toX = (d: string) => Date.parse(`${d}T00:00:00Z`) / 86_400_000;
-const fmtX = (x: number) => new Date(x * 86_400_000).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
-const fmtDay = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+const fmtX = (x: number) => new Date(x * 86_400_000).toLocaleDateString(locale(), { month: "short", day: "numeric", timeZone: "UTC" });
 const pretty = (s: string) => s.replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+function measurementLabel(kind: string): string {
+  switch (kind) {
+    case "weight": return t("Weight");
+    case "body_fat_pct": return t("Body fat");
+    case "waist": return t("Waist");
+    case "chest": return t("Chest");
+    case "hips": return t("Hips");
+    case "neck": return t("Neck");
+    case "left_arm": return t("Left arm");
+    case "right_arm": return t("Right arm");
+    case "left_thigh": return t("Left thigh");
+    case "right_thigh": return t("Right thigh");
+    case "calf": return t("Calf");
+    default: return pretty(kind.replace("custom:", ""));
+  }
+}
+
+function viewLabel(v: Photo["view"]): string {
+  switch (v) {
+    case "front": return t("Front");
+    case "side": return t("Side");
+    case "back": return t("Back view");
+    default: return t("Other");
+  }
+}
 
 export default function Progress() {
   const th = useTheme();
@@ -45,7 +71,7 @@ export default function Progress() {
   const latest = (kind: string) => measurements.data?.items.find((m) => m.kind === kind)?.latest?.value ?? null;
   const p = profile.data;
   const bf = p?.sex && p.heightCm && latest("waist") && latest("neck") ? navyBodyFat({ sex: p.sex, heightCm: p.heightCm, waistCm: latest("waist")!, neckCm: latest("neck")!, hipCm: latest("hips") }) : null;
-  const bfMissing = !p?.sex || !p?.heightCm ? "height and sex in your profile" : [!latest("waist") && "waist", !latest("neck") && "neck", p.sex === "female" && !latest("hips") && "hips"].filter(Boolean).join(", ");
+  const bfMissing = !p?.sex || !p?.heightCm ? t("height and sex in your profile") : [!latest("waist") && t("waist"), !latest("neck") && t("neck"), p.sex === "female" && !latest("hips") && t("hips")].filter(Boolean).join(t(", "));
   const conv = (kg: number) => (units === "imperial" ? round(kgToLb(kg), 1) : round(kg, 1));
   const unit = units === "imperial" ? "lb" : "kg";
   const cutoff = toX(todayKey()) - Number(range);
@@ -66,40 +92,40 @@ export default function Progress() {
   const compared = compare.map((id) => photos.data?.find((p) => p.id === id)).filter(Boolean) as Photo[];
 
   return (
-    <Screen tabBar title="Progress" right={<Button title="Log weight" size="sm" icon="scale" onPress={() => router.push("/weigh-in")} />} onRefresh={() => { void weight.refetch(); void measurements.refetch(); void photos.refetch(); }} refreshing={weight.isRefetching}>
+    <Screen tabBar title={t("Progress")} right={<Button title={t("Log weight")} size="sm" icon="scale" onPress={() => router.push("/weigh-in")} />} onRefresh={() => { void weight.refetch(); void measurements.refetch(); void photos.refetch(); }} refreshing={weight.isRefetching}>
       {weight.isPending ? <Skeleton height={220} /> : w ? (
         <>
           <Row gap={8} align="stretch">
-            <StatTile label="7-day average" value={w.sevenDayAverageKg ? String(conv(w.sevenDayAverageKg)) : "–"} unit={unit} />
-            <StatTile label="Trend" value={w.rate.kgPerWeek == null ? "–" : `${w.rate.kgPerWeek >= 0 ? "+" : "−"}${conv(Math.abs(w.rate.kgPerWeek))}`} unit={w.rate.kgPerWeek == null ? undefined : `${unit}/wk`} hint={w.rate.sufficiency === "good" ? "≥ 3 weeks of data" : w.rate.sufficiency === "limited" ? "early estimate" : "needs more weigh-ins"} />
+            <StatTile label={t("7-day average")} value={w.sevenDayAverageKg ? String(conv(w.sevenDayAverageKg)) : "–"} unit={unit} />
+            <StatTile label={t("Trend")} value={w.rate.kgPerWeek == null ? "–" : `${w.rate.kgPerWeek >= 0 ? "+" : "−"}${conv(Math.abs(w.rate.kgPerWeek))}`} unit={w.rate.kgPerWeek == null ? undefined : t("{unit}/wk", { unit })} hint={w.rate.sufficiency === "good" ? t("≥ 3 weeks of data") : w.rate.sufficiency === "limited" ? t("early estimate") : t("needs more weigh-ins")} />
           </Row>
           <Card>
             <Stack gap={10}>
               <Row justify="space-between">
-                <T variant="headline">Body weight</T>
-                <View style={{ width: 170 }}><Segmented options={[{ value: "30", label: "1M" }, { value: "90", label: "3M" }, { value: "365", label: "1Y" }]} value={range} onChange={setRange} /></View>
+                <T variant="headline">{t("Body weight")}</T>
+                <View style={{ width: 170 }}><Segmented options={[{ value: "30", label: t("1M") }, { value: "90", label: t("3M") }, { value: "365", label: t("1Y") }]} value={range} onChange={setRange} /></View>
               </Row>
               {pts.length >= 2 ? (
                 <>
                   <LineChart
-                    title="Body weight"
+                    title={t("Body weight")}
                     series={[
-                      { key: "scale", label: "Scale readings", color: th.c.textTertiary, dotsOnly: true, points: pts.map((p) => ({ x: toX(p.day), y: conv(p.scaleKg) })) },
-                      { key: "trend", label: "Trend", color: th.c.energy, points: pts.map((p) => ({ x: toX(p.day), y: conv(p.trendKg) })) },
+                      { key: "scale", label: t("Scale readings"), color: th.c.textTertiary, dotsOnly: true, points: pts.map((p) => ({ x: toX(p.day), y: conv(p.scaleKg) })) },
+                      { key: "trend", label: t("Trend"), color: th.c.energy, points: pts.map((p) => ({ x: toX(p.day), y: conv(p.trendKg) })) },
                     ]}
                     formatY={(v) => String(round(v, 1))}
                     formatX={fmtX}
                     height={200}
                   />
-                  <Legend items={[{ label: "Trend (smoothed)", color: th.c.energy }, { label: "Daily readings", color: th.c.textTertiary, dotted: true }]} />
+                  <Legend items={[{ label: t("Trend (smoothed)"), color: th.c.energy }, { label: t("Daily readings"), color: th.c.textTertiary, dotted: true }]} />
                 </>
               ) : (
-                <EmptyState icon="scale" title="Not enough weigh-ins yet" body="Weigh in a few mornings a week; the trend appears after a couple of readings." />
+                <EmptyState icon="scale" title={t("Not enough weigh-ins yet")} body={t("Weigh in a few mornings a week; the trend appears after a couple of readings.")} />
               )}
               <T variant="footnote" color="textSecondary">{w.interpretation}</T>
               {w.progress && w.goal?.targetWeightKg ? (
                 <View style={{ gap: 6 }}>
-                  <Row justify="space-between"><T variant="footnote" color="textSecondary">Goal {conv(w.goal.targetWeightKg)} {unit}</T><T variant="footnote" color="textSecondary">{Math.round(w.progress.fraction * 100)}%{w.progress.weeksRemaining ? ` · ~${Math.round(w.progress.weeksRemaining)} weeks at this rate` : ""}</T></Row>
+                  <Row justify="space-between"><T variant="footnote" color="textSecondary">{t("Goal {value} {unit}", { value: conv(w.goal.targetWeightKg), unit })}</T><T variant="footnote" color="textSecondary">{Math.round(w.progress.fraction * 100)}%{w.progress.weeksRemaining ? ` · ${tn(Math.round(w.progress.weeksRemaining), "~{n} week at this rate", "~{n} weeks at this rate")}` : ""}</T></Row>
                   <View style={{ height: 6, borderRadius: 3, backgroundColor: th.c.track }}><View style={{ height: 6, borderRadius: 3, width: `${w.progress.fraction * 100}%`, backgroundColor: th.c.energy }} /></View>
                 </View>
               ) : null}
@@ -108,22 +134,22 @@ export default function Progress() {
         </>
       ) : null}
 
-      <SectionHeader title="Measurements" action="Add" onAction={() => router.push({ pathname: "/weigh-in", params: { measurements: "1" } })} />
+      <SectionHeader title={t("Measurements")} action={t("Add")} onAction={() => router.push({ pathname: "/weigh-in", params: { measurements: "1" } })} />
       <Card>
         {measurements.data?.items.length ? (
           <Stack gap={8}>
             {measurements.data.items.map((m) => (
               <Row key={m.kind} justify="space-between">
-                <T variant="subhead">{pretty(m.kind.replace("custom:", ""))}</T>
+                <T variant="subhead">{measurementLabel(m.kind)}</T>
                 <T variant="subhead" color="textSecondary">
                   {m.latest ? `${units === "imperial" ? round(m.latest.value / 2.54, 1) : m.latest.value} ${units === "imperial" ? "in" : "cm"}` : "–"}
-                  {m.change != null ? ` (${m.change >= 0 ? "+" : "−"}${units === "imperial" ? round(Math.abs(m.change) / 2.54, 1) : round(Math.abs(m.change), 1)} since ${m.first ? fmtDay(m.first.day) : "first"})` : ""}
+                  {m.change != null ? ` (${t("{change} since {date}", { change: `${m.change >= 0 ? "+" : "−"}${units === "imperial" ? round(Math.abs(m.change) / 2.54, 1) : round(Math.abs(m.change), 1)}`, date: m.first ? fmtDay(m.first.day) : t("first") })})` : ""}
                 </T>
               </Row>
             ))}
           </Stack>
         ) : (
-          <EmptyState icon="edit" title="No measurements yet" body="Waist every couple of weeks is a useful companion to the scale." />
+          <EmptyState icon="edit" title={t("No measurements yet")} body={t("Waist every couple of weeks is a useful companion to the scale.")} />
         )}
       </Card>
 
@@ -131,24 +157,24 @@ export default function Progress() {
         {bf ? (
           <Stack gap={4}>
             <Row justify="space-between">
-              <T variant="headline">Body fat ≈ {bf.percent}%</T>
-              <Badge label="estimate" tone="info" />
+              <T variant="headline">{t("Body fat ≈ {pct}%", { pct: bf.percent })}</T>
+              <Badge label={t("estimate")} tone="info" />
             </Row>
-            <T variant="footnote" color="textSecondary">US Navy method from your latest waist, neck{p?.sex === "female" ? ", hips" : ""} and height. Typically within ±{bf.typicalErrorPct} points of lab methods; use it to see a trend, not as an exact number.</T>
+            <T variant="footnote" color="textSecondary">{p?.sex === "female" ? t("US Navy method from your latest waist, neck, hips and height. Typically within ±{err} points of lab methods; use it to see a trend, not as an exact number.", { err: bf.typicalErrorPct }) : t("US Navy method from your latest waist, neck and height. Typically within ±{err} points of lab methods; use it to see a trend, not as an exact number.", { err: bf.typicalErrorPct })}</T>
           </Stack>
         ) : (
-          <T variant="footnote" color="textSecondary">Add {bfMissing || "measurements"} to see a body-fat estimate (US Navy method).</T>
+          <T variant="footnote" color="textSecondary">{t("Add {missing} to see a body-fat estimate (US Navy method).", { missing: bfMissing || t("measurements") })}</T>
         )}
       </Card>
 
-      <SectionHeader title="Photos" action="Add" onAction={() => void uploadPhoto()} />
-      <Row gap={8}>{(["front", "side", "back"] as const).map((v) => <Chip key={v} label={pretty(v)} selected={view === v} onPress={() => { setView(v); setCompare([]); }} />)}</Row>
+      <SectionHeader title={t("Photos")} action={t("Add")} onAction={() => void uploadPhoto()} />
+      <Row gap={8}>{(["front", "side", "back"] as const).map((v) => <Chip key={v} label={viewLabel(v)} selected={view === v} onPress={() => { setView(v); setCompare([]); }} />)}</Row>
       {compared.length === 2 ? (
         <Card padded={false}>
           <Row gap={2}>
             {compared.map((p) => (
               <View key={p.id} style={{ flex: 1 }}>
-                <Image source={{ uri: p.url }} style={{ width: "100%", aspectRatio: 0.75 }} contentFit="cover" accessibilityLabel={`${p.view} photo from ${p.day}`} />
+                <Image source={{ uri: p.url }} style={{ width: "100%", aspectRatio: 0.75 }} contentFit="cover" accessibilityLabel={t("{view} photo from {date}", { view: viewLabel(p.view), date: fmtDay(p.day) })} />
                 <T variant="caption" color="textSecondary" align="center" style={{ paddingVertical: 6 }}>{fmtDay(p.day)}</T>
               </View>
             ))}
@@ -161,46 +187,46 @@ export default function Progress() {
             {viewPhotos.map((p) => {
               const sel = compare.includes(p.id);
               return (
-                <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={`Photo ${p.day}${sel ? ", selected for comparison" : ""}`} onPress={() => setCompare((c) => (sel ? c.filter((x) => x !== p.id) : [...c, p.id].slice(-2)))} style={{ borderRadius: 10, overflow: "hidden", borderWidth: 2, borderColor: sel ? th.c.accent : "transparent" }}>
+                <Pressable key={p.id} accessibilityRole="button" accessibilityLabel={sel ? t("Photo {date}, selected for comparison", { date: fmtDay(p.day) }) : t("Photo {date}", { date: fmtDay(p.day) })} onPress={() => setCompare((c) => (sel ? c.filter((x) => x !== p.id) : [...c, p.id].slice(-2)))} style={{ borderRadius: 10, overflow: "hidden", borderWidth: 2, borderColor: sel ? th.c.accent : "transparent" }}>
                   <Image source={{ uri: p.url }} style={{ width: 76, height: 100 }} contentFit="cover" />
                 </Pressable>
               );
             })}
           </Row>
-          <T variant="caption" color="textTertiary">Tap two photos to compare side by side. Photos are private and shown through short-lived links.</T>
+          <T variant="caption" color="textTertiary">{t("Tap two photos to compare side by side. Photos are private and shown through short-lived links.")}</T>
         </>
       ) : (
-        <Card><EmptyState icon="camera" title={`No ${view} photos yet`} body="Same lighting and distance each time makes comparisons more useful." /></Card>
+        <Card><EmptyState icon="camera" title={t("No {view} photos yet", { view: viewLabel(view) })} body={t("Same lighting and distance each time makes comparisons more useful.")} /></Card>
       )}
 
       {analytics.data?.strengthTrends.length ? (
         <>
-          <SectionHeader title="Strength" />
-          {analytics.data.strengthTrends.slice(0, 3).map((t) => (
-            <Card key={t.exerciseId}>
-              <Row justify="space-between"><T variant="headline">{t.name}</T><Badge label="est. 1RM" /></Row>
-              <LineChart title={`${t.name} estimated 1RM`} series={[{ key: t.exerciseId, label: t.name, color: th.c.protein, points: t.points.map((p) => ({ x: toX(p.day), y: round(units === "imperial" ? kgToLb(p.e1rmKg) : p.e1rmKg, 1) })) }]} formatY={(v) => String(Math.round(v))} formatX={fmtX} height={130} />
+          <SectionHeader title={t("Strength")} />
+          {analytics.data.strengthTrends.slice(0, 3).map((tr) => (
+            <Card key={tr.exerciseId}>
+              <Row justify="space-between"><T variant="headline">{tr.name}</T><Badge label={t("est. 1RM")} /></Row>
+              <LineChart title={t("{name} estimated 1RM", { name: tr.name })} series={[{ key: tr.exerciseId, label: tr.name, color: th.c.protein, points: tr.points.map((p) => ({ x: toX(p.day), y: round(units === "imperial" ? kgToLb(p.e1rmKg) : p.e1rmKg, 1) })) }]} formatY={(v) => String(Math.round(v))} formatX={fmtX} height={130} />
             </Card>
           ))}
         </>
       ) : null}
 
-      <SectionHeader title="Recovery" />
+      <SectionHeader title={t("Recovery")} />
       <Card>
         {recovery.data ? (
           <Stack gap={8}>
             <Row gap={8} wrap>
-              <Badge label={`Sleep ${recovery.data.sleep.last7AvgMin ? `${round(recovery.data.sleep.last7AvgMin / 60, 1)} h` : "no data"}`} />
-              <Badge label={`Resting HR ${recovery.data.restingHr.last7Avg ? Math.round(recovery.data.restingHr.last7Avg) : "–"}`} />
-              <Badge label={`Steps ${recovery.data.steps.at(-1)?.steps.toLocaleString() ?? "–"}`} />
+              <Badge label={t("Sleep {value}", { value: recovery.data.sleep.last7AvgMin ? t("{h} h", { h: round(recovery.data.sleep.last7AvgMin / 60, 1) }) : t("no data") })} />
+              <Badge label={t("Resting HR {value}", { value: recovery.data.restingHr.last7Avg ? Math.round(recovery.data.restingHr.last7Avg) : "–" })} />
+              <Badge label={t("Steps {value}", { value: recovery.data.steps.at(-1)?.steps.toLocaleString(locale()) ?? "–" })} />
             </Row>
             {recovery.data.insights.map((i) => <T key={i.id} variant="footnote" color="textSecondary">{i.message}</T>)}
             <T variant="caption" color="textTertiary">{recovery.data.explanation}</T>
-            <Button title="Connect Apple Health / Health Connect" kind="ghost" size="sm" onPress={() => router.push("/settings")} />
+            <Button title={t("Connect Apple Health / Health Connect")} kind="ghost" size="sm" onPress={() => router.push("/settings")} />
           </Stack>
         ) : <Skeleton height={60} />}
       </Card>
-      {profile.data ? <T variant="caption" color="textTertiary">Latest weigh-in {w?.latest ? `${displayBodyWeight(w.latest.kg, units).value} ${unit} on ${w.latest.day}` : "none"}.</T> : null}
+      {profile.data ? <T variant="caption" color="textTertiary">{w?.latest ? t("Latest weigh-in {value} {unit} on {date}.", { value: displayBodyWeight(w.latest.kg, units).value, unit, date: fmtDay(w.latest.day) }) : t("No weigh-ins yet.")}</T> : null}
     </Screen>
   );
 }

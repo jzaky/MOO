@@ -8,15 +8,18 @@ import { dietRowBadge } from "../../features/food/diet";
 import { haptic } from "../../lib/haptics";
 import { todayKey } from "../../lib/ids";
 import type { Food, RecentFood } from "../../lib/types";
+import { t, tn } from "../../i18n";
 import { Badge, Card, Chip, Divider, EmptyState, ErrorState, Field, IconButton, ListRow, Row, SectionHeader, Skeleton, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
 
-const MEALS = [
-  { value: "breakfast", label: "Breakfast" },
-  { value: "lunch", label: "Lunch" },
-  { value: "dinner", label: "Dinner" },
-  { value: "snacks", label: "Snacks" },
-];
+function meals() {
+  return [
+    { value: "breakfast", label: t("Breakfast") },
+    { value: "lunch", label: t("Lunch") },
+    { value: "dinner", label: t("Dinner") },
+    { value: "snacks", label: t("Snacks") },
+  ];
+}
 
 function useDebounced<T>(value: T, ms = 250): T {
   const [v, setV] = useState(value);
@@ -28,8 +31,8 @@ function useDebounced<T>(value: T, ms = 250): T {
 }
 
 function foodSubtitle(f: Food): string {
-  const kcal = typeof f.per100.energyKcal === "number" ? `${Math.round(f.per100.energyKcal)} kcal / 100 ${f.baseUnit}` : "energy unknown";
-  return [f.brand, kcal, f.isPrivate ? "yours" : null].filter(Boolean).join(" · ");
+  const kcal = typeof f.per100.energyKcal === "number" ? `${Math.round(f.per100.energyKcal)} kcal / 100 ${f.baseUnit}` : t("energy unknown");
+  return [f.brand, kcal, f.isPrivate ? t("yours") : null].filter(Boolean).join(" · ");
 }
 
 export default function FoodSearch() {
@@ -59,10 +62,10 @@ export default function FoodSearch() {
   };
 
   return (
-    <Screen close title="Add food" right={<><IconButton icon="barcode" label="Scan barcode" onPress={() => router.push({ pathname: "/food/scan", params: { day, meal } })} /><IconButton icon="camera" label="Photo" onPress={() => router.push({ pathname: "/food/camera", params: { day, meal } })} /><IconButton icon="mic" label="Voice" onPress={() => router.push({ pathname: "/food/voice", params: { day } })} /></>}>
-      <Field value={q} onChangeText={setQ} placeholder="Search foods, brands…" autoFocus returnKeyType="search" autoCorrect={false} accessibilityLabel="Search foods" />
+    <Screen close title={t("Add food")} right={<><IconButton icon="barcode" label={t("Scan barcode")} onPress={() => router.push({ pathname: "/food/scan", params: { day, meal } })} /><IconButton icon="camera" label={t("Photo")} onPress={() => router.push({ pathname: "/food/camera", params: { day, meal } })} /><IconButton icon="mic" label={t("Voice")} onPress={() => router.push({ pathname: "/food/voice", params: { day } })} /></>}>
+      <Field value={q} onChangeText={setQ} placeholder={t("Search foods, brands…")} autoFocus returnKeyType="search" autoCorrect={false} accessibilityLabel={t("Search foods")} />
       <Row gap={8} wrap>
-        {MEALS.map((m) => (
+        {meals().map((m) => (
           <Chip key={m.value} label={m.label} selected={meal === m.value} onPress={() => setMeal(m.value)} />
         ))}
       </Row>
@@ -97,7 +100,7 @@ export default function FoodSearch() {
             </Card>
           ) : (
             <Card>
-              <EmptyState icon="search" title={`No results for "${dq}"`} body="Try a simpler name, scan the barcode, or create the food yourself." action="Create custom food" onAction={() => router.push({ pathname: "/food/custom", params: { name: dq } })} />
+              <EmptyState icon="search" title={t("No results for “{query}”", { query: dq })} body={t("Try a simpler name, scan the barcode, or create the food yourself.")} action={t("Create custom food")} onAction={() => router.push({ pathname: "/food/custom", params: { name: dq } })} />
             </Card>
           )}
         </Stack>
@@ -105,18 +108,18 @@ export default function FoodSearch() {
         <>
           {saved.data?.length ? (
             <>
-              <SectionHeader title="Saved meals" />
+              <SectionHeader title={t("Saved meals")} />
               <Card padded={false} style={{ paddingHorizontal: 14 }}>
                 {saved.data.slice(0, 5).map((m, i) => (
                   <View key={m.id}>
                     {i ? <Divider /> : null}
-                    <ListRow title={m.name} subtitle={`${Math.round(m.energyKcal)} kcal · ${m.items.length} items`} right={<IconButton icon="add" label={`Log ${m.name}`} onPress={() => void logSaved(m.id)} bg="surfaceRaised" size={34} />} />
+                    <ListRow title={m.name} subtitle={`${Math.round(m.energyKcal)} kcal · ${tn(m.items.length, "{n} item", "{n} items")}`} right={<IconButton icon="add" label={t("Log {name}", { name: m.name })} onPress={() => void logSaved(m.id)} bg="surfaceRaised" size={34} />} />
                   </View>
                 ))}
               </Card>
             </>
           ) : null}
-          <SectionHeader title="Recent" />
+          <SectionHeader title={t("Recent")} />
           {recent.isPending ? (
             <Card>
               <Skeleton />
@@ -128,21 +131,21 @@ export default function FoodSearch() {
                   {i ? <Divider /> : null}
                   <ListRow
                     title={r.food.name}
-                    subtitle={r.lastPortion ? `Last: ${r.lastPortion.kind === "serving" ? `${r.lastPortion.quantity} × ${r.food.servings.find((s) => s.id === (r.lastPortion as { servingId: string }).servingId)?.label ?? "serving"}` : `${r.lastPortion.quantity} ${r.lastPortion.unit}`}` : foodSubtitle(r.food)}
+                    subtitle={r.lastPortion ? t("Last: {portion}", { portion: r.lastPortion.kind === "serving" ? `${r.lastPortion.quantity} × ${r.food.servings.find((s) => s.id === (r.lastPortion as { servingId: string }).servingId)?.label ?? t("serving")}` : `${r.lastPortion.quantity} ${r.lastPortion.unit}` }) : foodSubtitle(r.food)}
                     onPress={() => open(r.food)}
-                    right={<IconButton icon="add" label={`Log ${r.food.name} again`} onPress={() => relog(r)} bg="surfaceRaised" size={34} />}
+                    right={<IconButton icon="add" label={t("Log {name} again", { name: r.food.name })} onPress={() => relog(r)} bg="surfaceRaised" size={34} />}
                   />
                 </View>
               ))}
             </Card>
           ) : (
             <Card>
-              <EmptyState icon="history" title="No recent foods yet" body="Foods you log appear here so you can add them again in one tap." />
+              <EmptyState icon="history" title={t("No recent foods yet")} body={t("Foods you log appear here so you can add them again in one tap.")} />
             </Card>
           )}
           {favorites.data?.length ? (
             <>
-              <SectionHeader title="Favourites" />
+              <SectionHeader title={t("Favourites")} />
               <Card padded={false} style={{ paddingHorizontal: 14 }}>
                 {favorites.data.map((f, i) => (
                   <View key={f.id}>
@@ -153,16 +156,16 @@ export default function FoodSearch() {
               </Card>
             </>
           ) : null}
-          <SectionHeader title="More ways to log" />
+          <SectionHeader title={t("More ways to log")} />
           <Card padded={false} style={{ paddingHorizontal: 14 }}>
-            <ListRow icon="recipe" title="From a recipe" onPress={() => router.push("/recipes")} />
+            <ListRow icon="recipe" title={t("From a recipe")} onPress={() => router.push("/recipes")} />
             <Divider />
-            <ListRow icon="restaurant" title="Restaurant menu" subtitle="Photo or text of a menu" onPress={() => router.push({ pathname: "/food/menu", params: { day, meal } })} />
+            <ListRow icon="restaurant" title={t("Restaurant menu")} subtitle={t("Photo or text of a menu")} onPress={() => router.push({ pathname: "/food/menu", params: { day, meal } })} />
           </Card>
         </>
       )}
       <T variant="caption" color="textTertiary">
-        Food data: USDA FoodData Central (public domain) and Open Food Facts contributors (ODbL). Values can contain errors; you can correct any food for yourself.
+        {t("Food data: USDA FoodData Central (public domain) and Open Food Facts contributors (ODbL). Values can contain errors; you can correct any food for yourself.")}
       </T>
     </Screen>
   );

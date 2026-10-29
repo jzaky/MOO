@@ -41,6 +41,9 @@ The data colours were run through the dataviz palette validator against the dark
 - The rest timer is a polite live region.
 - Charts have titles and expose values through scrubbing.
 
+## Language and direction
+All UI text goes through `t()` / `tn()` in `apps/mobile/src/i18n`; the English string is the key and the Arabic lives in `i18n/ar/<area>.ts`. In Arabic the layout is right-to-left: use logical style props (`marginStart`, `paddingEnd`, `start`/`end`), never left/right. Chevrons and back arrows mirror automatically. Numbers keep Western digits; dates use `fmtDay()` / `locale()`. Unit symbols (kg, g, kcal) are not translated.
+
 ## Navigation
 Five tabs: **Today · Nutrition · Train · Progress · Coach**. These are native tabs on iOS and Android, and headless tabs on web. Modal and sheet routes sit above the tabs; the live workout is a full-screen modal with swipe-to-dismiss disabled.
 
@@ -53,14 +56,14 @@ Five tabs: **Today · Nutrition · Train · Progress · Coach**. These are nativ
 | Today | `/(tabs)` | Greeting, quick log, energy ring + macros, water, next workout, recovery check-in, insights | Skeletons; "no targets yet"; error + retry | Built |
 | Nutrition | `/(tabs)/nutrition` | Day navigator, totals, meals with entries, move/delete, weekly summary | Skeleton; empty meal "Add" prompts | Built |
 | Add food (search) | `/food/search` | Search, recents, favourites, meal chips, entry to scan/photo/voice/custom/quick add | Recents when the query is empty; "no results → create custom food" | Built |
-| Food detail | `/food/[id]` | Portion picker (servings or grams), live nutrient preview, completeness note, favourite | Missing nutrients shown as "–" | Built |
+| Food detail | `/food/[id]` | Portion picker (servings or grams), live nutrient preview, completeness note, favourite; standard-recipe ingredients; pork/alcohol notes | Missing nutrients shown as "–" | Built |
 | Barcode scan | `/food/scan` | Continuous scan, product card, unknown-product path | Permission prompt; not-found guidance | Built (device-unverified) |
 | Meal photo | `/food/camera` | Capture one or more photos; before/after for leftovers | Consent gate if photo analysis is off | Built (device-unverified) |
 | Recognition review | `/food/review` | Components with confidence tier, ranges, alternatives; edit before logging | Items the server marks as needing input start unselected | Built |
 | Voice log | `/food/voice` | Record, transcribe, parsed draft to confirm | "Transcription not configured" fallback | Built (device-unverified) |
 | Custom food, Quick add | `/food/custom`, `/food/quick-add` | Manual entry; quick add requires energy | Field validation | Built |
-| Train | `/(tabs)/train` | Resume banner, program days, suggested program, weekly sets, recent workouts | Empty "Suggest a program" | Built |
-| Pre-start / Live workout | `/workout/active` | Sets with previous values, suggestion button, rest timer, set types, pause, finish | Works offline; discard confirmation | Built |
+| Train | `/(tabs)/train` | Resume banner, program days, block week and deload scheduling, fatigue suggestion, suggested program, weekly sets, recent workouts | Empty "Suggest a program" | Built |
+| Pre-start / Live workout | `/workout/active` | Deload banner, sets with previous values, suggestion button, rest timer, set types, plate calculator, pause, finish | Works offline; discard confirmation | Built |
 | Exercise picker / info | `/workout/exercise-picker` | Search by name, muscle, equipment; alternatives | Empty search state | Built |
 | Workout summary | `/workout/summary/[id]` | Volume, PRs, comparison, next targets (pending confirmation) | Skeleton | Built |
 | Progress | `/(tabs)/progress` | Weight trend (scale dots + EWMA), rate, goal progress, measurements, photos with compare, strength e1RM, recovery | "Not enough weigh-ins" with guidance | Built |
@@ -73,3 +76,4 @@ Five tabs: **Today · Nutrition · Train · Progress · Coach**. These are nativ
 | Grocery list, Pantry | `/plan/grocery/[id]`, `/plan/pantry` | Check-off by category; "I have this" adds to pantry; pantry subtracts from lists | Empty list explains why | Built |
 | Restaurant menu | `/food/menu` | Photo or text; dishes ranked by fit with what is left today; printed vs estimate labels | Consent and AI-unavailable messages; manual fallback | Built |
 | Form check | `/workout/form-check` | Squat or push-up; set-up guidance, skeleton overlay, live rep count, results with per-rep depth and tempo | Model loading, camera denied, "no person in view", and too-little-tracked states | Built (device unverified) |
+| Import | `/import` | Strong, Hevy or MyFitnessPal CSV → preview, units, per-exercise match choices → import | Unreadable file and format errors explained | Built |

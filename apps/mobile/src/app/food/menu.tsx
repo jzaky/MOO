@@ -11,36 +11,37 @@ import { haptic } from "../../lib/haptics";
 import { todayKey } from "../../lib/ids";
 import { appendImage, compressForUpload } from "../../lib/images";
 import type { MenuDish, MenuResult } from "../../lib/types";
+import { fmtNum, t, tn } from "../../i18n";
 import { Badge, Button, Card, Chip, Field, Row, SectionHeader, Segmented, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
 
 const errText = (e: unknown) =>
-  e instanceof ApiError ? (e.code === "consent_required" ? "Photo analysis is off. Turn it on in Settings → Privacy & AI, or paste the menu text." : e.message) : "Couldn't read the menu. Try again or paste the text.";
+  e instanceof ApiError ? (e.code === "consent_required" ? t("Photo analysis is off. Turn it on in Settings → Privacy & AI, or paste the menu text.") : e.message) : t("Couldn't read the menu. Try again or paste the text.");
 
 function energyText(d: MenuDish): string {
   if (d.basis === "estimate" && d.energyRangeKcal) return `${d.energyRangeKcal.low}–${d.energyRangeKcal.high} kcal`;
-  return d.energyKcal != null ? `${d.energyKcal} kcal` : "energy unknown";
+  return d.energyKcal != null ? `${d.energyKcal} kcal` : t("energy unknown");
 }
 
 function DishCard({ d, best, onLog, logged }: { d: MenuDish; best: boolean; onLog: () => void; logged: boolean }) {
-  const macros = [d.proteinG != null ? `P ${d.proteinG} g` : null, d.carbsG != null ? `C ${d.carbsG} g` : null, d.fatG != null ? `F ${d.fatG} g` : null].filter(Boolean).join(" · ");
+  const macros = [d.proteinG != null ? t("P {g} g", { g: d.proteinG }) : null, d.carbsG != null ? t("C {g} g", { g: d.carbsG }) : null, d.fatG != null ? t("F {g} g", { g: d.fatG }) : null].filter(Boolean).join(" · ");
   return (
     <Card>
       <Stack gap={6}>
         <Row justify="space-between" align="flex-start">
           <T variant="headline" style={{ flex: 1 }}>{d.name}</T>
-          <Badge label={d.basis === "printed" ? "on menu" : "estimate"} tone={d.basis === "printed" ? "accent" : "info"} />
+          <Badge label={d.basis === "printed" ? t("on menu") : t("estimate")} tone={d.basis === "printed" ? "accent" : "info"} />
         </Row>
         {d.description ? <T variant="footnote" color="textSecondary" numberOfLines={2}>{d.description}</T> : null}
         <Row justify="space-between">
           <View style={{ flex: 1 }}>
             <T variant="subhead">{energyText(d)}</T>
-            {macros ? <T variant="caption" color="textSecondary">{macros}{d.basis === "estimate" ? " (typical portion)" : ""}</T> : null}
+            {macros ? <T variant="caption" color="textSecondary">{d.basis === "estimate" ? t("{macros} (typical portion)", { macros }) : macros}</T> : null}
           </View>
-          {logged ? <T variant="footnote" color="accent">Logged</T> : <Button title="Log" size="sm" icon="add" disabled={d.energyKcal == null} onPress={onLog} />}
+          {logged ? <T variant="footnote" color="accent">{t("Logged")}</T> : <Button title={t("Log")} size="sm" icon="add" disabled={d.energyKcal == null} onPress={onLog} />}
         </Row>
-        {best ? <T variant="caption" color="accent">Fits what's left of your day well</T> : null}
-        {d.unmatchedComponents.length ? <T variant="caption" color="textTertiary">Not in the food database: {d.unmatchedComponents.join(", ")}. Not counted.</T> : null}
+        {best ? <T variant="caption" color="accent">{t("Fits what's left of your day well")}</T> : null}
+        {d.unmatchedComponents.length ? <T variant="caption" color="textTertiary">{t("Not in the food database: {items}. Not counted.", { items: d.unmatchedComponents.join(", ") })}</T> : null}
       </Stack>
     </Card>
   );
@@ -89,39 +90,39 @@ export default function MenuScreen() {
   const ready = mode === "text" ? text.trim().length >= 3 : photos.length > 0;
 
   return (
-    <Screen close title="Restaurant menu" subtitle={res?.restaurant ?? "Find dishes that fit your day"}>
+    <Screen close title={t("Restaurant menu")} subtitle={res?.restaurant ?? t("Find dishes that fit your day")}>
       {!res ? (
         <>
-          <Segmented options={[{ value: "photo", label: "Photo of menu" }, { value: "text", label: "Paste text" }]} value={mode} onChange={setMode} />
+          <Segmented options={[{ value: "photo", label: t("Photo of menu") }, { value: "text", label: t("Paste text") }]} value={mode} onChange={setMode} />
           {mode === "photo" ? (
             <Stack gap={10}>
               <Row gap={8}>
                 {photos.map((u, i) => (
-                  <Pressable key={u} accessibilityLabel={`Remove page ${i + 1}`} onPress={() => setPhotos((p) => p.filter((x) => x !== u))}>
+                  <Pressable key={u} accessibilityLabel={t("Remove page {n}", { n: i + 1 })} onPress={() => setPhotos((p) => p.filter((x) => x !== u))}>
                     <Image source={{ uri: u }} style={{ width: 72, height: 96, borderRadius: 10 }} contentFit="cover" />
                   </Pressable>
                 ))}
               </Row>
               <Row gap={8}>
-                {Platform.OS !== "web" ? <Button title="Take photo" icon="camera" kind="secondary" size="md" onPress={() => void addPhoto(true)} style={{ flex: 1 }} /> : null}
-                <Button title="Choose photos" icon="photos" kind="secondary" size="md" onPress={() => void addPhoto(false)} style={{ flex: 1 }} />
+                {Platform.OS !== "web" ? <Button title={t("Take photo")} icon="camera" kind="secondary" size="md" onPress={() => void addPhoto(true)} style={{ flex: 1 }} /> : null}
+                <Button title={t("Choose photos")} icon="photos" kind="secondary" size="md" onPress={() => void addPhoto(false)} style={{ flex: 1 }} />
               </Row>
-              <T variant="caption" color="textTertiary">Up to 3 pages. Photos are sent to the AI provider only with photo analysis turned on in settings, and are not stored.</T>
+              <T variant="caption" color="textTertiary">{t("Up to 3 pages. Photos are sent to the AI provider only with photo analysis turned on in settings, and are not stored.")}</T>
             </Stack>
           ) : (
-            <Field label="Menu text" value={text} onChangeText={setText} multiline numberOfLines={8} style={{ minHeight: 160, textAlignVertical: "top" }} placeholder={"Chicken shawarma plate – garlic sauce, fries, salad\nGrilled halloumi wrap\nLentil soup"} />
+            <Field label={t("Menu text")} value={text} onChangeText={setText} multiline numberOfLines={8} style={{ minHeight: 160, textAlignVertical: "top" }} placeholder={t("Chicken shawarma plate – garlic sauce, fries, salad\nGrilled halloumi wrap\nLentil soup")} />
           )}
           {analyze.error ? <T variant="footnote" color="danger">{errText(analyze.error)}</T> : null}
-          <Button title="Read menu" icon="search" disabled={!ready} loading={analyze.isPending} onPress={() => analyze.mutate()} />
+          <Button title={t("Read menu")} icon="search" disabled={!ready} loading={analyze.isPending} onPress={() => analyze.mutate()} />
         </>
       ) : (
         <>
-          {res.remaining ? <T variant="subhead" color="textSecondary">Left today: {Math.max(0, Math.round(res.remaining.energyKcal)).toLocaleString()} kcal · {Math.max(0, Math.round(res.remaining.proteinG))} g protein</T> : null}
+          {res.remaining ? <T variant="subhead" color="textSecondary">{t("Left today: {kcal} kcal · {protein} g protein", { kcal: fmtNum(Math.max(0, Math.round(res.remaining.energyKcal))), protein: Math.max(0, Math.round(res.remaining.proteinG)) })}</T> : null}
           <Row gap={8} wrap>{MEALS.map((m) => <Chip key={m.value} label={m.label} selected={meal === m.value} onPress={() => setMeal(m.value)} />)}</Row>
-          <SectionHeader title={`${res.dishes.length} dishes`} action="Start over" onAction={() => analyze.reset()} />
+          <SectionHeader title={tn(res.dishes.length, "{n} dish", "{n} dishes")} action={t("Start over")} onAction={() => analyze.reset()} />
           {res.dishes.map((d, i) => <DishCard key={`${d.name}-${i}`} d={d} best={i < 2 && (d.fit ?? -1) > 0} logged={logged.has(i)} onLog={() => log(d, i)} />)}
-          <T variant="caption" color="textTertiary">{res.disclaimer} Estimates are logged as estimates.</T>
-          <Button title="Done" kind="secondary" onPress={() => router.back()} />
+          <T variant="caption" color="textTertiary">{res.disclaimer} {t("Estimates are logged as estimates.")}</T>
+          <Button title={t("Done")} kind="secondary" onPress={() => router.back()} />
         </>
       )}
     </Screen>

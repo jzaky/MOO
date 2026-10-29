@@ -9,19 +9,22 @@ import { haptic } from "../../lib/haptics";
 import { appendImage, compressForUpload } from "../../lib/images";
 import { queryClient } from "../../lib/query";
 import type { Food } from "../../lib/types";
+import { t } from "../../i18n";
 import { Badge, Button, Card, Field, Row, Segmented, SectionHeader, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
 
-const FIELDS: { key: keyof NutrientValues; label: string; unit: string }[] = [
-  { key: "energyKcal", label: "Energy", unit: "kcal" },
-  { key: "proteinG", label: "Protein", unit: "g" },
-  { key: "carbsG", label: "Carbohydrate", unit: "g" },
-  { key: "sugarG", label: "of which sugars", unit: "g" },
-  { key: "fatG", label: "Fat", unit: "g" },
-  { key: "saturatedFatG", label: "of which saturated", unit: "g" },
-  { key: "fiberG", label: "Fibre", unit: "g" },
-  { key: "sodiumMg", label: "Sodium", unit: "mg" },
-];
+function fields(): { key: keyof NutrientValues; label: string; unit: string }[] {
+  return [
+    { key: "energyKcal", label: t("Energy"), unit: "kcal" },
+    { key: "proteinG", label: t("Protein"), unit: "g" },
+    { key: "carbsG", label: t("Carbohydrate"), unit: "g" },
+    { key: "sugarG", label: t("of which sugars"), unit: "g" },
+    { key: "fatG", label: t("Fat"), unit: "g" },
+    { key: "saturatedFatG", label: t("of which saturated"), unit: "g" },
+    { key: "fiberG", label: t("Fibre"), unit: "g" },
+    { key: "sodiumMg", label: t("Sodium"), unit: "mg" },
+  ];
+}
 
 export default function CustomFood() {
   const params = useLocalSearchParams<{ barcode?: string; label?: string; name?: string; correctId?: string }>();
@@ -69,7 +72,7 @@ export default function CustomFood() {
       setFlags([...r.flags, ...r.unreadableFields.map((u) => `unreadable:${u}`)]);
       haptic("success");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Couldn't read the label.");
+      setError(e instanceof ApiError ? e.message : t("Couldn't read the label."));
     } finally {
       setBusy(false);
     }
@@ -98,44 +101,44 @@ export default function CustomFood() {
       void queryClient.invalidateQueries({ queryKey: qk.food(food.id) });
       router.replace({ pathname: "/food/[id]", params: { id: food.id } });
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Couldn't save.");
+      setError(e instanceof ApiError ? e.message : t("Couldn't save."));
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Screen close title={correcting ? "Correct food" : "New food"} subtitle={correcting ? "Saved as your private version. The shared record and past entries are unchanged." : "Saved privately to your account."} footer={<Button title="Save" onPress={() => void save()} loading={busy} disabled={!valid} />}>
+    <Screen close title={correcting ? t("Correct food") : t("New food")} subtitle={correcting ? t("Saved as your private version. The shared record and past entries are unchanged.") : t("Saved privately to your account.")} footer={<Button title={t("Save")} onPress={() => void save()} loading={busy} disabled={!valid} />}>
       {!correcting ? (
         <Row gap={8}>
-          <Button title="Scan label" icon="camera" kind="secondary" size="md" onPress={() => void scanLabel(true)} style={{ flex: 1 }} />
-          <Button title="From photos" icon="photos" kind="secondary" size="md" onPress={() => void scanLabel(false)} style={{ flex: 1 }} />
+          <Button title={t("Scan label")} icon="camera" kind="secondary" size="md" onPress={() => void scanLabel(true)} style={{ flex: 1 }} />
+          <Button title={t("From photos")} icon="photos" kind="secondary" size="md" onPress={() => void scanLabel(false)} style={{ flex: 1 }} />
         </Row>
       ) : null}
       {flags.length ? (
         <Card>
           <Stack gap={6}>
-            <Row gap={8}><Badge label="Check before saving" tone="warning" /></Row>
-            {flags.map((f) => <T key={f} variant="footnote" color="textSecondary">{f.startsWith("unreadable:") ? `Couldn't read: ${f.slice(11)}` : f === "per100_per_serving_mismatch" ? "Per-100 and per-serving values on the label don't agree." : f === "energy_macro_mismatch" ? "Calories don't match the macros; check the numbers." : f.replace(/_/g, " ")}</T>)}
+            <Row gap={8}><Badge label={t("Check before saving")} tone="warning" /></Row>
+            {flags.map((f) => <T key={f} variant="footnote" color="textSecondary">{f.startsWith("unreadable:") ? t("Couldn't read: {field}", { field: f.slice(11) }) : f === "per100_per_serving_mismatch" ? t("Per-100 and per-serving values on the label don't agree.") : f === "energy_macro_mismatch" ? t("Calories don't match the macros; check the numbers.") : f.replace(/_/g, " ")}</T>)}
           </Stack>
         </Card>
       ) : null}
-      <Field label="Name" value={name} onChangeText={setName} placeholder="e.g. Laban up, low fat" />
-      <Field label="Brand (optional)" value={brand} onChangeText={setBrand} />
-      {params.barcode ? <T variant="footnote" color="textTertiary">Barcode {params.barcode}</T> : null}
-      <Segmented options={[{ value: "g", label: "Solid (g)" }, { value: "ml", label: "Liquid (ml)" }]} value={baseUnit} onChange={setBaseUnit} />
-      <SectionHeader title="Serving (optional)" />
+      <Field label={t("Name")} value={name} onChangeText={setName} placeholder={t("e.g. Laban up, low fat")} />
+      <Field label={t("Brand (optional)")} value={brand} onChangeText={setBrand} />
+      {params.barcode ? <T variant="footnote" color="textTertiary">{t("Barcode {code}", { code: params.barcode })}</T> : null}
+      <Segmented options={[{ value: "g", label: t("Solid (g)") }, { value: "ml", label: t("Liquid (ml)") }]} value={baseUnit} onChange={setBaseUnit} />
+      <SectionHeader title={t("Serving (optional)")} />
       <Row gap={8}>
-        <View style={{ flex: 2 }}><Field value={servingLabel} onChangeText={setServingLabel} placeholder="1 cup / 1 bar" accessibilityLabel="Serving name" /></View>
-        <View style={{ flex: 1 }}><Field value={servingAmount} onChangeText={setServingAmount} keyboardType="decimal-pad" suffix={baseUnit} accessibilityLabel="Serving size" /></View>
+        <View style={{ flex: 2 }}><Field value={servingLabel} onChangeText={setServingLabel} placeholder={t("1 cup / 1 bar")} accessibilityLabel={t("Serving name")} /></View>
+        <View style={{ flex: 1 }}><Field value={servingAmount} onChangeText={setServingAmount} keyboardType="decimal-pad" suffix={baseUnit} accessibilityLabel={t("Serving size")} /></View>
       </Row>
-      <SectionHeader title="Nutrition" />
-      <Segmented options={[{ value: "per_100", label: `Per 100 ${baseUnit}` }, { value: "per_serving", label: "Per serving" }]} value={basis} onChange={setBasis} />
-      {basis === "per_serving" && !(sAmt > 0) ? <T variant="footnote" color="warning">Enter the serving size to use per-serving values.</T> : null}
-      {FIELDS.map((f) => (
-        <Field key={f.key} label={f.label} value={values[f.key] ?? ""} onChangeText={(v) => setValues((x) => ({ ...x, [f.key]: v }))} keyboardType="decimal-pad" suffix={f.unit} placeholder="Leave empty if unknown" />
+      <SectionHeader title={t("Nutrition")} />
+      <Segmented options={[{ value: "per_100", label: t("Per 100 {unit}", { unit: baseUnit }) }, { value: "per_serving", label: t("Per serving") }]} value={basis} onChange={setBasis} />
+      {basis === "per_serving" && !(sAmt > 0) ? <T variant="footnote" color="warning">{t("Enter the serving size to use per-serving values.")}</T> : null}
+      {fields().map((f) => (
+        <Field key={f.key} label={f.label} value={values[f.key] ?? ""} onChangeText={(v) => setValues((x) => ({ ...x, [f.key]: v }))} keyboardType="decimal-pad" suffix={f.unit} placeholder={t("Leave empty if unknown")} />
       ))}
-      <T variant="caption" color="textTertiary">Empty fields are stored as unknown, not zero.</T>
+      <T variant="caption" color="textTertiary">{t("Empty fields are stored as unknown, not zero.")}</T>
       {error ? <T variant="footnote" color="danger">{error}</T> : null}
     </Screen>
   );

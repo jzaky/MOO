@@ -9,7 +9,7 @@ The phases follow the specification. "Done" means every acceptance test listed p
 | 0 | Research, licensing, architecture, design system | Done | ✓ Docs in `docs/`. ✓ No copyleft or share-alike code or data in the repo. |
 | 1 | Foundation: auth, RLS, profiles, onboarding, targets | Done | ✓ Token rotation and reuse revocation. ✓ Cross-user reads and writes refused by RLS. ✓ Calorie floor and deficit cap. ✓ Account deletion removes media. |
 | 2 | Nutrition: catalogue, barcode, diary, recipes, AI food logging | Backend done; mobile partial | ✓ Missing nutrients stay null. ✓ Idempotent last-writer-wins upserts. ✓ History unchanged by corrections. ✓ AI drafts never auto-log. ✓ Search ranks "Bananas, raw" first for "banana". ◻ Scan 20 real UAE products on device; record hit rate and corrections. ✓ Recipe and menu screens. ✓ Ingredient matching never substitutes a look-alike food. |
-| 3 | Training: catalogue, generator, live workout, progression, form check | Done; device check pending | ✓ Generated program fits time and equipment. ✓ PRs and next targets. ✓ Load increase requires confirmation. ✓ Form check counts 6 of 6 reps on real footage. ◻ Full workout offline on device (airplane mode), then sync. ◻ Form check frame rate and accuracy on an iPhone. |
+| 3 | Training: catalogue, generator, live workout, progression, form check, blocks and deloads, import | Done; device check pending | ✓ Generated program fits time and equipment. ✓ Deload week cuts sets and load, only when scheduled or chosen. ✓ Strong/Hevy import is idempotent. ✓ PRs and next targets. ✓ Load increase requires confirmation. ✓ Form check counts 6 of 6 reps on real footage. ◻ Full workout offline on device (airplane mode), then sync. ◻ Form check frame rate and accuracy on an iPhone. |
 | 4 | Progress: weight trend, measurements, photos, health | Done; device check pending | ✓ Trend withheld until data suffices. ✓ Signed photo URLs. ✓ Health dedupe across sources. ◻ HealthKit and Health Connect permission and sync on devices. |
 | 5 | Coach | Done (fake provider) | ✓ Tool-grounded answers. ✓ Proposals only. ✓ Consent gate. ◻ Twenty-question live evaluation with the Claude API: grounding, refusal of unsafe targets, tone. |
 | 6 | Adaptive nutrition and insights | Done | ✓ Capped adjustment with evidence. ✓ Adherence gap. ✓ Insufficient data. ✓ Correlation caveat. |
@@ -17,10 +17,12 @@ The phases follow the specification. "Done" means every acceptance test listed p
 | 8 | Hardening and SaaS readiness | Not started | ◻ Load test (200 concurrent users, p95 < 300 ms on reads). ◻ Backup and restore drill. ◻ Error monitoring. ◻ Billing and quotas design. ◻ Privacy policy and data-processing review. |
 
 ## Next steps, in order
-1. Build a development build on an iPhone (`npx expo run:ios`). Verify HealthKit, camera, barcode, microphone, push and the form-check WebView, and record the results in `STATUS.md`.
-2. Run the live Claude evaluation (food photos, labels, menus and coach) with a real key, and tune prompts from the failures.
-3. Add meal tags to recipes (breakfast/lunch/dinner/snack) so plans respect them.
-4. If form-check frame rates on device are too low, replace the WebView with a native module behind the same message contract (ADR-11).
+1. Build on a Mac: set `ios.appleTeamId`, register `com.stoke.fitness`, `.widgets` and `.watchkitapp` with the App Group `group.com.stoke.fitness`, then `npx expo prebuild -p ios --clean` and `npx expo run:ios --device`. Fix any Swift compile errors in the widget, watch and App Intents code (none of it has been compiled yet).
+2. On the iPhone, verify HealthKit, camera, barcode, microphone, push, the form-check WebView, widgets, the rest Live Activity, the watch app, Siri, and Arabic right-to-left after a restart. Record the results in `STATUS.md`.
+3. Run the live Claude evaluation (food photos, labels, menus and coach, in English and Arabic) with a real key, and tune prompts from the failures.
+4. Have a native Arabic speaker review the translations (`apps/mobile/src/i18n/ar/`).
+5. Translate server-generated explanations (progression reasons, insights) by sending message codes instead of English sentences.
+6. If form-check frame rates on device are too low, replace the WebView with a native module behind the same message contract (ADR-11).
 
 ## Performance targets
 

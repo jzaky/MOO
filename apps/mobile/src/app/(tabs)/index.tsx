@@ -10,6 +10,7 @@ import { api } from "../../lib/api";
 import { logWater, qk, useToday } from "../../lib/data";
 import { haptic } from "../../lib/haptics";
 import { todayKey } from "../../lib/ids";
+import { fmtNum, locale, t } from "../../i18n";
 import { useTheme } from "../../theme/theme";
 import { MacroBar, ProgressRing } from "../../ui/charts";
 import { Badge, Button, Card, ErrorState, Icon, IconButton, Row, SectionHeader, Skeleton, Stack, T, type IconName } from "../../ui/primitives";
@@ -41,7 +42,7 @@ export default function Today() {
   }, [d, activeName]);
   const greeting = (() => {
     const h = new Date().getHours();
-    return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+    return h < 12 ? t("Good morning") : h < 18 ? t("Good afternoon") : t("Good evening");
   })();
 
   const checkIn = async (fatigue: number) => {
@@ -51,23 +52,23 @@ export default function Today() {
   };
 
   const n = d?.nutrition;
-  const t = n?.targets;
-  const remaining = t ? Math.round(t.energyKcal - (n?.totals.energyKcal ?? 0)) : null;
+  const tg = n?.targets;
+  const remaining = tg ? Math.round(tg.energyKcal - (n?.totals.energyKcal ?? 0)) : null;
 
   return (
     <Screen
       tabBar
-      title={greeting + (d?.profile.displayName ? `, ${d.profile.displayName}` : "")}
-      subtitle={new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
-      right={<IconButton icon="settings" label="Settings" onPress={() => router.push("/settings")} />}
+      title={d?.profile.displayName ? t("{greeting}, {name}", { greeting, name: d.profile.displayName }) : greeting}
+      subtitle={new Date().toLocaleDateString(locale(), { weekday: "long", month: "long", day: "numeric" })}
+      right={<IconButton icon="settings" label={t("Settings")} onPress={() => router.push("/settings")} />}
       onRefresh={() => void today.refetch()}
       refreshing={today.isRefetching}
     >
       <Row gap={8}>
-        <QuickAction icon="search" label="Log food" onPress={() => router.push("/food/search")} />
-        <QuickAction icon="barcode" label="Scan" onPress={() => router.push("/food/scan")} />
-        <QuickAction icon="camera" label="Photo" onPress={() => router.push("/food/camera")} />
-        <QuickAction icon="mic" label="Voice" onPress={() => router.push("/food/voice")} />
+        <QuickAction icon="search" label={t("Log food")} onPress={() => router.push("/food/search")} />
+        <QuickAction icon="barcode" label={t("Scan")} onPress={() => router.push("/food/scan")} />
+        <QuickAction icon="camera" label={t("Photo")} onPress={() => router.push("/food/camera")} />
+        <QuickAction icon="mic" label={t("Voice")} onPress={() => router.push("/food/voice")} />
       </Row>
 
       {today.isPending && !d ? (
@@ -84,33 +85,33 @@ export default function Today() {
         </Card>
       ) : d ? (
         <>
-          <Card onPress={() => router.push("/nutrition")} accessibilityLabel="Open nutrition diary">
+          <Card onPress={() => router.push("/nutrition")} accessibilityLabel={t("Open nutrition diary")}>
             <Row gap={18} align="center">
               <ProgressRing
                 value={n?.totals.energyKcal ?? 0}
-                target={t?.energyKcal ?? 0}
+                target={tg?.energyKcal ?? 0}
                 color={th.c.energy}
-                label={`Energy: ${Math.round(n?.totals.energyKcal ?? 0)} of ${t?.energyKcal ?? 0} kcal`}
+                label={t("Energy: {eaten} of {target} kcal", { eaten: Math.round(n?.totals.energyKcal ?? 0), target: tg?.energyKcal ?? 0 })}
                 center={
                   <View style={{ alignItems: "center" }}>
-                    <T variant="metric">{remaining == null ? "–" : Math.abs(remaining).toLocaleString()}</T>
+                    <T variant="metric">{remaining == null ? "–" : fmtNum(Math.abs(remaining))}</T>
                     <T variant="caption" color="textSecondary">
-                      {remaining == null ? "no target" : remaining >= 0 ? "kcal left" : "kcal over"}
+                      {remaining == null ? t("no target") : remaining >= 0 ? t("kcal left") : t("kcal over")}
                     </T>
                   </View>
                 }
               />
               <Stack gap={10} style={{ flex: 1 }}>
-                {t ? (
+                {tg ? (
                   <>
-                    <MacroBar label="Protein" consumed={n!.totals.proteinG} target={t.proteinG} unit="g" color={th.c.protein} />
+                    <MacroBar label={t("Protein")} consumed={n!.totals.proteinG} target={tg.proteinG} unit="g" color={th.c.protein} />
                     <Row gap={12}>
-                      <MacroBar label="Carbs" consumed={n!.totals.carbsG} target={t.carbsG} unit="g" color={th.c.carbs} />
-                      <MacroBar label="Fat" consumed={n!.totals.fatG} target={t.fatG} unit="g" color={th.c.fat} />
+                      <MacroBar label={t("Carbs")} consumed={n!.totals.carbsG} target={tg.carbsG} unit="g" color={th.c.carbs} />
+                      <MacroBar label={t("Fat")} consumed={n!.totals.fatG} target={tg.fatG} unit="g" color={th.c.fat} />
                     </Row>
                   </>
                 ) : (
-                  <T color="textSecondary">Set targets in Settings to track progress.</T>
+                  <T color="textSecondary">{t("Set targets in Settings to track progress.")}</T>
                 )}
               </Stack>
             </Row>
@@ -118,7 +119,7 @@ export default function Today() {
               <Row gap={6}>
                 <Icon name="water" size={15} color="water" />
                 <T variant="footnote" color="textSecondary">
-                  {(n?.water.totalMl ?? 0).toLocaleString()} {n?.water.targetMl ? `/ ${n.water.targetMl.toLocaleString()} ml` : "ml"}
+                  {n?.water.targetMl ? `${fmtNum(n.water.totalMl ?? 0)} / ${fmtNum(n.water.targetMl)} ml` : `${fmtNum(n?.water.totalMl ?? 0)} ml`}
                 </T>
               </Row>
               <Button
@@ -135,53 +136,53 @@ export default function Today() {
             </Row>
           </Card>
 
-          <SectionHeader title="Training" />
+          <SectionHeader title={t("Training")} />
           <Card>
             {active ? (
               <Row justify="space-between">
                 <Stack gap={2} style={{ flex: 1 }}>
                   <T variant="headline">{active.name}</T>
                   <T variant="footnote" color="textSecondary">
-                    In progress · {active.exercises.reduce((a, e) => a + e.sets.filter((s) => s.completed).length, 0)} sets done
+                    {t("In progress · {n} sets done", { n: active.exercises.reduce((a, e) => a + e.sets.filter((s) => s.completed).length, 0) })}
                   </T>
                 </Stack>
-                <Button title="Resume" icon="play" size="md" onPress={() => router.push("/workout/active")} />
+                <Button title={t("Resume")} icon="play" size="md" onPress={() => router.push("/workout/active")} />
               </Row>
             ) : d.workout?.scheduledToday || d.workout?.nextInRotation ? (
               <Row justify="space-between">
                 <Stack gap={2} style={{ flex: 1 }}>
                   <T variant="footnote" color="textSecondary">
-                    {d.workout.scheduledToday ? "Planned today" : "Next up"}
+                    {d.workout.scheduledToday ? t("Planned today") : t("Next up")}
                   </T>
                   <T variant="headline">{(d.workout.scheduledToday ?? d.workout.nextInRotation)!.name}</T>
                   {d.recovery.readiness === "poor" ? (
                     <T variant="footnote" color="warning">
-                      Recovery signals are low. You can shorten the session from the start screen.
+                      {t("Recovery signals are low. You can shorten the session from the start screen.")}
                     </T>
                   ) : null}
                 </Stack>
-                <Button title="Start" icon="play" size="md" onPress={() => router.push({ pathname: "/workout/active", params: { templateId: (d.workout!.scheduledToday ?? d.workout!.nextInRotation)!.id } })} />
+                <Button title={t("Start")} icon="play" size="md" onPress={() => router.push({ pathname: "/workout/active", params: { templateId: (d.workout!.scheduledToday ?? d.workout!.nextInRotation)!.id } })} />
               </Row>
             ) : (
               <Row justify="space-between">
                 <T color="textSecondary" style={{ flex: 1 }}>
-                  No program yet.
+                  {t("No program yet.")}
                 </T>
-                <Button title="Create plan" kind="secondary" size="md" onPress={() => router.push("/train")} />
+                <Button title={t("Create plan")} kind="secondary" size="md" onPress={() => router.push("/train")} />
               </Row>
             )}
           </Card>
 
-          <SectionHeader title="Recovery" />
+          <SectionHeader title={t("Recovery")} />
           <Card>
             <Stack gap={10}>
               <Row justify="space-between">
-                <T variant="headline">How do you feel today?</T>
-                <Badge label={d.recovery.readiness === "good" ? "Signals normal" : d.recovery.readiness === "normal" ? "Some signals off" : "Take it easier"} tone={d.recovery.readiness === "poor" ? "warning" : "neutral"} />
+                <T variant="headline">{t("How do you feel today?")}</T>
+                <Badge label={d.recovery.readiness === "good" ? t("Signals normal") : d.recovery.readiness === "normal" ? t("Some signals off") : t("Take it easier")} tone={d.recovery.readiness === "poor" ? "warning" : "neutral"} />
               </Row>
               <Row gap={6}>
-                {(["Fresh", "Good", "OK", "Tired", "Drained"] as const).map((l, i) => (
-                  <Pressable key={l} accessibilityRole="button" accessibilityLabel={`Fatigue: ${l}`} onPress={() => void checkIn(i + 1)} style={({ pressed }) => ({ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center", backgroundColor: pressed ? th.c.surfacePressed : th.c.surfaceRaised })}>
+                {[t("Fresh"), t("Good"), t("OK"), t("Tired"), t("Drained")].map((l, i) => (
+                  <Pressable key={l} accessibilityRole="button" accessibilityLabel={t("Fatigue: {level}", { level: l })} onPress={() => void checkIn(i + 1)} style={({ pressed }) => ({ flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: "center", backgroundColor: pressed ? th.c.surfacePressed : th.c.surfaceRaised })}>
                     <T variant="caption" color="textSecondary">
                       {l}
                     </T>
@@ -196,23 +197,23 @@ export default function Today() {
             </Stack>
           </Card>
 
-          <SectionHeader title="Body" action="Log weight" onAction={() => router.push("/weigh-in")} />
-          <Card onPress={() => router.push("/progress")} accessibilityLabel="Open progress">
+          <SectionHeader title={t("Body")} action={t("Log weight")} onAction={() => router.push("/weigh-in")} />
+          <Card onPress={() => router.push("/progress")} accessibilityLabel={t("Open progress")}>
             <Row justify="space-between">
               <Stack gap={2}>
                 <T variant="footnote" color="textSecondary">
-                  7-day average
+                  {t("7-day average")}
                 </T>
                 <T variant="metric">{d.weight.sevenDayAverageKg ? `${displayBodyWeight(d.weight.sevenDayAverageKg, d.profile.unitSystem).value} ${displayBodyWeight(0, d.profile.unitSystem).unit}` : "–"}</T>
               </Stack>
               <Stack gap={2} style={{ alignItems: "flex-end" }}>
                 <T variant="footnote" color="textSecondary">
-                  Trend
+                  {t("Trend")}
                 </T>
                 <T variant="headline">
                   {d.weight.rate.kgPerWeek == null || d.weight.rate.sufficiency === "insufficient"
-                    ? "Needs more weigh-ins"
-                    : `${d.weight.rate.kgPerWeek >= 0 ? "+" : "−"}${displayBodyWeight(Math.abs(d.weight.rate.kgPerWeek), d.profile.unitSystem).value} ${displayBodyWeight(0, d.profile.unitSystem).unit}/wk`}
+                    ? t("Needs more weigh-ins")
+                    : t("{change} {unit}/wk", { change: `${d.weight.rate.kgPerWeek >= 0 ? "+" : "−"}${displayBodyWeight(Math.abs(d.weight.rate.kgPerWeek), d.profile.unitSystem).value}`, unit: displayBodyWeight(0, d.profile.unitSystem).unit })}
                 </T>
               </Stack>
             </Row>
@@ -220,7 +221,7 @@ export default function Today() {
 
           {d.insights.length || d.pendingRecommendations.length ? (
             <>
-              <SectionHeader title="Coach" action="Open" onAction={() => router.push("/coach")} />
+              <SectionHeader title={t("Coach")} action={t("Open")} onAction={() => router.push("/coach")} />
               <Card>
                 <Stack gap={10}>
                   {d.insights.map((i) => (
@@ -232,7 +233,7 @@ export default function Today() {
                     </Row>
                   ))}
                   {d.pendingRecommendations.map((r) => (
-                    <Button key={r.id} title={`Review: ${r.title}`} kind="secondary" size="md" onPress={() => router.push("/coach")} />
+                    <Button key={r.id} title={t("Review: {title}", { title: r.title })} kind="secondary" size="md" onPress={() => router.push("/coach")} />
                   ))}
                 </Stack>
               </Card>
