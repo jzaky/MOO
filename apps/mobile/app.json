@@ -29,8 +29,7 @@
         "android.permission.health.READ_SLEEP",
         "android.permission.health.READ_RESTING_HEART_RATE",
         "android.permission.health.READ_WEIGHT",
-        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
-        "android.permission.health.READ_EXERCISE"
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED"
       ],
       "predictiveBackGestureEnabled": false
     },
@@ -48,7 +47,7 @@
       ["expo-audio", { "microphonePermission": "MOO records short voice notes only when you hold the microphone button to log food or workouts." }],
       "expo-localization",
       ["expo-notifications", { "color": "#7CF0B4" }],
-      ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "MOO reads steps, sleep, resting heart rate, workouts and body weight that you choose to share, to show recovery trends and keep your weight log in sync.", "NSHealthUpdateUsageDescription": "MOO can save meals and workouts you log to Apple Health when you turn that on.", "background": true }],
+      ["@kingstinct/react-native-healthkit", { "NSHealthShareUsageDescription": "MOO reads steps, active energy, sleep, resting heart rate, heart rate variability, walking distance and body weight that you choose to share, to show recovery trends and keep your weight log in sync.", "NSHealthUpdateUsageDescription": "MOO only reads from Apple Health. It does not write any data to it.", "background": true }],
       "react-native-health-connect",
       ["expo-build-properties", { "android": { "minSdkVersion": 26, "compileSdkVersion": 36, "targetSdkVersion": 36 } }]
     ],

@@ -1,11 +1,9 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { analyzeMovement, standingThreshold, type Frame } from "../src";
+// A JSON import keeps this package free of Node types (core must stay platform-neutral).
+import recorded from "./fixtures/squat-real-landmarks.json";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const fixture = JSON.parse(readFileSync(path.join(here, "fixtures/squat-real-landmarks.json"), "utf8")) as { groundTruth: { completedReps: number }; frames: { t: number; lm: number[][] | null }[] };
+const fixture = recorded as { groundTruth: { completedReps: number }; frames: { t: number; lm: number[][] | null }[] };
 const frames: Frame[] = fixture.frames.map((f) => ({ tMs: f.t, landmarks: f.lm ? f.lm.map(([x, y, z, visibility]) => ({ x: x!, y: y!, z: z!, visibility: visibility! })) : [] }));
 
 describe("rep counting on a real recorded set", () => {

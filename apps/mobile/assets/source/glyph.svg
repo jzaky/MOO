@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- MOO glyph: the energy ring, nearly closed, around an M. Transparent background. -->
+  <path d="M 677.0 226.2 A 330 330 0 1 1 512 182" fill="none" stroke="#7CF0B4" stroke-width="76" stroke-linecap="round"/>
+  <polyline points="352,652 352,392 512,548 672,392 672,652" fill="none" stroke="#F2F3F5" stroke-width="76" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
