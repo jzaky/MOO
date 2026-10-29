@@ -251,3 +251,50 @@ describe("health integrations", () => {
     expect(sig.sleepMinutes).toBe(420);
   });
 });
+
+describe("training blocks, deloads and fatigue", () => {
+  const todayDubai = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(new Date());
+  const monday = (d: string) => { const x = new Date(`${d}T00:00:00Z`); const wd = (x.getUTCDay() + 6) % 7; return new Date(x.getTime() - wd * 86400000).toISOString().slice(0, 10); };
+
+  it("gives generated programs a 5-week block, keeps it across versions, and applies a scheduled deload at workout start", async () => {
+    const u = await user();
+    const gen = (await t.app.inject({ method: "POST", url: "/v1/programs/generate", headers: u.headers, payload: { preferredDays: [1, 3, 5], sessionMinutes: 60 } })).json();
+    expect(gen.draft.blockWeeks).toBe(5);
+    const prog = (await t.app.inject({ method: "POST", url: "/v1/programs", headers: u.headers, payload: gen.draft })).json();
+    expect(prog).toMatchObject({ blockWeeks: 5, blockStart: monday(todayDubai()) });
+
+    const tplId = prog.days[0].id;
+    const normal = (await t.app.inject({ method: "GET", url: `/v1/templates/${tplId}/start`, headers: u.headers })).json();
+    expect(normal).toMatchObject({ deload: false, block: { week: 1, of: 5, deload: false } });
+
+    expect((await t.app.inject({ method: "PUT", url: `/v1/programs/${prog.id}/deload`, headers: u.headers, payload: { weekOf: todayDubai() } })).json().deloadWeekStart).toBe(monday(todayDubai()));
+    const light = (await t.app.inject({ method: "GET", url: `/v1/templates/${tplId}/start`, headers: u.headers })).json();
+    expect(light.deload).toBe(true);
+    for (const [i, it] of light.items.entries()) {
+      expect(it.prescription.sets).toBe(Math.max(1, Math.round(normal.items[i].prescription.sets * 0.6)));
+      expect(it.recommendation).toMatchObject({ action: "deload", requiresConfirmation: true });
+    }
+
+    const v2 = (await t.app.inject({ method: "PUT", url: `/v1/programs/${prog.id}`, headers: u.headers, payload: { ...gen.draft, name: "Renamed" } })).json();
+    expect(v2).toMatchObject({ version: 2, blockWeeks: 5, blockStart: prog.blockStart, deloadWeekStart: monday(todayDubai()) });
+    const off = (await t.app.inject({ method: "PUT", url: `/v1/programs/${v2.id}/block`, headers: u.headers, payload: { blockWeeks: null } })).json();
+    expect(off).toMatchObject({ blockWeeks: null, block: null });
+  });
+
+  it("suggests a deload when two main lifts are falling, with the evidence", async () => {
+    const u = await user();
+    const squat = await exerciseId(u.headers, "barbell back squat");
+    const bench = await exerciseId(u.headers, "barbell bench press");
+    const d = todayDubai();
+    const day = (n: number) => new Date(Date.parse(`${d}T00:00:00Z`) - n * 86400000).toISOString().slice(0, 10);
+    for (const [n, kg] of [[10, 100], [6, 102.5], [2, 92.5]] as const) {
+      const w = workout(day(n), squat, [[kg, 5], [kg, 5]]);
+      w.exercises.push({ ...workout(day(n), bench, [[kg - 20, 5], [kg - 20, 5]]).exercises[0]!, position: 1 });
+      await t.app.inject({ method: "PUT", url: `/v1/workouts/${randomUUID()}`, headers: u.headers, payload: w });
+    }
+    const f = (await t.app.inject({ method: "GET", url: "/v1/training/fatigue", headers: u.headers })).json();
+    expect(f.suggestDeload).toBe(true);
+    expect(f.regressingLifts).toHaveLength(2);
+    expect(f.reasons.join(" ")).toMatch(/suggestion/);
+  });
+});

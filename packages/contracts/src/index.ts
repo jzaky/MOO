@@ -274,6 +274,8 @@ export const TemplateExerciseInput = z.object({
 
 export const ProgramCreate = z.object({
   name: z.string().trim().min(1).max(120),
+  /** Training blocks: weeks per block, the last one a deload. null = off; omitted = keep the previous version's setting. */
+  blockWeeks: z.number().int().min(3).max(8).nullable().optional(),
   split: z.enum(["push_pull_legs", "upper_lower", "full_body", "bro_split", "strength", "hybrid", "custom"]),
   notes: z.string().max(2000).nullable().optional(),
   days: z

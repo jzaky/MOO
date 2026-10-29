@@ -1,7 +1,11 @@
 import { PrescriptionSchema, ProgramCreate, WorkoutUpsert, type PrescriptionDto } from "@stoke/contracts";
 import {
   addDays,
+  assessFatigue,
   bestE1rm,
+  blockPosition,
+  deloadRecommendation,
+  isDeloadWeek,
   clampClientTimestamp,
   dayKeyInZone,
   DEFAULT_PROFILES,
@@ -198,9 +202,14 @@ export async function insertProgram(tx: Tx, userId: string, body: z.infer<typeof
   const visible = await tx.select({ id: exercises.id }).from(exercises).where(inArray(exercises.id, exIds));
   if (new Set(visible.map((v) => v.id)).size !== new Set(exIds).size) throw badRequest("One or more exercises do not exist");
   for (const d of body.days) for (const e of d.exercises) if (e.prescription.repRange.min > e.prescription.repRange.max) throw badRequest("Rep range minimum exceeds maximum");
+  // Block settings carry over from the previous version unless the body sets them.
+  const [parent] = meta.parentProgramId ? await tx.select().from(workoutPrograms).where(eq(workoutPrograms.id, meta.parentProgramId)) : [];
+  const blockWeeks = body.blockWeeks !== undefined ? body.blockWeeks : (parent?.blockWeeks ?? null);
+  const thisWeek = startOfIsoWeek(dayKeyInZone(new Date(), (await getProfile(tx, userId)).timeZone));
+  const blockStart = blockWeeks ? (parent?.blockWeeks && parent.blockStart ? parent.blockStart : thisWeek) : null;
   const [p] = await tx
     .insert(workoutPrograms)
-    .values({ userId, name: body.name, split: body.split, notes: body.notes ?? null, createdBy: meta.createdBy, parentProgramId: meta.parentProgramId ?? null, version: meta.version ?? 1, changeReason: meta.changeReason ?? null })
+    .values({ userId, name: body.name, split: body.split, notes: body.notes ?? null, createdBy: meta.createdBy, parentProgramId: meta.parentProgramId ?? null, version: meta.version ?? 1, changeReason: meta.changeReason ?? null, blockWeeks, blockStart, deloadWeekStart: parent?.deloadWeekStart ?? null })
     .returning();
   for (const [i, d] of body.days.entries()) {
     const [t] = await tx.insert(workoutTemplates).values({ userId, programId: p!.id, name: d.name, weekday: d.weekday ?? null, position: i }).returning();
@@ -430,6 +439,9 @@ export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): v
       const p = await getProfile(tx, req.userId);
       const today = dayKeyInZone(ctx.now(), p.timeZone);
       const recovery = await recoverySnapshot(tx, req.userId, today);
+      const [program] = t.programId ? await tx.select().from(workoutPrograms).where(eq(workoutPrograms.id, t.programId)) : [];
+      const block = program ? blockPosition(program.blockStart, program.blockWeeks, today) : null;
+      const deload = program ? isDeloadWeek(today, block, program.deloadWeekStart) : false;
       const tes = await tx.select({ te: templateExercises, ex: exercises }).from(templateExercises).innerJoin(exercises, eq(exercises.id, templateExercises.exerciseId)).where(eq(templateExercises.templateId, id)).orderBy(asc(templateExercises.position));
       type StartItem = {
         templateExerciseId: string;
@@ -443,8 +455,14 @@ export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): v
       let items: StartItem[] = [];
       for (const { te, ex } of tes) {
         const history = await exerciseHistory(tx, req.userId, ex.id, { limit: 6 });
-        const rx = te.prescription as PrescriptionDto;
-        const rec = recommendProgression(toCorePrescription(rx, ex), history, { today, readiness: recovery.readiness });
+        let rx = te.prescription as PrescriptionDto;
+        const core = toCorePrescription(rx, ex);
+        let rec = recommendProgression(core, history, { today, readiness: recovery.readiness });
+        if (deload) {
+          const d = deloadRecommendation(rec, rx.sets, rx.targetRir, core.loadProfile);
+          rec = d;
+          rx = { ...rx, sets: d.targetSets, targetRir: d.targetRir };
+        }
         items.push({
           templateExerciseId: te.id,
           exercise: exerciseToDto(ex),
@@ -461,9 +479,60 @@ export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): v
         items = fitToTime(items.map((i) => ({ ...i, prescription: { ...i.prescription, restSec: i.prescription.restSec ?? 120 } })), q.minutes);
         shortened = items.map((i) => `${i.templateExerciseId}:${i.prescription.sets}`).join() !== before;
       }
-      return { template: { id: t.id, name: t.name }, day: today, readiness: recovery.readiness, recoveryInsights: recovery.insights, shortened, items };
+      return { template: { id: t.id, name: t.name }, day: today, readiness: recovery.readiness, recoveryInsights: recovery.insights, shortened, block, deload, items };
     });
   });
+
+  /* ── Blocks, deloads and fatigue ── */
+
+  /** Change block length (3–8 weeks, last one a deload) or switch blocks off. Scheduling only: no new program version. */
+  app.put("/v1/programs/:id/block", auth, async (req) => {
+    const { id } = parse(IdParam, req.params);
+    const body = parse(z.object({ blockWeeks: z.number().int().min(3).max(8).nullable(), restart: z.boolean().default(false) }), req.body);
+    return ctx.db.asUser(req.userId, async (tx) => {
+      const [prog] = await tx.select().from(workoutPrograms).where(eq(workoutPrograms.id, id));
+      if (!prog) throw notFound("Program");
+      const today = dayKeyInZone(ctx.now(), (await getProfile(tx, req.userId)).timeZone);
+      const blockStart = body.blockWeeks ? (body.restart || !prog.blockStart ? startOfIsoWeek(today) : prog.blockStart) : null;
+      await tx.update(workoutPrograms).set({ blockWeeks: body.blockWeeks, blockStart, updatedAt: ctx.now() }).where(eq(workoutPrograms.id, id));
+      await tx.insert(auditEvents).values({ userId: req.userId, event: "program.block_changed", targetType: "workout_program", targetId: id, metadata: body });
+      return { blockWeeks: body.blockWeeks, blockStart, block: blockPosition(blockStart, body.blockWeeks, today) };
+    });
+  });
+
+  /** Schedule (or cancel with null) a one-off deload week starting the Monday of `weekOf`. */
+  app.put("/v1/programs/:id/deload", auth, async (req) => {
+    const { id } = parse(IdParam, req.params);
+    const body = parse(z.object({ weekOf: z.iso.date().nullable() }), req.body);
+    return ctx.db.asUser(req.userId, async (tx) => {
+      const [prog] = await tx.select().from(workoutPrograms).where(eq(workoutPrograms.id, id));
+      if (!prog) throw notFound("Program");
+      const deloadWeekStart = body.weekOf ? startOfIsoWeek(body.weekOf) : null;
+      await tx.update(workoutPrograms).set({ deloadWeekStart, updatedAt: ctx.now() }).where(eq(workoutPrograms.id, id));
+      await tx.insert(auditEvents).values({ userId: req.userId, event: "program.deload_scheduled", targetType: "workout_program", targetId: id, metadata: { deloadWeekStart } });
+      return { deloadWeekStart };
+    });
+  });
+
+  /** Is performance falling on the main lifts? Suggests a deload with its evidence; never schedules one itself. */
+  app.get("/v1/training/fatigue", auth, async (req) =>
+    ctx.db.asUser(req.userId, async (tx) => {
+      const today = dayKeyInZone(ctx.now(), (await getProfile(tx, req.userId)).timeZone);
+      const recent = await tx
+        .select({ exerciseId: sessionExercises.exerciseId, name: exercises.name, n: sql<number>`count(distinct ${workoutSessions.id})::int` })
+        .from(sessionExercises)
+        .innerJoin(workoutSessions, eq(workoutSessions.id, sessionExercises.sessionId))
+        .innerJoin(exercises, eq(exercises.id, sessionExercises.exerciseId))
+        .where(and(eq(workoutSessions.userId, req.userId), eq(workoutSessions.status, "completed"), isNull(workoutSessions.deletedAt), gte(workoutSessions.day, addDays(today, -42)), eq(exercises.mechanics, "compound")))
+        .groupBy(sessionExercises.exerciseId, exercises.name)
+        .orderBy(desc(sql`count(distinct ${workoutSessions.id})`))
+        .limit(4);
+      const lifts = [];
+      for (const r of recent) if (r.n >= 3) lifts.push({ exerciseName: r.name, sessions: await exerciseHistory(tx, req.userId, r.exerciseId, { limit: 3 }) });
+      const recovery = await recoverySnapshot(tx, req.userId, today);
+      return { ...assessFatigue(lifts, recovery.readiness), liftsChecked: lifts.map((l) => l.exerciseName), readiness: recovery.readiness };
+    }),
+  );
 
   /* ── Sessions ── */
 
@@ -561,6 +630,8 @@ export async function buildProgramProposal(tx: Tx, userId: string, body: { prefe
     draft: {
       name: `${split.dayNames.length}-day ${splitKind.replace(/_/g, " ")}`,
       split: splitKind,
+      // 4 build weeks then a deload week; the user can change or switch this off.
+      blockWeeks: 5,
       notes: split.rationale,
       days: days.map((d) => ({ name: d.name, weekday: d.weekday, exercises: d.exercises.map((e) => ({ exerciseId: e.exerciseId, prescription: PrescriptionSchema.parse(e.prescription) })) })),
     },
