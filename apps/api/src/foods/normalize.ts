@@ -6,7 +6,7 @@ import { checkEnergyConsistency, completeness, isKnown, kjToKcal, type NutrientV
  * (never 0).
  */
 export interface NormalizedFood {
-  source: "off" | "usda" | "user" | "label" | "ai_label";
+  source: "off" | "usda" | "user" | "label" | "ai_label" | "standard_recipe";
   sourceRef: string;
   sourceLicense: string;
   name: string;

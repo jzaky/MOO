@@ -9,6 +9,8 @@ export * from "./nutrition/recipe";
 export * from "./nutrition/diary";
 export * from "./nutrition/recognition";
 export * from "./nutrition/searchRank";
+export * from "./nutrition/dietFlags";
+export * from "./nutrition/standardDishes";
 export * from "./body/trend";
 export * from "./training/sets";
 export * from "./training/equipment";

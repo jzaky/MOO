@@ -1,4 +1,4 @@
-import { completeness, rankFoods, SEARCH_DESCRIPTORS, stem, words, type FoodNutritionBasis, type NutrientValues } from "@stoke/core";
+import { completeness, dietFlags, rankFoods, type DietFlags, SEARCH_DESCRIPTORS, stem, words, type FoodNutritionBasis, type NutrientValues } from "@stoke/core";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { Db, Tx } from "../db/client";
 import { foodLogs, foodServings, foods } from "../db/schema";
@@ -25,7 +25,13 @@ export interface FoodDto {
   quality: { flags: string[]; energyConsistent?: boolean; servingConfidence?: string };
   imageUrl: string | null;
   lastVerifiedAt: string | null;
+  /** Pork/alcohol read from the name, ingredient list, labels and alcohol value. Not a halal certification. */
+  dietFlags: DietFlags;
+  /** For standard-recipe dishes: what the estimate is made of. */
+  standardRecipe: { nameAr: string; ingredients: { label: string; grams: number; usdaName: string }[]; substitutions: string[]; servingG: number } | null;
 }
+
+type Payload = { ingredients_text?: string | null; labels_tags?: string[]; nameAr?: string; ingredients?: { label: string; grams: number; usdaName: string }[]; substitutions?: string[]; servingG?: number } | null;
 
 export function toFoodDto(f: FoodRow, servings: ServingRow[]): FoodDto {
   return {
@@ -48,6 +54,18 @@ export function toFoodDto(f: FoodRow, servings: ServingRow[]): FoodDto {
     quality: (f.quality as FoodDto["quality"]) ?? { flags: [] },
     imageUrl: f.imageUrl,
     lastVerifiedAt: f.lastVerifiedAt?.toISOString() ?? null,
+    ...foodExtras(f),
+  };
+}
+
+function foodExtras(f: FoodRow): Pick<FoodDto, "dietFlags" | "standardRecipe"> {
+  const p = f.sourcePayload as Payload;
+  const per100 = f.per100 as NutrientValues;
+  const isDish = f.source === "standard_recipe" && !!p?.ingredients;
+  return {
+    // A standard recipe's ingredient list is ours, so it is checked too.
+    dietFlags: dietFlags({ name: f.name, ingredientsText: isDish ? p!.ingredients!.map((i) => `${i.label} (${i.usdaName})`).join(", ") : (p?.ingredients_text ?? null), labelsTags: p?.labels_tags ?? null, alcoholG: per100.alcoholG ?? null }),
+    standardRecipe: isDish ? { nameAr: p!.nameAr ?? "", ingredients: p!.ingredients!, substitutions: p!.substitutions ?? [], servingG: p!.servingG ?? 0 } : null,
   };
 }
 
@@ -184,7 +202,7 @@ export async function searchLocalFoods(tx: Tx, userId: string, query: string, li
   const retrieval = (keyWords.length ? keyWords : all).flatMap((w) => [w, stem(w)]);
   const escape = (w: string) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const pattern = retrieval.length ? `\\m(${[...new Set(retrieval)].map(escape).join("|")})` : null;
-  const hits = retrieval.length ? sql`(${sql.join([...new Set(keyWords.length ? keyWords : all)].map((w) => sql`case when ${hay} ~ ${"\\m(" + escape(w) + "|" + escape(stem(w)) + ")"} then 1 else 0 end`), sql` + `)})` : sql`0`;
+  const hits = retrieval.length ? sql`(${sql.join([...new Set(keyWords.length ? keyWords : all)].map((w) => sql`case when ${hay} ~ ${"\\m(" + escape(w) + "|" + escape(stem(w)) + ")"} then 1 else 0 end`), sql` + `)})` : sql`cast(0 as int)`;
   const similarity = sql<number>`word_similarity(${q}, ${hay})`;
   const rows = await tx
     .select({ food: foods, uses: usage.uses, similarity })

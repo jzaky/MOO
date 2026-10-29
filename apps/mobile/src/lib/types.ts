@@ -29,6 +29,8 @@ export interface Food {
   quality: { flags: string[]; energyConsistent?: boolean; servingConfidence?: string };
   imageUrl: string | null;
   lastVerifiedAt: string | null;
+  dietFlags?: { pork: "contains" | "may_contain" | null; alcohol: "contains" | "may_contain" | null; halalLabel: boolean; reasons: { pork: string[]; alcohol: string[] }; ingredientsChecked: boolean };
+  standardRecipe?: { nameAr: string; ingredients: { label: string; grams: number; usdaName: string }[]; substitutions: string[]; servingG: number } | null;
 }
 
 export interface FoodLog {

@@ -33,6 +33,9 @@ const OFF_FIELDS = [
   "image_url",
   "countries_tags",
   "last_modified_t",
+  "ingredients_text",
+  "ingredients_text_en",
+  "labels_tags",
 ].join(",");
 
 type OffProduct = Record<string, unknown> & { nutriments?: Record<string, unknown> };
@@ -102,7 +105,14 @@ export function mapOffProduct(p: OffProduct, code: string): NormalizedFood | nul
     imageUrl: typeof p.image_front_url === "string" ? p.image_front_url : typeof p.image_url === "string" ? p.image_url : null,
     countries,
     quality: assessQuality(per100, servings, flags),
-    sourcePayload: { code, last_modified_t: p.last_modified_t ?? null, nutrition_data_per: p.nutrition_data_per ?? null },
+    sourcePayload: {
+      code,
+      last_modified_t: p.last_modified_t ?? null,
+      nutrition_data_per: p.nutrition_data_per ?? null,
+      // Kept for pork/alcohol checks and halal labels; never used for nutrition.
+      ingredients_text: typeof p.ingredients_text_en === "string" && p.ingredients_text_en.trim() ? p.ingredients_text_en.slice(0, 4000) : typeof p.ingredients_text === "string" && p.ingredients_text.trim() ? p.ingredients_text.slice(0, 4000) : null,
+      labels_tags: Array.isArray(p.labels_tags) ? (p.labels_tags as unknown[]).filter((t): t is string => typeof t === "string").slice(0, 50) : [],
+    },
   };
 }
 

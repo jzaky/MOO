@@ -3,7 +3,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 import { api } from "../../lib/api";
-import { defaultMealForNow, logFood, qk, useFavorites, useRecentFoods } from "../../lib/data";
+import { defaultMealForNow, logFood, qk, useFavorites, useProfile, useRecentFoods } from "../../lib/data";
+import { dietRowBadge } from "../../features/food/diet";
 import { haptic } from "../../lib/haptics";
 import { todayKey } from "../../lib/ids";
 import type { Food, RecentFood } from "../../lib/types";
@@ -40,6 +41,8 @@ export default function FoodSearch() {
   const recent = useRecentFoods();
   const favorites = useFavorites();
   const saved = useQuery({ queryKey: qk.savedMeals, queryFn: async () => (await api<{ items: { id: string; name: string; energyKcal: number; items: unknown[] }[] }>("/v1/saved-meals")).items, staleTime: 5 * 60_000 });
+  const profile = useProfile();
+  const avoidsPorkAlcohol = profile.data?.dietary.pattern === "halal";
   const search = useQuery({ queryKey: qk.search(dq), queryFn: ({ signal }) => api<{ results: Food[]; notice: string | null }>("/v1/foods/search", { query: { q: dq }, signal }), enabled: dq.length >= 2, staleTime: 5 * 60_000 });
 
   const open = (f: Food) => router.push({ pathname: "/food/[id]", params: { id: f.id, day, meal } });
@@ -88,7 +91,7 @@ export default function FoodSearch() {
               {search.data.results.map((f, i) => (
                 <View key={f.id}>
                   {i ? <Divider /> : null}
-                  <ListRow title={f.name} subtitle={foodSubtitle(f)} onPress={() => open(f)} right={f.completeness < 1 ? <Badge label="partial" tone="warning" /> : undefined} />
+                  <ListRow title={f.name} subtitle={foodSubtitle(f)} onPress={() => open(f)} right={dietRowBadge(f, avoidsPorkAlcohol)} />
                 </View>
               ))}
             </Card>

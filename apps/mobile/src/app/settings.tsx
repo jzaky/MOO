@@ -15,7 +15,7 @@ import { haptic } from "../lib/haptics";
 import { queryClient } from "../lib/query";
 import type { Profile, Targets } from "../lib/types";
 import { useTheme } from "../theme/theme";
-import { Badge, Button, Card, Divider, ErrorState, Field, ListRow, Row, SectionHeader, Segmented, Skeleton, Stack, T } from "../ui/primitives";
+import { Badge, Button, Card, Chip, Divider, ErrorState, Field, ListRow, Row, SectionHeader, Segmented, Skeleton, Stack, T } from "../ui/primitives";
 import { Screen } from "../ui/Screen";
 
 interface NotificationPrefs {
@@ -58,6 +58,15 @@ function ProfileSection({ profile }: { profile: Profile }) {
         <View style={{ gap: 6 }}>
           <T variant="footnote" color="textSecondary">Units</T>
           <Segmented options={[{ value: "metric", label: "kg · cm" }, { value: "imperial", label: "lb · in" }]} value={profile.unitSystem} onChange={(unitSystem) => save.mutate({ unitSystem })} />
+        </View>
+        <View style={{ gap: 6 }}>
+          <T variant="footnote" color="textSecondary">Diet</T>
+          <Row gap={6} wrap>
+            {(["omnivore", "halal", "vegetarian", "vegan", "pescatarian", "keto", "kosher", "other"] as const).map((p) => (
+              <Chip key={p} label={p[0]!.toUpperCase() + p.slice(1)} selected={profile.dietary.pattern === p} onPress={() => save.mutate({ dietary: { ...profile.dietary, pattern: p } })} />
+            ))}
+          </Row>
+          {profile.dietary.pattern === "halal" ? <T variant="caption" color="textTertiary">Foods with pork or alcohol in their name or ingredients are marked in search. This is a reading aid, not a halal certification.</T> : null}
         </View>
         <Row justify="space-between">
           <View style={{ flex: 1 }}>

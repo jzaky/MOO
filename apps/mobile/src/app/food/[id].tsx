@@ -5,7 +5,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { api } from "../../lib/api";
-import { defaultMealForNow, logFood, qk, useFavorites, useFood } from "../../lib/data";
+import { defaultMealForNow, logFood, qk, useFavorites, useFood, useProfile } from "../../lib/data";
+import { DIET_DISCLAIMER, dietLines } from "../../features/food/diet";
 import { haptic } from "../../lib/haptics";
 import { todayKey } from "../../lib/ids";
 import { useTheme } from "../../theme/theme";
@@ -21,6 +22,7 @@ const FLAG_TEXT: Record<string, string> = {
   per100_from_raw_weight: "Per-gram values use raw ingredient weight (no cooked weight given).",
   unmatched_ingredients: "Some recipe ingredients have no nutrition data.",
   user_corrected: "You corrected this food.",
+  estimate: "An estimate from a typical recipe. Home and restaurant versions vary, so weigh or adjust when you can.",
 };
 
 const DETAIL_KEYS: NutrientKey[] = ["fiberG", "sugarG", "saturatedFatG", "sodiumMg", "potassiumMg", "calciumMg", "ironMg", "cholesterolMg"];
@@ -32,6 +34,9 @@ export default function FoodDetail() {
   const food = useFood(params.id);
   const favs = useFavorites();
   const f = food.data;
+  const profile = useProfile();
+  const avoidsPorkAlcohol = profile.data?.dietary.pattern === "halal";
+  const diet = f ? dietLines(f) : [];
   const [servingId, setServingId] = useState<string | "base" | null>(null);
   const [qty, setQty] = useState<number>(1);
   const [amount, setAmount] = useState<string>(params.grams ?? "100");
@@ -168,11 +173,41 @@ export default function FoodDetail() {
             “—” means the source has no value for that nutrient. It is never counted as zero.
           </T>
 
+          {f.standardRecipe ? (
+            <>
+              <SectionHeader title="How this estimate is made" />
+              <Card>
+                <Stack gap={8}>
+                  <T variant="footnote" color="textSecondary">A typical {f.servings[0]?.label ?? "serving"} ({f.standardRecipe.servingG} g) built from USDA ingredients. Nutrition is calculated from these amounts.</T>
+                  {f.standardRecipe.ingredients.map((i) => (
+                    <Row key={`${i.label}-${i.grams}`} justify="space-between">
+                      <T variant="subhead" style={{ flex: 1 }}>{i.label}</T>
+                      <T variant="subhead" color="textSecondary">{i.grams} g</T>
+                    </Row>
+                  ))}
+                  {f.standardRecipe.substitutions.map((x) => <T key={x} variant="caption" color="textTertiary">Closest USDA match: {x}.</T>)}
+                </Stack>
+              </Card>
+            </>
+          ) : null}
+
+          {diet.length && (avoidsPorkAlcohol || f.dietFlags?.pork || f.dietFlags?.alcohol || f.dietFlags?.halalLabel) ? (
+            <>
+              <SectionHeader title="Pork and alcohol" />
+              <Card>
+                <Stack gap={6}>
+                  {diet.map((l) => <T key={l} variant="footnote" color={/^(Contains|May contain)/.test(l) ? "warning" : "textSecondary"}>{l}</T>)}
+                  <T variant="caption" color="textTertiary">{DIET_DISCLAIMER}</T>
+                </Stack>
+              </Card>
+            </>
+          ) : null}
+
           <SectionHeader title="Source" />
           <Card>
             <Stack gap={8}>
               <Row gap={8} wrap>
-                <Badge label={f.isPrivate ? "Your food" : f.source === "off" ? "Open Food Facts" : f.source === "usda" ? "USDA" : f.source} tone={f.isPrivate ? "accent" : "neutral"} />
+                <Badge label={f.isPrivate ? "Your food" : f.source === "off" ? "Open Food Facts" : f.source === "usda" ? "USDA" : f.source === "standard_recipe" ? "Standard recipe" : f.source} tone={f.isPrivate ? "accent" : "neutral"} />
                 {f.completeness < 1 ? <Badge label="Incomplete" tone="warning" /> : null}
                 {f.barcode ? <Badge label={f.barcode} /> : null}
               </Row>

@@ -4,6 +4,7 @@ import path from "node:path";
 import { createDatabase } from "./client";
 import { upsertSharedFood } from "../foods/repository";
 import { mapFdcFood } from "../foods/sources";
+import { importStandardDishes } from "./importDishes";
 
 /**
  * Import a USDA FoodData Central bulk JSON file (SR Legacy or Foundation,
@@ -32,6 +33,9 @@ export async function importFdcFile(file: string, ownerUrl: string, appUrl: stri
       imported++;
       if (imported % 1000 === 0) console.log(`  ${imported} imported…`);
     }
+    // Standard-recipe dishes are computed from these ingredients, so refresh them too.
+    const dishes = await importStandardDishes(db.system);
+    console.log(`standard dishes: ${dishes.imported.length} imported, ${dishes.skipped.length} skipped`);
   } finally {
     await db.close();
   }

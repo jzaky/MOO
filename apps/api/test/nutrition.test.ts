@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { FakeAiProvider } from "../src/ai/fake";
 import { upsertSharedFood } from "../src/foods/repository";
 import { mapFdcFood, mapOffProduct, StaticFoodSources } from "../src/foods/sources";
+import { importStandardDishes } from "../src/db/importDishes";
 import { makeTestApp, onboard, registerUser, type TestApp } from "./helpers";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -312,5 +313,36 @@ describe("text logging", () => {
     expect(res).toMatchObject({ parser: "ai", kind: "food" });
     expect(res.items[0].parsed).toMatchObject({ name: "shawarma wrap", quantityAssumed: true });
     expect(res.issues).toContain("Size of the wrap not stated");
+  });
+});
+
+describe("UAE standard-recipe dishes", () => {
+  it("imports only dishes whose USDA ingredients exist, computes nutrition from them, and is searchable in English and Arabic", async () => {
+    const usda = (fdcId: number, description: string, kcal: number, p: number, c: number, f: number) =>
+      mapFdcFood({ fdcId, description, dataType: "SR Legacy", foodNutrients: [{ nutrientNumber: "208", value: kcal }, { nutrientNumber: "203", value: p }, { nutrientNumber: "205", value: c }, { nutrientNumber: "204", value: f }] })!;
+    await upsertSharedFood(t.db.system, usda(171304, "Yogurt, Greek, plain, whole milk", 97, 9, 3.98, 5), new Date());
+    await upsertSharedFood(t.db.system, usda(171413, "Oil, olive, salad or cooking", 884, 0, 0, 100), new Date());
+    const r = await importStandardDishes(t.db.system);
+    expect(r.imported).toContain("labneh");
+    expect(r.skipped.find((s) => s.slug === "lamb-mandi")?.missing.length).toBeGreaterThan(0);
+    expect(await importStandardDishes(t.db.system)).toEqual(r); // idempotent
+
+    const u = await user();
+    for (const q of ["labneh", "لبنة"]) {
+      const res = await t.app.inject({ method: "GET", url: "/v1/foods/search", headers: u.headers, query: { q } });
+      const items = res.json().results;
+      if (!items) throw new Error(res.body);
+      expect(items.some((f: { name: string }) => f.name.startsWith("Labneh with olive oil"))).toBe(true);
+    }
+    const id = (await t.app.inject({ method: "GET", url: "/v1/foods/search", headers: u.headers, query: { q: "labneh" } })).json().results.find((f: { source: string }) => f.source === "standard_recipe").id;
+    const food = (await t.app.inject({ method: "GET", url: `/v1/foods/${id}`, headers: u.headers })).json();
+    expect(food).toMatchObject({ source: "standard_recipe", servings: [{ label: "1 small plate", baseAmount: 110 }], quality: { flags: expect.arrayContaining(["estimate", "standard_recipe"]) }, dietFlags: { pork: null, alcohol: null } });
+    expect(food.per100.energyKcal).toBeCloseTo(((97 + 88.4) / 110) * 100, 1);
+    expect(food.standardRecipe).toMatchObject({ nameAr: "لبنة بزيت الزيتون", ingredients: [{ label: "Labneh", grams: 100, usdaName: "Yogurt, Greek, plain, whole milk" }, { label: "Olive oil", grams: 10 }] });
+  });
+
+  it("flags pork and alcohol on Open Food Facts products from their ingredient list and labels", () => {
+    const mapped = mapOffProduct({ product_name: "Party sausages", nutriments: { "energy-kcal_100g": 280, proteins_100g: 12, carbohydrates_100g: 3, fat_100g: 24 }, ingredients_text: "Pork (80%), water, salt, spices", labels_tags: ["en:gluten-free"] }, "123");
+    expect(mapped!.sourcePayload).toMatchObject({ ingredients_text: "Pork (80%), water, salt, spices", labels_tags: ["en:gluten-free"] });
   });
 });

@@ -45,7 +45,7 @@ export function words(s: string): string[] {
   return s
     .toLowerCase()
     .replace(/\([^)]*\)/g, " ")
-    .split(/[^a-z0-9%]+/)
+    .split(/[^\p{L}\p{N}%]+/u)
     .filter((w) => w.length >= 1 && !STOP.has(w));
 }
 
