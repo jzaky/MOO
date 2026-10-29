@@ -149,7 +149,7 @@ describe("time and sync", () => {
   });
 
   it("merges with last-writer-wins and detects duplicates", () => {
-    const a = { id: "1", clientUpdatedAt: "2026-10-28T10:00:00Z", reps: 8 };
+    const a: { id: string; clientUpdatedAt: string; reps: number; version?: number; deletedAt?: string | null } = { id: "1", clientUpdatedAt: "2026-10-28T10:00:00Z", reps: 8 };
     expect(decideMerge(a, null)).toBe("insert");
     expect(decideMerge(a, { ...a, version: 3 })).toBe("skip_duplicate");
     expect(decideMerge({ ...a, reps: 9, clientUpdatedAt: "2026-10-28T10:01:00Z" }, a)).toBe("apply");

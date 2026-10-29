@@ -6,6 +6,9 @@ import { registerDiaryRoutes } from "./diary";
 import { registerFoodRoutes } from "./foods";
 import { registerProfileRoutes } from "./profile";
 import { registerRecipeRoutes } from "./recipes";
+import { registerTrainingRoutes } from "./training";
+import { registerProgressRoutes } from "./progress";
+import { registerHealthRoutes } from "./health";
 
 export function registerRoutes(app: FastifyInstance, ctx: AppContext): void {
   registerAuthRoutes(app, ctx);
@@ -14,4 +17,7 @@ export function registerRoutes(app: FastifyInstance, ctx: AppContext): void {
   registerDiaryRoutes(app, ctx);
   registerRecipeRoutes(app, ctx);
   registerAiRoutes(app, ctx);
+  registerTrainingRoutes(app, ctx);
+  registerProgressRoutes(app, ctx);
+  registerHealthRoutes(app, ctx);
 }

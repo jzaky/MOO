@@ -39,6 +39,12 @@ describe("Open Food Facts mapping (real API fixtures)", () => {
     expect(f.quality.completeness).toBe(0.5);
   });
 
+  it("drops servings whose unit does not match the per-100 basis", () => {
+    const f = mapOffProduct({ product_name: "Juice", product_quantity_unit: "g", serving_quantity: 250, serving_quantity_unit: "ml", nutriments: { "energy-kcal_100g": 45 } }, "1")!;
+    expect(f.servings).toEqual([]);
+    expect(f.quality.flags).toContain("serving_unit_mismatch");
+  });
+
   it("rejects products without a name", () => {
     expect(mapOffProduct({ nutriments: {} }, "1")).toBeNull();
   });

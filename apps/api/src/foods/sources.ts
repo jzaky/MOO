@@ -77,12 +77,15 @@ export function mapOffProduct(p: OffProduct, code: string): NormalizedFood | nul
   // Drop unknown keys entirely so absence == unknown.
   for (const k of Object.keys(per100) as (keyof NutrientValues)[]) if (per100[k] === null) delete per100[k];
 
-  const unitHint = String(p.serving_quantity_unit ?? p.product_quantity_unit ?? "").toLowerCase();
-  const baseUnit: "g" | "ml" = unitHint === "ml" || unitHint === "cl" || unitHint === "l" ? "ml" : "g";
+  const isVolume = (u: unknown) => ["ml", "cl", "l"].includes(String(u ?? "").toLowerCase());
+  // The per-100 basis follows the product quantity unit; fall back to the serving unit.
+  const baseUnit: "g" | "ml" = p.product_quantity_unit ? (isVolume(p.product_quantity_unit) ? "ml" : "g") : isVolume(p.serving_quantity_unit) ? "ml" : "g";
   const servings: NormalizedFood["servings"] = [];
   const sq = num(p.serving_quantity);
+  const servingUnit = p.serving_quantity_unit ? (isVolume(p.serving_quantity_unit) ? "ml" : "g") : baseUnit;
   if (sq !== null && sq > 0 && sq < 5000) {
-    servings.push({ label: String(p.serving_size || `${sq} ${baseUnit}`).slice(0, 60), baseAmount: sq, source: "label" });
+    if (servingUnit !== baseUnit) flags.push("serving_unit_mismatch"); // e.g. serving in ml, nutrition per 100 g
+    else servings.push({ label: String(p.serving_size || `${sq} ${baseUnit}`).slice(0, 60), baseAmount: sq, source: "label" });
   }
   if (Object.keys(per100).length === 0) flags.push("no_nutrition_data");
   const countries = Array.isArray(p.countries_tags) ? (p.countries_tags as unknown[]).filter((c): c is string => typeof c === "string") : [];
