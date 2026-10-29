@@ -324,6 +324,7 @@ function DataSection() {
   return (
     <Card>
       <Stack gap={10}>
+        <Button title="Import from Strong, Hevy or MyFitnessPal" kind="secondary" size="md" onPress={() => router.push("/import")} />
         <Button title="Export my data (JSON)" kind="secondary" size="md" loading={exporting} onPress={() => void doExport()} />
         {msg ? <T variant="footnote" color="textSecondary">{msg}</T> : null}
         <Button title="Sign out" kind="secondary" size="md" onPress={() => void signOut()} />

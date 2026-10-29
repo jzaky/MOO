@@ -212,6 +212,50 @@ export async function insertProgram(tx: Tx, userId: string, body: z.infer<typeof
 
 const IdParam = z.object({ id: z.uuid() });
 
+/**
+ * Idempotent, last-writer-wins upsert of a workout session (used by the app's
+ * sync and by imports). Completing a session computes its summary and PRs.
+ */
+export async function upsertWorkout(tx: Tx, userId: string, id: string, body: z.infer<typeof WorkoutUpsert>, now: Date) {
+  const ts = new Date(clampClientTimestamp(body.clientUpdatedAt, now));
+  const [existing] = await tx.select().from(workoutSessions).where(eq(workoutSessions.id, id));
+  if (existing && existing.clientUpdatedAt.getTime() >= ts.getTime()) {
+    return { session: await loadSession(tx, id), applied: false, summary: existing.summary };
+  }
+  const exIds = [...new Set(body.exercises.map((e) => e.exerciseId))];
+  if (exIds.length) {
+    const visible = await tx.select({ id: exercises.id }).from(exercises).where(inArray(exercises.id, exIds));
+    if (visible.length !== exIds.length) throw badRequest("Unknown exercise in workout");
+  }
+  const values = { userId, templateId: body.templateId ?? null, name: body.name, day: body.day, startedAt: new Date(body.startedAt), endedAt: body.endedAt ? new Date(body.endedAt) : null, pausedSec: body.pausedSec, status: body.status, notes: body.notes ?? null, clientUpdatedAt: ts, updatedAt: now, deletedAt: body.status === "discarded" ? now : null };
+  try {
+    if (existing) await tx.update(workoutSessions).set({ ...values, version: existing.version + 1 }).where(eq(workoutSessions.id, id));
+    else await tx.insert(workoutSessions).values({ id, ...values });
+    await tx.delete(sessionExercises).where(eq(sessionExercises.sessionId, id));
+    for (const e of body.exercises) {
+      await tx.insert(sessionExercises).values({ id: e.id, userId: userId, sessionId: id, exerciseId: e.exerciseId, position: e.position, supersetGroup: e.supersetGroup ?? null, prescription: e.prescription ?? null, notes: e.notes ?? null });
+      if (e.sets.length) {
+        await tx.insert(setLogs).values(
+          e.sets.map((s) => ({ id: s.id, userId: userId, sessionExerciseId: e.id, position: s.position, kind: s.kind, weightKg: s.weightKg, reps: s.reps, rir: s.rir ?? null, rpe: s.rpe ?? null, assistedReps: s.assistedReps ?? null, completed: s.completed, completedAt: s.completedAt ? new Date(s.completedAt) : null, targetWeightKg: s.targetWeightKg ?? null, targetReps: s.targetReps ?? null, originalUnit: s.originalUnit, notes: s.notes ?? null })),
+        );
+      }
+    }
+  } catch (e) {
+    if (isUniqueViolation(e)) throw conflict("An id in this workout is already in use");
+    throw e;
+  }
+  let summary = existing?.summary ?? null;
+  if (body.status === "completed") {
+    summary = await completeWorkout(tx, userId, id, body.day);
+    if (existing?.status !== "completed") await tx.insert(auditEvents).values({ userId: userId, event: "workout.completed", targetType: "workout_session", targetId: id });
+  } else if (existing?.status === "completed") {
+    await tx.delete(personalRecords).where(eq(personalRecords.sessionId, id));
+    await tx.update(workoutSessions).set({ summary: null }).where(eq(workoutSessions.id, id));
+    summary = null;
+  }
+  return { session: await loadSession(tx, id), applied: true, summary };
+}
+
 export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): void {
   const auth = { preHandler: makeRequireAuth(ctx) };
 
@@ -427,45 +471,7 @@ export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): v
   app.put("/v1/workouts/:id", auth, async (req) => {
     const { id } = parse(IdParam, req.params);
     const body = parse(WorkoutUpsert, req.body);
-    return ctx.db.asUser(req.userId, async (tx) => {
-      const ts = new Date(clampClientTimestamp(body.clientUpdatedAt, ctx.now()));
-      const [existing] = await tx.select().from(workoutSessions).where(eq(workoutSessions.id, id));
-      if (existing && existing.clientUpdatedAt.getTime() >= ts.getTime()) {
-        return { session: await loadSession(tx, id), applied: false, summary: existing.summary };
-      }
-      const exIds = [...new Set(body.exercises.map((e) => e.exerciseId))];
-      if (exIds.length) {
-        const visible = await tx.select({ id: exercises.id }).from(exercises).where(inArray(exercises.id, exIds));
-        if (visible.length !== exIds.length) throw badRequest("Unknown exercise in workout");
-      }
-      const values = { userId: req.userId, templateId: body.templateId ?? null, name: body.name, day: body.day, startedAt: new Date(body.startedAt), endedAt: body.endedAt ? new Date(body.endedAt) : null, pausedSec: body.pausedSec, status: body.status, notes: body.notes ?? null, clientUpdatedAt: ts, updatedAt: ctx.now(), deletedAt: body.status === "discarded" ? ctx.now() : null };
-      try {
-        if (existing) await tx.update(workoutSessions).set({ ...values, version: existing.version + 1 }).where(eq(workoutSessions.id, id));
-        else await tx.insert(workoutSessions).values({ id, ...values });
-        await tx.delete(sessionExercises).where(eq(sessionExercises.sessionId, id));
-        for (const e of body.exercises) {
-          await tx.insert(sessionExercises).values({ id: e.id, userId: req.userId, sessionId: id, exerciseId: e.exerciseId, position: e.position, supersetGroup: e.supersetGroup ?? null, prescription: e.prescription ?? null, notes: e.notes ?? null });
-          if (e.sets.length) {
-            await tx.insert(setLogs).values(
-              e.sets.map((s) => ({ id: s.id, userId: req.userId, sessionExerciseId: e.id, position: s.position, kind: s.kind, weightKg: s.weightKg, reps: s.reps, rir: s.rir ?? null, rpe: s.rpe ?? null, assistedReps: s.assistedReps ?? null, completed: s.completed, completedAt: s.completedAt ? new Date(s.completedAt) : null, targetWeightKg: s.targetWeightKg ?? null, targetReps: s.targetReps ?? null, originalUnit: s.originalUnit, notes: s.notes ?? null })),
-            );
-          }
-        }
-      } catch (e) {
-        if (isUniqueViolation(e)) throw conflict("An id in this workout is already in use");
-        throw e;
-      }
-      let summary = existing?.summary ?? null;
-      if (body.status === "completed") {
-        summary = await completeWorkout(tx, req.userId, id, body.day);
-        if (existing?.status !== "completed") await tx.insert(auditEvents).values({ userId: req.userId, event: "workout.completed", targetType: "workout_session", targetId: id });
-      } else if (existing?.status === "completed") {
-        await tx.delete(personalRecords).where(eq(personalRecords.sessionId, id));
-        await tx.update(workoutSessions).set({ summary: null }).where(eq(workoutSessions.id, id));
-        summary = null;
-      }
-      return { session: await loadSession(tx, id), applied: true, summary };
-    });
+    return ctx.db.asUser(req.userId, (tx) => upsertWorkout(tx, req.userId, id, body, ctx.now()));
   });
 
   app.get("/v1/workouts/:id", auth, async (req) => {

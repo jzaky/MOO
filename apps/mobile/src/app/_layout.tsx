@@ -85,6 +85,7 @@ function Gate() {
         <Stack.Screen name="workout/form-check" options={{ presentation: "fullScreenModal" }} />
         <Stack.Screen name="weigh-in" options={sheet} />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="import" options={modal} />
         <Stack.Screen name="food/menu" options={modal} />
         <Stack.Screen name="recipes/index" />
         <Stack.Screen name="recipes/[id]" />

@@ -169,7 +169,7 @@ export const PortionSchema = z.discriminatedUnion("kind", [
 ]);
 export type PortionDto = z.infer<typeof PortionSchema>;
 
-export const Provenance = z.enum(["database", "label", "user", "ai_estimate", "recipe", "saved_meal"]);
+export const Provenance = z.enum(["database", "label", "user", "ai_estimate", "recipe", "saved_meal", "import"]);
 
 /** Idempotent upsert of a diary entry. The client generates the id. */
 export const FoodLogUpsert = z

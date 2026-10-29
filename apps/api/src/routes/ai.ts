@@ -30,6 +30,7 @@ import { makeRequireAuth, type AppContext } from "../http/context";
 import { upsertFoodLog } from "./diary";
 import { getProfile, profileToDto } from "./profile";
 import { suggestPortion } from "./recipes";
+import { matchExercise } from "../services/exerciseMatch";
 
 export async function recordUsage(tx: Tx, userId: string, feature: string, usage: AiUsage): Promise<void> {
   await tx.insert(usageEvents).values({ userId, feature, provider: usage.provider, model: usage.model, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens });
@@ -311,17 +312,6 @@ export function buildLabelDraft(data: LabelAnalysis, barcode: string | null) {
     flags,
     needsReview: flags.length > 0 || data.unreadableFields.length > 0 || !per100,
   };
-}
-
-async function matchExercise(tx: Tx, name: string) {
-  const q = name.toLowerCase().trim();
-  const rows = await tx
-    .select({ id: exercises.id, name: exercises.name, slug: exercises.slug })
-    .from(exercises)
-    .where(sql`lower(${exercises.name}) % ${q} or lower(${exercises.name}) like ${"%" + q.replace(/[%_]/g, "") + "%"} or exists (select 1 from unnest(${exercises.aliases}) a where lower(a) = ${q})`)
-    .orderBy(sql`(exists (select 1 from unnest(${exercises.aliases}) a where lower(a) = ${q}))::int desc, similarity(lower(${exercises.name}), ${q}) desc`)
-    .limit(3);
-  return rows;
 }
 
 function aiToIntent(a: ParsedLogAi): ParsedIntent {
