@@ -27,32 +27,33 @@ public final class StokeWatchModule: Module {
 
     Events(onWatchAction)
 
+    // Module DSL closures are stored (escaping), so members need an explicit `self`.
     OnCreate {
-      bridge.onAction = { [weak self] json in
+      self.bridge.onAction = { [weak self] json in
         self?.deliver(json)
       }
-      bridge.activate()
+      self.bridge.activate()
     }
 
     OnStartObserving(onWatchAction) {
-      lock.lock()
-      observing = true
-      let queued = pending
-      pending.removeAll()
-      lock.unlock()
+      self.lock.lock()
+      self.observing = true
+      let queued = self.pending
+      self.pending.removeAll()
+      self.lock.unlock()
       for json in queued {
-        sendEvent(onWatchAction, ["action": json])
+        self.sendEvent(onWatchAction, ["action": json])
       }
     }
 
     OnStopObserving(onWatchAction) {
-      lock.lock()
-      observing = false
-      lock.unlock()
+      self.lock.lock()
+      self.observing = false
+      self.lock.unlock()
     }
 
     Function("sendWorkoutState") { (json: String) in
-      bridge.send(stateJSON: json)
+      self.bridge.send(stateJSON: json)
     }
 
     Function("isSupported") { () -> Bool in

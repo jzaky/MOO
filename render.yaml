@@ -1,0 +1,38 @@
+# Render blueprint: API (Docker) + PostgreSQL 16 + a disk for private photos.
+# Dashboard → New → Blueprint → pick this repository. You'll be asked for
+# ANTHROPIC_API_KEY; everything else is generated or derived.
+services:
+  - type: web
+    name: stoke-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /health
+    disk:
+      name: stoke-media
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_OWNER_URL
+        fromDatabase:
+          name: stoke-db
+          property: connectionString
+      - key: APP_DB_PASSWORD
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MEDIA_SIGNING_SECRET
+        generateValue: true
+      - key: AI_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OFF_USER_AGENT
+        value: StokeFitness/0.1 (private beta)
+
+databases:
+  - name: stoke-db
+    plan: basic-256mb
+    region: frankfurt
+    postgresMajorVersion: "16"

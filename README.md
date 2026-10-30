@@ -4,6 +4,7 @@ A private, AI-native fitness and nutrition app: food logging (search, barcode, p
 
 | Doc | What it covers |
 | --- | --- |
+| [`docs/iphone-setup.md`](docs/iphone-setup.md) | **Getting the app onto your iPhone**: server on Render, cloud build with EAS |
 | [`docs/STATUS.md`](docs/STATUS.md) | **What is implemented, tested, partial and planned**, and what could not be verified |
 | [`docs/architecture.md`](docs/architecture.md) | System design, decisions (ADRs), data model, AI, sync, security |
 | [`docs/repository-evaluation.md`](docs/repository-evaluation.md) | The 24-repository evaluation and licensing decisions |
