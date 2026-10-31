@@ -461,8 +461,14 @@ export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): v
         role: "main" | "secondary" | "accessory";
         previous: SessionPerformance | null;
         recommendation: ReturnType<typeof recommendProgression>;
+        /** Best estimated 1RM on record (recorded e1RM PRs and recent sessions), for a live "new record" cue. */
+        bestE1rmKg: number | null;
       };
       let items: StartItem[] = [];
+      const prRows = tes.length
+        ? await tx.select({ exerciseId: personalRecords.exerciseId, best: sql<number>`max(${personalRecords.value})` }).from(personalRecords).where(and(eq(personalRecords.kind, "e1rm"), inArray(personalRecords.exerciseId, tes.map((r) => r.ex.id)))).groupBy(personalRecords.exerciseId)
+        : [];
+      const prBest = new Map(prRows.map((r) => [r.exerciseId, Number(r.best)]));
       for (const { te, ex } of tes) {
         const history = await exerciseHistory(tx, req.userId, ex.id, { limit: 6 });
         let rx = te.prescription as PrescriptionDto;
@@ -481,6 +487,7 @@ export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): v
           role: ex.mechanics === "compound" ? (te.position === 0 ? "main" : "secondary") : "accessory",
           previous: history.at(-1) ?? null,
           recommendation: rec,
+          bestE1rmKg: [prBest.get(ex.id) ?? null, ...history.map((h) => bestE1rm(h.sets))].reduce<number | null>((a, v) => (v != null && (a == null || v > a) ? v : a), null),
         });
       }
       let shortened = false;

@@ -2,6 +2,7 @@ import { summarizeWorkout } from "@stoke/core";
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
+import { FocusView } from "../../features/workout/FocusView";
 import { ActivityIndicator, Alert, Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { actionLabel, ExerciseBlock, formatDuration, RestTimer, useNow } from "../../features/workout/components";
@@ -11,7 +12,7 @@ import { useProfile } from "../../lib/data";
 import { kv } from "../../lib/storage";
 import type { StartWorkout } from "../../lib/types";
 import { useTheme } from "../../theme/theme";
-import { Badge, Button, Card, ErrorState, IconButton, Row, Stack, T } from "../../ui/primitives";
+import { Badge, Button, Card, ErrorState, IconButton, Row, Segmented, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
 import { t, tn } from "../../i18n";
 
@@ -79,6 +80,12 @@ export default function ActiveWorkoutScreen() {
   const profile = useProfile();
   const units = (profile.data?.unitSystem ?? "metric") as "metric" | "imperial";
   const now = useNow(1000);
+  // Focus (one set at a time) by default; the full list stays one tap away. Remembered on this device.
+  const [view, setViewState] = useState<"focus" | "list">(() => kv.get<"focus" | "list">("workout.view") ?? "focus");
+  const setView = (v: "focus" | "list") => {
+    kv.set("workout.view", v);
+    setViewState(v);
+  };
 
   if (!w) {
     if (params.templateId) return <PreStart templateId={params.templateId} />;
@@ -114,10 +121,13 @@ export default function ActiveWorkoutScreen() {
             <Button title={t("Finish")} size="sm" onPress={finish} />
           </Row>
         </Row>
-        {w.rest ? <RestTimer rest={w.rest} /> : null}
+        <Segmented options={[{ value: "focus", label: t("Focus") }, { value: "list", label: t("All sets") }]} value={view} onChange={setView} />
+        {w.rest && view === "list" ? <RestTimer rest={w.rest} /> : null}
       </View>
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: insets.bottom + 40, maxWidth: 720, width: "100%", alignSelf: "center" }}>
-        {w.exercises.map((ex) => (
+        {view === "focus" ? (
+          <FocusView w={w} units={units} onFinish={finish} />
+        ) : w.exercises.map((ex) => (
           <ExerciseBlock key={ex.id} ex={ex} workout={w} units={units} onReplace={() => router.push({ pathname: "/workout/exercise-picker", params: { replace: ex.id } })} onInfo={() => router.push({ pathname: "/workout/exercise-picker", params: { info: ex.exerciseId } })} />
         ))}
         <Button title={t("Add exercise")} kind="secondary" icon="add" onPress={() => router.push("/workout/exercise-picker")} />

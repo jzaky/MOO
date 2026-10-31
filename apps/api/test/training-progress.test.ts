@@ -280,6 +280,25 @@ describe("health integrations", () => {
   });
 });
 
+describe("workout start payload", () => {
+  it("includes each exercise's best estimated 1RM on record, not just last session's", async () => {
+    const u = await user();
+    const gen = (await t.app.inject({ method: "POST", url: "/v1/programs/generate", headers: u.headers, payload: { preferredDays: [1, 3, 5], sessionMinutes: 60 } })).json();
+    const prog = (await t.app.inject({ method: "POST", url: "/v1/programs", headers: u.headers, payload: gen.draft })).json();
+    const day = prog.days[0];
+    const exId = day.exercises[0].exerciseId;
+    const fresh = (await t.app.inject({ method: "GET", url: `/v1/templates/${day.id}/start`, headers: u.headers })).json();
+    expect(fresh.items[0].bestE1rmKg).toBeNull();
+    // Heavier session first, lighter one most recently: the best must come from the older one.
+    expect((await t.app.inject({ method: "PUT", url: `/v1/workouts/${randomUUID()}`, headers: u.headers, payload: workout("2026-10-10", exId, [[100, 5]]) })).statusCode).toBeLessThan(300);
+    expect((await t.app.inject({ method: "PUT", url: `/v1/workouts/${randomUUID()}`, headers: u.headers, payload: workout("2026-10-17", exId, [[80, 8]]) })).statusCode).toBeLessThan(300);
+    const start = (await t.app.inject({ method: "GET", url: `/v1/templates/${day.id}/start`, headers: u.headers })).json();
+    const item = start.items.find((i: { exercise: { id: string } }) => i.exercise.id === exId);
+    expect(item.previous.day).toBe("2026-10-17");
+    expect(item.bestE1rmKg).toBeCloseTo(100 * (1 + 5 / 30), 5);
+  });
+});
+
 describe("training blocks, deloads and fatigue", () => {
   const todayDubai = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dubai" }).format(new Date());
   const monday = (d: string) => { const x = new Date(`${d}T00:00:00Z`); const wd = (x.getUTCDay() + 6) % 7; return new Date(x.getTime() - wd * 86400000).toISOString().slice(0, 10); };

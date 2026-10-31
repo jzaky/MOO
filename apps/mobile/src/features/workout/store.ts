@@ -46,6 +46,8 @@ export interface ActiveExercise {
   sets: ActiveSet[];
   notes: string | null;
   suggestionApplied?: boolean;
+  /** Best estimated 1RM before this workout (from the server), for the live record cue. */
+  bestE1rmKg?: number | null;
 }
 
 export interface ActiveWorkout {
@@ -221,6 +223,7 @@ export function startFromTemplate(start: StartWorkout): ActiveWorkout {
       recommendation: it.recommendation,
       sets: setsFromRecommendation(it.recommendation, it.prescription, it.previous),
       notes: null,
+      bestE1rmKg: it.bestE1rmKg ?? null,
     })),
   };
   commit(w);

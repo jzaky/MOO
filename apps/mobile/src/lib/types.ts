@@ -144,6 +144,8 @@ export interface StartWorkout {
     role: "main" | "secondary" | "accessory";
     previous: { day: string; sets: LoggedSet[] } | null;
     recommendation: ProgressionRecommendation;
+    /** Best estimated 1RM on record; null before the first logged session. */
+    bestE1rmKg?: number | null;
   }[];
 }
 
