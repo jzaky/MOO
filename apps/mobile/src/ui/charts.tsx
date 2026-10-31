@@ -143,6 +143,23 @@ export interface LineSeries {
   /** Render as dots only (e.g. raw scale readings behind a trend line). */
   dotsOnly?: boolean;
   emphasis?: "primary" | "muted";
+  /** A dashed projection (e.g. a forecast); scrubbing reads it by interpolation, only within its span. */
+  projection?: boolean;
+}
+
+/** Value of a series at x: interpolated for projections (within their span), else the nearest point within 3 x-units. */
+function valueAt(s: LineSeries, x: number): number | null {
+  if (!s.points.length) return null;
+  if (s.projection) {
+    const pts = [...s.points].sort((a, b) => a.x - b.x);
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1]!, b = pts[i]!;
+      if (x >= a.x && x <= b.x) return b.x === a.x ? a.y : a.y + ((b.y - a.y) * (x - a.x)) / (b.x - a.x);
+    }
+    return null;
+  }
+  const p = s.points.reduce((best, q) => (Math.abs(q.x - x) < Math.abs(best.x - x) ? q : best), s.points[0]!);
+  return Math.abs(p.x - x) <= 3 ? p.y : null;
 }
 
 function niceTicks(min: number, max: number, count = 4): number[] {
@@ -157,7 +174,7 @@ function niceTicks(min: number, max: number, count = 4): number[] {
   return out;
 }
 
-export function LineChart({ series, height = 180, formatY = (v: number) => String(v), formatX = (x: number) => String(x), title }: { series: LineSeries[]; height?: number; formatY?: (v: number) => string; formatX?: (x: number) => string; title: string }) {
+export function LineChart({ series, height = 180, formatY = (v: number) => String(v), formatX = (x: number) => String(x), title, reference }: { series: LineSeries[]; height?: number; formatY?: (v: number) => string; formatX?: (x: number) => string; title: string; reference?: { y: number; label: string; color: string } }) {
   const th = useTheme();
   const [width, setWidth] = useState(0);
   const [scrubX, setScrubX] = useState<number | null>(null);
@@ -165,7 +182,7 @@ export function LineChart({ series, height = 180, formatY = (v: number) => Strin
   const pad = { l: 8, r: 44, t: 10, b: 22 };
   const geom = useMemo(() => {
     if (!all.length || width === 0) return null;
-    const xs = all.map((p) => p.x), ys = all.map((p) => p.y);
+    const xs = all.map((p) => p.x), ys = [...all.map((p) => p.y), ...(reference ? [reference.y] : [])];
     const xMin = Math.min(...xs), xMax = Math.max(...xs);
     const yPad = Math.max(0.5, (Math.max(...ys) - Math.min(...ys)) * 0.15);
     const ticks = niceTicks(Math.min(...ys) - yPad, Math.max(...ys) + yPad);
@@ -174,7 +191,7 @@ export function LineChart({ series, height = 180, formatY = (v: number) => Strin
     const sx = (x: number) => pad.l + (xMax === xMin ? w / 2 : ((x - xMin) / (xMax - xMin)) * w);
     const sy = (y: number) => pad.t + h - ((y - yMin) / (yMax - yMin || 1)) * h;
     return { sx, sy, ticks, xMin, xMax, w };
-  }, [width, height, JSON.stringify(series.map((s) => s.points.length)), all.length]);
+  }, [width, height, JSON.stringify(series.map((s) => s.points.length)), all.length, reference?.y]);
 
   const onLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const handleTouch = (e: GestureResponderEvent) => {
@@ -184,8 +201,11 @@ export function LineChart({ series, height = 180, formatY = (v: number) => Strin
     setScrubX(geom.xMin + frac * (geom.xMax - geom.xMin));
   };
   const nearest = (s: LineSeries, x: number) => s.points.reduce((best, p) => (Math.abs(p.x - x) < Math.abs(best.x - x) ? p : best), s.points[0]!);
-  const primary = series.find((s) => s.emphasis !== "muted" && !s.dotsOnly) ?? series[0];
-  const scrubbed = scrubX !== null && primary?.points.length ? nearest(primary, scrubX) : null;
+  const primary = series.find((s) => s.emphasis !== "muted" && !s.dotsOnly && !s.projection) ?? series[0];
+  const lastX = primary?.points.at(-1)?.x ?? null;
+  const projection = series.find((s) => s.projection);
+  // Past the last reading, the scrub follows the projection; otherwise it snaps to the nearest real point.
+  const scrubbed = scrubX === null || !primary?.points.length ? null : projection && lastX != null && scrubX > lastX && valueAt(projection, scrubX) != null ? { x: scrubX, y: valueAt(projection, scrubX)! } : nearest(primary, scrubX);
 
   if (!all.length) return null;
   return (
@@ -205,9 +225,10 @@ export function LineChart({ series, height = 180, formatY = (v: number) => Strin
                 ))}
               </G>
             ) : (
-              <Path key={s.key} d={s.points.map((p, i) => `${i ? "L" : "M"}${geom.sx(p.x).toFixed(1)},${geom.sy(p.y).toFixed(1)}`).join(" ")} stroke={s.color} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round" opacity={s.emphasis === "muted" ? 0.5 : 1} />
+              <Path key={s.key} d={s.points.map((p, i) => `${i ? "L" : "M"}${geom.sx(p.x).toFixed(1)},${geom.sy(p.y).toFixed(1)}`).join(" ")} stroke={s.color} strokeWidth={2} fill="none" strokeLinejoin="round" strokeLinecap="round" strokeDasharray={s.projection ? "5 5" : undefined} opacity={s.emphasis === "muted" ? 0.5 : 1} />
             ),
           )}
+          {reference ? <Line x1={pad.l} x2={width - pad.r} y1={geom.sy(reference.y)} y2={geom.sy(reference.y)} stroke={reference.color} strokeWidth={1} strokeDasharray="3 4" /> : null}
           {primary && primary.points.length ? (
             <Circle cx={geom.sx(primary.points.at(-1)!.x)} cy={geom.sy(primary.points.at(-1)!.y)} r={5} fill={primary.color} stroke={th.c.surface} strokeWidth={2} />
           ) : null}
@@ -218,6 +239,11 @@ export function LineChart({ series, height = 180, formatY = (v: number) => Strin
             </G>
           ) : null}
         </Svg>
+      ) : null}
+      {geom && reference ? (
+        <T variant="label" style={{ position: "absolute", left: pad.l + 2, top: geom.sy(reference.y) - 16, fontSize: 9, color: reference.color }}>
+          {reference.label}
+        </T>
       ) : null}
       {geom
         ? geom.ticks.map((tk) => (
@@ -242,11 +268,12 @@ export function LineChart({ series, height = 180, formatY = (v: number) => Strin
             {formatX(scrubbed.x)}
           </T>
           {series.map((s) => {
-            const p = nearest(s, scrubbed.x);
+            const y = valueAt(s, scrubbed.x);
+            if (y == null) return null;
             return (
               <View key={s.key} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: s.color }} />
-                <T variant="footnote">{formatY(p.y)}</T>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: s.color, opacity: s.projection ? 0.6 : 1 }} />
+                <T variant="footnote">{s.projection ? t("{value} forecast", { value: formatY(y) }) : formatY(y)}</T>
               </View>
             );
           })}

@@ -1,18 +1,23 @@
-import { displayBodyWeight, kgToLb, navyBodyFat, round } from "@stoke/core";
+import { displayBodyWeight, kgToLb, navyBodyFat, round, startOfIsoWeek } from "@stoke/core";
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
+import { BodyMap } from "../../features/progress/BodyMap";
+import { goalForecast } from "../../features/progress/forecast";
+import { muscleLabel } from "../../features/workout/components";
+import { muscleRows, plannedSetsPerMuscle } from "../../features/progress/muscles";
 import { api } from "../../lib/api";
+import type { Program } from "../../lib/types";
 import { qk, useProfile, useWeight } from "../../lib/data";
 import { haptic } from "../../lib/haptics";
 import { todayKey } from "../../lib/ids";
 import { appendImage, compressForUpload } from "../../lib/images";
 import { queryClient } from "../../lib/query";
 import { useTheme } from "../../theme/theme";
-import { Legend, LineChart, StatTile } from "../../ui/charts";
+import { Legend, LineChart } from "../../ui/charts";
 import { Badge, Button, Card, Chip, EmptyState, Row, Segmented, SectionHeader, Skeleton, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
 import { fmtDay, locale, t, tn } from "../../i18n";
@@ -64,7 +69,8 @@ export default function Progress() {
   const measurements = useQuery({ queryKey: qk.measurements, queryFn: () => api<{ items: { kind: string; first?: { day: string; value: number }; latest?: { day: string; value: number }; change: number | null }[] }>("/v1/progress/measurements-summary", { query: { days: 180 } }) });
   const photos = useQuery({ queryKey: qk.photos, queryFn: async () => (await api<{ items: Photo[] }>("/v1/progress-photos")).items, staleTime: 4 * 60_000 });
   const recovery = useQuery({ queryKey: qk.recovery, queryFn: () => api<{ readiness: string; insights: { id: string; message: string }[]; sleep: { last7AvgMin: number | null; baselineAvgMin: number | null }; restingHr: { last7Avg: number | null }; steps: { day: string; steps: number }[]; explanation: string }>("/v1/recovery/summary") });
-  const analytics = useQuery({ queryKey: qk.analytics, queryFn: () => api<{ strengthTrends: { exerciseId: string; name: string; points: { day: string; e1rmKg: number }[] }[] }>("/v1/training/analytics", { query: { weeks: 12 } }) });
+  const analytics = useQuery({ queryKey: [...qk.analytics, 12], queryFn: () => api<{ weeks: { week: string; setsPerMuscle: Record<string, number> }[]; strengthTrends: { exerciseId: string; name: string; points: { day: string; e1rmKg: number }[] }[] }>("/v1/training/analytics", { query: { weeks: 12 } }) });
+  const programs = useQuery({ queryKey: qk.programs, queryFn: async () => (await api<{ items: Program[] }>("/v1/programs")).items });
 
   const w = weight.data;
   // Body-fat estimate from the latest circumferences (US Navy method), computed on device.
@@ -76,6 +82,21 @@ export default function Progress() {
   const unit = units === "imperial" ? "lb" : "kg";
   const cutoff = toX(todayKey()) - Number(range);
   const pts = (w?.trend ?? []).filter((p) => toX(p.day) >= cutoff);
+  const goalKg = w?.goal?.targetWeightKg ?? null;
+  const forecast = w ? goalForecast({ trendKg: w.rate.latestTrendKg, goalKg, kgPerWeek: w.rate.kgPerWeek, sufficiency: w.rate.sufficiency, today: todayKey() }) : null;
+  const lastPt = pts.at(-1);
+  // Draw the projection at most ~4 months ahead so the history stays readable.
+  const projEnd = forecast && lastPt ? Math.min(toX(forecast.day), toX(lastPt.day) + 120) : null;
+  const projection = forecast && lastPt && projEnd != null && w?.rate.kgPerWeek != null ? [{ x: toX(lastPt.day), y: conv(lastPt.trendKg) }, { x: projEnd, y: conv(lastPt.trendKg + (w.rate.kgPerWeek / 7) * (projEnd - toX(lastPt.day))) }] : null;
+  const towardGoal = goalKg != null && w?.rate.kgPerWeek != null && w.rate.latestTrendKg != null && Math.sign(goalKg - w.rate.latestTrendKg) === Math.sign(w.rate.kgPerWeek);
+
+  // This week's sets per muscle against the active program's plan (same counting rule as the server).
+  const thisWeek = startOfIsoWeek(todayKey());
+  const doneSets = analytics.data?.weeks.find((wk) => wk.week === thisWeek)?.setsPerMuscle ?? {};
+  const activeProgram = (programs.data ?? []).find((p) => p.status === "active") ?? programs.data?.[0];
+  const planned = activeProgram ? plannedSetsPerMuscle(activeProgram.days) : {};
+  const rows = muscleRows(doneSets, planned);
+  const ratios = Object.fromEntries(rows.map((r) => [r.muscle, r.ratio]));
 
   const uploadPhoto = async () => {
     const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.9 });
@@ -95,10 +116,23 @@ export default function Progress() {
     <Screen tabBar title={t("Progress")} right={<Button title={t("Log weight")} size="sm" icon="scale" onPress={() => router.push("/weigh-in")} />} onRefresh={() => { void weight.refetch(); void measurements.refetch(); void photos.refetch(); }} refreshing={weight.isRefetching}>
       {weight.isPending ? <Skeleton height={220} /> : w ? (
         <>
-          <Row gap={8} align="stretch">
-            <StatTile label={t("7-day average")} value={w.sevenDayAverageKg ? String(conv(w.sevenDayAverageKg)) : "–"} unit={unit} />
-            <StatTile label={t("Trend")} value={w.rate.kgPerWeek == null ? "–" : `${w.rate.kgPerWeek >= 0 ? "+" : "−"}${conv(Math.abs(w.rate.kgPerWeek))}`} unit={w.rate.kgPerWeek == null ? undefined : t("{unit}/wk", { unit })} hint={w.rate.sufficiency === "good" ? t("≥ 3 weeks of data") : w.rate.sufficiency === "limited" ? t("early estimate") : t("needs more weigh-ins")} />
-          </Row>
+          <Stack gap={2}>
+            <Row justify="space-between">
+              <T variant="label" color="textTertiary">{t("Trend weight")}</T>
+              {goalKg != null ? <T variant="label" color="data">{t("Goal {value} {unit}", { value: conv(goalKg), unit })}</T> : null}
+            </Row>
+            <Row gap={10} align="flex-end">
+              <T variant="metricHero">{w.rate.latestTrendKg != null ? String(conv(w.rate.latestTrendKg)) : w.sevenDayAverageKg ? String(conv(w.sevenDayAverageKg)) : "–"}</T>
+              <T variant="metric" color="textTertiary" style={{ marginBottom: 6 }}>{unit}</T>
+              <View style={{ flex: 1 }} />
+              <Stack gap={0} style={{ alignItems: "flex-end", marginBottom: 6 }}>
+                <T variant="monoBold" color={w.rate.kgPerWeek == null ? "textTertiary" : towardGoal ? "success" : "textSecondary"}>
+                  {w.rate.kgPerWeek == null ? t("needs more weigh-ins") : t("{change} {unit}/wk", { change: `${w.rate.kgPerWeek >= 0 ? "+" : "−"}${conv(Math.abs(w.rate.kgPerWeek))}`, unit })}
+                </T>
+                <T variant="mono" color="textTertiary">{w.rate.sufficiency === "good" ? t("≥ 3 weeks of data") : w.rate.sufficiency === "limited" ? t("early estimate") : t("7-day average")}</T>
+              </Stack>
+            </Row>
+          </Stack>
           <Card>
             <Stack gap={10}>
               <Row justify="space-between">
@@ -112,12 +146,21 @@ export default function Progress() {
                     series={[
                       { key: "scale", label: t("Scale readings"), color: th.c.textTertiary, dotsOnly: true, points: pts.map((p) => ({ x: toX(p.day), y: conv(p.scaleKg) })) },
                       { key: "trend", label: t("Trend"), color: th.c.energy, points: pts.map((p) => ({ x: toX(p.day), y: conv(p.trendKg) })) },
+                      ...(projection ? [{ key: "forecast", label: t("At this pace"), color: th.c.accent, projection: true, points: projection }] : []),
                     ]}
                     formatY={(v) => String(round(v, 1))}
                     formatX={fmtX}
-                    height={200}
+                    height={210}
+                    reference={goalKg != null ? { y: conv(goalKg), label: t("Goal {value}", { value: conv(goalKg) }), color: th.c.data } : undefined}
                   />
-                  <Legend items={[{ label: t("Trend (smoothed)"), color: th.c.energy }, { label: t("Daily readings"), color: th.c.textTertiary, dotted: true }]} />
+                  <Legend items={[{ label: t("Trend (smoothed)"), color: th.c.energy }, { label: t("Daily readings"), color: th.c.textTertiary, dotted: true }, ...(projection ? [{ label: t("At this pace"), color: th.c.accent }] : [])]} />
+                  {forecast && goalKg != null ? (
+                    <T variant="mono" color="textSecondary">
+                      {t("At this pace, {goal} {unit} around {date} (between {early} and {late} if the pace changes by a quarter). Drag across the chart to read any day.", { goal: conv(goalKg), unit, date: fmtDay(forecast.day, { day: "numeric", month: "short", year: "numeric" }), early: fmtDay(forecast.earliest), late: fmtDay(forecast.latest) })}
+                    </T>
+                  ) : (
+                    <T variant="mono" color="textTertiary">{t("Drag across the chart to read any day.")}</T>
+                  )}
                 </>
               ) : (
                 <EmptyState icon="scale" title={t("Not enough weigh-ins yet")} body={t("Weigh in a few mornings a week; the trend appears after a couple of readings.")} />
@@ -130,6 +173,26 @@ export default function Progress() {
                 </View>
               ) : null}
             </Stack>
+          </Card>
+        </>
+      ) : null}
+
+      {rows.length ? (
+        <>
+          <SectionHeader title={t("Sets per muscle this week")} action={t("Train")} onAction={() => router.push("/train")} />
+          <Card>
+            <BodyMap ratios={ratios} />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", columnGap: 16, rowGap: 6, marginTop: 8 }}>
+              {rows.slice(0, 12).map((r) => (
+                <Row key={r.muscle} justify="space-between" gap={6} style={{ width: "46%", flexGrow: 1 }}>
+                  <T variant="caption" weight="700" numberOfLines={1} style={{ flexShrink: 1 }}>{muscleLabel(r.muscle)}</T>
+                  <T variant="mono" color={r.ratio == null ? "textTertiary" : r.ratio >= 1 ? "accent" : "textSecondary"}>
+                    {r.planned ? `${r.done}/${r.planned}` : `${r.done}`}
+                  </T>
+                </Row>
+              ))}
+            </View>
+            <T variant="caption" color="textTertiary" style={{ marginTop: 8 }}>{t("Completed sets this week against your program (secondary muscles count as half a set). Brighter means closer to plan.")}</T>
           </Card>
         </>
       ) : null}

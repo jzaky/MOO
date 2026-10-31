@@ -365,4 +365,14 @@ export const training: Dict = {
   "Weight in kilograms": "الوزن بالكيلوغرام",
   "Set done": "تمت المجموعة",
   "Complete set: {w} {unit} × {r}": "إكمال المجموعة: {w} {unit} × {r}",
+
+  // Progress: trend hero, forecast, body map
+  "Trend weight": "الوزن حسب الاتجاه",
+  "At this pace": "بهذه الوتيرة",
+  "Goal {value}": "الهدف {value}",
+  "At this pace, {goal} {unit} around {date} (between {early} and {late} if the pace changes by a quarter). Drag across the chart to read any day.": "بهذه الوتيرة تصل إلى {goal} {unit} في حدود {date} (بين {early} و{late} إذا تغيّرت الوتيرة بمقدار الربع). اسحب على الرسم لقراءة أي يوم.",
+  "Drag across the chart to read any day.": "اسحب على الرسم لقراءة أي يوم.",
+  "Sets per muscle this week": "المجموعات لكل عضلة هذا الأسبوع",
+  "Completed sets this week against your program (secondary muscles count as half a set). Brighter means closer to plan.": "المجموعات المكتملة هذا الأسبوع مقارنة ببرنامجك (العضلات الثانوية تُحسب نصف مجموعة). كلما كان اللون أسطع كنت أقرب إلى الخطة.",
+  "{value} forecast": "{value} متوقَّع",
 };
