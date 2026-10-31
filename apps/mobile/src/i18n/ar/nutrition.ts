@@ -293,4 +293,8 @@ export const nutrition: Dict = {
   "Circumferences": "المحيطات",
   "Measurements (optional)": "القياسات (اختياري)",
   "Saved offline if needed and synced automatically.": "يُحفظ دون اتصال عند الحاجة ويُزامَن تلقائيًا.",
+  "Searching brands and products online…": "جارٍ البحث عن العلامات التجارية والمنتجات عبر الإنترنت…",
+  "Brands and products": "العلامات التجارية والمنتجات",
+  "Online product search isn't reachable right now. Barcode scanning still works.": "البحث عن المنتجات عبر الإنترنت غير متاح حاليًا. مسح الباركود ما زال يعمل.",
+  "No packaged products matched.": "لا توجد منتجات معبّأة مطابقة.",
 };

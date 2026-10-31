@@ -13,6 +13,9 @@ import { getProfile } from "./profile";
 /** Shared records older than this are refreshed from the source on lookup. */
 const REVERIFY_AFTER_MS = 30 * 86_400_000;
 
+/** Recent online searches → catalogue ids, so retyping doesn't re-query the providers. */
+const onlineCache = new Map<string, { at: number; ids: string[] }>();
+
 export function registerFoodRoutes(app: FastifyInstance, ctx: AppContext): void {
   const auth = { preHandler: makeRequireAuth(ctx) };
 
@@ -33,6 +36,35 @@ export function registerFoodRoutes(app: FastifyInstance, ctx: AppContext): void 
       return { results: merged, notice: remoteError };
     }
     return { results: local, notice: null };
+  });
+
+  /**
+   * Online results (Open Food Facts, and USDA branded foods when a key is set),
+   * saved to the shared catalogue so they are instant next time. Separate from
+   * /search so typing never waits on the network; the app shows these below.
+   */
+  app.get("/v1/foods/search/online", auth, async (req) => {
+    const q = parse(z.object({ q: z.string().trim().min(2).max(100) }), req.query);
+    const country = await ctx.db.asUser(req.userId, async (tx) => (await getProfile(tx, req.userId)).country);
+    const key = `${country ?? ""}|${q.q.toLowerCase()}`;
+    const hit = onlineCache.get(key);
+    let ids: string[];
+    let notice: string | null = null;
+    if (hit && Date.now() - hit.at < 10 * 60_000) ids = hit.ids;
+    else {
+      ids = [];
+      try {
+        const remote = await ctx.foodSources.search(q.q, { country: country ? `en:${countryName(country)}` : null, limit: 20 });
+        for (const n of remote.filter((r) => r.quality.completeness > 0)) ids.push(await upsertSharedFood(ctx.db.system, n, ctx.now()));
+        onlineCache.set(key, { at: Date.now(), ids });
+        if (onlineCache.size > 500) onlineCache.delete(onlineCache.keys().next().value!);
+      } catch (e) {
+        notice = "Online food databases could not be reached; showing saved results only.";
+        req.log.warn({ err: (e as Error).message }, "online food search failed");
+      }
+    }
+    const foods = await ctx.db.asUser(req.userId, (tx) => loadFoods(tx, ids));
+    return { results: ids.map((id) => foods.get(id)).filter(Boolean), notice };
   });
 
   app.get("/v1/foods/barcode/:code", auth, async (req) => {

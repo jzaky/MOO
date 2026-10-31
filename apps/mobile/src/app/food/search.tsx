@@ -46,7 +46,14 @@ export default function FoodSearch() {
   const saved = useQuery({ queryKey: qk.savedMeals, queryFn: async () => (await api<{ items: { id: string; name: string; energyKcal: number; items: unknown[] }[] }>("/v1/saved-meals")).items, staleTime: 5 * 60_000 });
   const profile = useProfile();
   const avoidsPorkAlcohol = profile.data?.dietary.pattern === "halal";
-  const search = useQuery({ queryKey: qk.search(dq), queryFn: ({ signal }) => api<{ results: Food[]; notice: string | null }>("/v1/foods/search", { query: { q: dq }, signal }), enabled: dq.length >= 2, staleTime: 5 * 60_000 });
+  // Saved catalogue first (instant), online databases in parallel below it, so typing never waits on the network.
+  const search = useQuery({ queryKey: qk.search(dq), queryFn: ({ signal }) => api<{ results: Food[]; notice: string | null }>("/v1/foods/search", { query: { q: dq, remote: 0 }, signal }), enabled: dq.length >= 2, staleTime: 5 * 60_000 });
+  const online = useQuery({ queryKey: ["food-search-online", dq], queryFn: ({ signal }) => api<{ results: Food[]; notice: string | null }>("/v1/foods/search/online", { query: { q: dq }, signal }), enabled: dq.length >= 3, staleTime: 10 * 60_000, retry: false });
+  const localIds = new Set(search.data?.results.map((f) => f.id));
+  // The same product often exists under several barcodes; show it once.
+  const sameProduct = (f: Food) => `${f.name.trim().toLowerCase()}|${(f.brand ?? "").toLowerCase()}|${Math.round(f.per100.energyKcal ?? -1)}`;
+  const onlineOnly = (online.data?.results ?? []).filter((f, i, all) => !localIds.has(f.id) && all.findIndex((g) => sameProduct(g) === sameProduct(f)) === i);
+  const nothingAnywhere = !search.data?.results.length && !onlineOnly.length && !online.isFetching;
 
   const open = (f: Food) => router.push({ pathname: "/food/[id]", params: { id: f.id, day, meal } });
   const relog = (r: RecentFood) => {
@@ -89,15 +96,45 @@ export default function FoodSearch() {
             <Card>
               <ErrorState error={search.error} onRetry={() => void search.refetch()} />
             </Card>
-          ) : search.data?.results.length ? (
-            <Card padded={false} style={{ paddingHorizontal: 14 }}>
-              {search.data.results.map((f, i) => (
-                <View key={f.id}>
-                  {i ? <Divider /> : null}
-                  <ListRow title={f.name} subtitle={foodSubtitle(f)} onPress={() => open(f)} right={dietRowBadge(f, avoidsPorkAlcohol)} />
-                </View>
-              ))}
-            </Card>
+          ) : !nothingAnywhere ? (
+            <>
+              {search.data?.results.length ? (
+                <Card padded={false} style={{ paddingHorizontal: 14 }}>
+                  {search.data.results.map((f, i) => (
+                    <View key={f.id}>
+                      {i ? <Divider /> : null}
+                      <ListRow title={f.name} subtitle={foodSubtitle(f)} onPress={() => open(f)} right={dietRowBadge(f, avoidsPorkAlcohol)} />
+                    </View>
+                  ))}
+                </Card>
+              ) : null}
+              {dq.length >= 3 ? (
+                <>
+                  <SectionHeader title={online.isFetching && !onlineOnly.length ? t("Searching brands and products online…") : t("Brands and products")} />
+                  {onlineOnly.length ? (
+                    <Card padded={false} style={{ paddingHorizontal: 14 }}>
+                      {onlineOnly.map((f, i) => (
+                        <View key={f.id}>
+                          {i ? <Divider /> : null}
+                          <ListRow title={f.name} subtitle={foodSubtitle(f)} onPress={() => open(f)} right={dietRowBadge(f, avoidsPorkAlcohol)} />
+                        </View>
+                      ))}
+                    </Card>
+                  ) : online.isFetching ? (
+                    <Card>
+                      <Stack>
+                        <Skeleton />
+                        <Skeleton width="70%" />
+                      </Stack>
+                    </Card>
+                  ) : online.data?.notice || online.isError ? (
+                    <T variant="footnote" color="textTertiary">{t("Online product search isn't reachable right now. Barcode scanning still works.")}</T>
+                  ) : (
+                    <T variant="footnote" color="textTertiary">{t("No packaged products matched.")}</T>
+                  )}
+                </>
+              ) : null}
+            </>
           ) : (
             <Card>
               <EmptyState icon="search" title={t("No results for “{query}”", { query: dq })} body={t("Try a simpler name, scan the barcode, or create the food yourself.")} action={t("Create custom food")} onAction={() => router.push({ pathname: "/food/custom", params: { name: dq } })} />

@@ -60,29 +60,37 @@ async function ensureRoles(): Promise<void> {
   }
 }
 
+/** USDA bulk datasets (CC0): generic foods, plus everyday "as eaten" foods incl. fast-food and restaurant dishes. */
+const FDC_DATASETS = [
+  { dataType: "SR Legacy", label: "USDA SR Legacy", url: FDC_ZIP },
+  { dataType: "Survey (FNDDS)", label: "USDA FNDDS (everyday and restaurant foods)", url: "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_json_2024-10-31.zip" },
+] as const;
+
 async function importUsdaIfMissing(appUrl: string): Promise<void> {
-  const sql = postgres(ownerUrl!, { max: 1, onnotice: () => {} });
-  const [{ n }] = (await sql`select count(*)::int as n from foods where source = 'usda'`) as unknown as [{ n: number }];
-  await sql.end({ timeout: 5 });
-  if (n > 0) return;
-  const dir = await mkdtemp(path.join(tmpdir(), "fdc-"));
-  try {
-    console.log("food catalogue: downloading USDA SR Legacy (CC0)…");
-    const res = await fetch(FDC_ZIP);
-    if (!res.ok) throw new Error(`download failed: HTTP ${res.status}`);
-    await writeFile(path.join(dir, "fdc.zip"), Buffer.from(await res.arrayBuffer()));
-    await run("unzip", ["-o", "-q", path.join(dir, "fdc.zip"), "-d", dir]);
-    const json = (await readdir(dir)).find((f) => f.endsWith(".json"));
-    if (!json) throw new Error("no JSON file in the USDA archive");
-    // A separate process: if the import ever fails, the website and API stay up.
-    const script = path.join(path.dirname(fileURLToPath(import.meta.url)), "db", "importFdc.ts");
-    const { stdout } = await run(process.execPath, ["--import", "tsx", script, path.join(dir, json)], {
-      env: { ...process.env, DATABASE_OWNER_URL: ownerUrl!, DATABASE_URL: appUrl },
-      maxBuffer: 16 * 1024 * 1024,
-    });
-    console.log(stdout.trim().split("\n").filter((l) => !l.includes("imported…")).map((l) => `food catalogue: ${l}`).join("\n"));
-  } finally {
-    await rm(dir, { recursive: true, force: true });
+  for (const ds of FDC_DATASETS) {
+    const sql = postgres(ownerUrl!, { max: 1, onnotice: () => {} });
+    const [{ n }] = (await sql`select count(*)::int as n from foods where source = 'usda' and source_payload->>'dataType' = ${ds.dataType}`) as unknown as [{ n: number }];
+    await sql.end({ timeout: 5 });
+    if (n > 0) continue;
+    const dir = await mkdtemp(path.join(tmpdir(), "fdc-"));
+    try {
+      console.log(`food catalogue: downloading ${ds.label} (CC0)…`);
+      const res = await fetch(ds.url);
+      if (!res.ok) throw new Error(`download failed: HTTP ${res.status}`);
+      await writeFile(path.join(dir, "fdc.zip"), Buffer.from(await res.arrayBuffer()));
+      await run("unzip", ["-o", "-q", path.join(dir, "fdc.zip"), "-d", dir]);
+      const json = (await readdir(dir)).find((f) => f.endsWith(".json"));
+      if (!json) throw new Error("no JSON file in the USDA archive");
+      // A separate process: if the import ever fails, the website and API stay up.
+      const script = path.join(path.dirname(fileURLToPath(import.meta.url)), "db", "importFdc.ts");
+      const { stdout } = await run(process.execPath, ["--import", "tsx", script, path.join(dir, json)], {
+        env: { ...process.env, DATABASE_OWNER_URL: ownerUrl!, DATABASE_URL: appUrl },
+        maxBuffer: 16 * 1024 * 1024,
+      });
+      console.log(stdout.trim().split("\n").filter((l) => !l.includes("imported…")).map((l) => `food catalogue: ${l}`).join("\n"));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   }
 }
 

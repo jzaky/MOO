@@ -40,6 +40,11 @@ const OFF_FIELDS = [
 
 type OffProduct = Record<string, unknown> & { nutriments?: Record<string, unknown> };
 
+function firstBrand(b: unknown): string | null {
+  const first = Array.isArray(b) ? b.find((x) => typeof x === "string" && x.trim()) : typeof b === "string" ? b.split(",")[0] : null;
+  return typeof first === "string" && first.trim() ? first.trim().slice(0, 120) : null;
+}
+
 /** Map an Open Food Facts product to our normalized model. Pure; tested with real fixtures. */
 export function mapOffProduct(p: OffProduct, code: string): NormalizedFood | null {
   const n = p.nutriments ?? {};
@@ -97,7 +102,8 @@ export function mapOffProduct(p: OffProduct, code: string): NormalizedFood | nul
     sourceRef: code,
     sourceLicense: "ODbL-1.0 (Open Food Facts contributors)",
     name: name.slice(0, 200),
-    brand: typeof p.brands === "string" && p.brands.trim() ? p.brands.split(",")[0]!.trim().slice(0, 120) : null,
+    // The product API gives "A, B"; the search service gives ["A", "B"].
+    brand: firstBrand(p.brands),
     barcode: code,
     baseUnit,
     per100,
@@ -117,7 +123,12 @@ export function mapOffProduct(p: OffProduct, code: string): NormalizedFood | nul
 }
 
 export class OpenFoodFactsClient {
-  constructor(private readonly baseUrl: string, private readonly userAgent: string, private readonly fetchImpl: typeof fetch = fetch) {}
+  constructor(
+    private readonly baseUrl: string,
+    private readonly userAgent: string,
+    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly searchUrl = "https://search.openfoodfacts.org",
+  ) {}
 
   async product(code: string): Promise<NormalizedFood | null> {
     const url = `${this.baseUrl}/api/v2/product/${encodeURIComponent(code)}.json?fields=${OFF_FIELDS}`;
@@ -129,13 +140,33 @@ export class OpenFoodFactsClient {
     return mapOffProduct(body.product, code);
   }
 
+  /**
+   * Text search through Open Food Facts' search service (search.openfoodfacts.org;
+   * the old /cgi/search.pl endpoint is rate-limited to the point of returning 503).
+   * Products sold in the user's country come first, then the rest of the world.
+   */
   async search(query: string, country: string | null, limit: number): Promise<NormalizedFood[]> {
-    const params = new URLSearchParams({ search_terms: query, search_simple: "1", action: "process", json: "1", page_size: String(limit), fields: OFF_FIELDS });
-    if (country) params.set("tagtype_0", "countries"), params.set("tag_contains_0", "contains"), params.set("tag_0", country);
-    const res = await this.get(`${this.baseUrl}/cgi/search.pl?${params}`);
-    if (!res.ok) throw new FoodSourceError(`Open Food Facts search returned ${res.status}`, res.status >= 500 || res.status === 429);
-    const body = (await res.json()) as { products?: OffProduct[] };
-    return (body.products ?? []).map((p) => mapOffProduct(p, String(p.code ?? ""))).filter((f): f is NormalizedFood => !!f && !!f.sourceRef);
+    const q = query.replace(/["\\:()]/g, " ").trim();
+    if (!q) return [];
+    const run = async (lucene: string, size: number) => {
+      const params = new URLSearchParams({ q: lucene, page_size: String(size), fields: OFF_FIELDS });
+      const res = await this.get(`${this.searchUrl}/search?${params}`);
+      if (!res.ok) throw new FoodSourceError(`Open Food Facts search returned ${res.status}`, res.status >= 500 || res.status === 429);
+      const body = (await res.json()) as { hits?: OffProduct[] };
+      return body.hits ?? [];
+    };
+    const [local, world] = await Promise.allSettled([country ? run(`${q} countries_tags:"${country}"`, limit) : Promise.resolve([]), run(q, limit)]);
+    if (local.status === "rejected" && world.status === "rejected") throw world.reason;
+    const seen = new Set<string>();
+    const out: NormalizedFood[] = [];
+    for (const p of [...(local.status === "fulfilled" ? local.value : []), ...(world.status === "fulfilled" ? world.value : [])]) {
+      const code = String(p.code ?? "");
+      if (!code || seen.has(code)) continue;
+      seen.add(code);
+      const f = mapOffProduct(p, code);
+      if (f) out.push(f);
+    }
+    return out.slice(0, limit);
   }
 
   private async get(url: string): Promise<Response> {
@@ -217,7 +248,10 @@ export function mapFdcFood(f: FdcFood): NormalizedFood | null {
   }
   for (const p of f.foodPortions ?? []) {
     if (!p.gramWeight || p.gramWeight <= 0) continue;
-    const label = [p.amount && p.amount !== 1 ? p.amount : "1", p.modifier || p.portionDescription || p.measureUnit?.name].filter(Boolean).join(" ").slice(0, 60);
+    // Survey (FNDDS) portions carry the words in portionDescription and a numeric code in modifier.
+    const described = p.portionDescription && !/not specified/i.test(p.portionDescription) ? p.portionDescription : null;
+    const unit = p.modifier && !/^\d+$/.test(p.modifier) ? p.modifier : p.measureUnit?.name && p.measureUnit.name !== "undetermined" ? p.measureUnit.name : null;
+    const label = (described ?? [p.amount && p.amount !== 1 ? p.amount : "1", unit].filter(Boolean).join(" ")).slice(0, 60);
     if (label && servings.length < 10) servings.push({ label, baseAmount: p.gramWeight, source: "database" });
   }
   return {
@@ -247,7 +281,7 @@ export class UsdaClient {
       res = await this.fetchImpl(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query, pageSize: limit, dataType: ["Foundation", "SR Legacy", "Survey (FNDDS)"] }),
+        body: JSON.stringify({ query, pageSize: limit, dataType: ["Foundation", "SR Legacy", "Survey (FNDDS)", "Branded"] }),
         signal: AbortSignal.timeout(8000),
       });
     } catch (e) {
