@@ -297,4 +297,9 @@ export const nutrition: Dict = {
   "Brands and products": "العلامات التجارية والمنتجات",
   "Online product search isn't reachable right now. Barcode scanning still works.": "البحث عن المنتجات عبر الإنترنت غير متاح حاليًا. مسح الباركود ما زال يعمل.",
   "No packaged products matched.": "لا توجد منتجات معبّأة مطابقة.",
+
+  // Photo review boxes
+  "Your meal photo": "صورة وجبتك",
+  "{item}, about {low}–{high} g": "{item}، نحو {low}–{high} غ",
+  "Items without a box (like sauces or oil) are listed below.": "العناصر التي ليس لها إطار (مثل الصلصات أو الزيت) مدرجة أدناه.",
 };

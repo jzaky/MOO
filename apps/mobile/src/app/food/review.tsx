@@ -9,6 +9,7 @@ import { todayKey, uuid } from "../../lib/ids";
 import { queryClient } from "../../lib/query";
 import { kv } from "../../lib/storage";
 import { mealLabel } from "../../features/food/diet";
+import { PhotoBoxes } from "../../features/food/PhotoBoxes";
 import { t, tn } from "../../i18n";
 import { useTheme } from "../../theme/theme";
 import { Badge, Button, Card, Chip, EmptyState, Row, SectionHeader, Stack, Stepper, T } from "../../ui/primitives";
@@ -35,6 +36,7 @@ interface Component {
   needsUserInput: boolean;
   grams: { estimate: number; low: number; high: number };
   candidates: Candidate[];
+  region?: { x: number; y: number; w: number; h: number } | null;
 }
 interface Recognition {
   recognitionId: string;
@@ -45,6 +47,7 @@ interface Recognition {
   consumedFactor: number;
   day: string | null;
   meal: string | null;
+  photoUri?: string | null;
 }
 
 function tierLabel(tier: "high" | "medium" | "low"): string {
@@ -59,6 +62,7 @@ export default function Review() {
   );
   const [meal, setMeal] = useState(rec?.meal || defaultMealForNow());
   const [busy, setBusy] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const estimate = useMemo(() => {
@@ -105,11 +109,19 @@ export default function Review() {
   const range = estimate?.energyRangeKcal;
   return (
     <Screen close title={t("Check your meal")} subtitle={t("Estimated from your photo — adjust anything that looks off.")} footer={<Row gap={10}><Button title={t("Discard")} kind="secondary" onPress={() => void discard()} style={{ flex: 1 }} /><Button title={tn(included.length, "Log {n} item", "Log {n} items")} onPress={() => void confirm()} loading={busy} disabled={!included.length} style={{ flex: 2 }} /></Row>}>
+      {rec.photoUri && rec.components.some((c) => c.region) ? (
+        <PhotoBoxes
+          uri={rec.photoUri}
+          selected={selected}
+          onSelect={setSelected}
+          boxes={rec.components.map((c) => ({ id: c.id, label: c.label, tier: c.tier, grams: c.grams, region: c.region ?? null, included: !!choice[c.id]?.include }))}
+        />
+      ) : null}
       <Card>
         <Row justify="space-between" align="flex-end">
           <View>
             <T variant="footnote" color="textSecondary">{t("Estimated energy")}</T>
-            <T variant="metricL">{range ? `${range.low}–${range.high}` : "—"}</T>
+            <T variant="metricXL">{range ? `${range.low}–${range.high}` : "—"}</T>
             <T variant="caption" color="textTertiary">{t("kcal · best estimate {kcal}", { kcal: isKnown(estimate?.totals.energyKcal) ? Math.round(estimate!.totals.energyKcal as number) : "—" })}</T>
           </View>
           <Stack gap={2} style={{ alignItems: "flex-end" }}>
@@ -133,17 +145,17 @@ export default function Review() {
       {rec.components.map((c) => {
         const ch = choice[c.id]!;
         return (
-          <Card key={c.id}>
+          <Card key={c.id} style={selected === c.id ? { borderColor: th.c.accent } : undefined}>
             <Stack gap={10}>
               <Row justify="space-between" align="flex-start">
                 <View style={{ flex: 1, gap: 4 }}>
                   <Row gap={8}>
                     <T variant="headline" style={{ flexShrink: 1 }}>{c.label}</T>
-                    <Badge label={tierLabel(c.tier)} tone={c.tier === "high" ? "accent" : c.tier === "medium" ? "info" : "warning"} />
+                    <Badge label={tierLabel(c.tier)} tone={c.tier === "high" ? "info" : c.tier === "medium" ? "warning" : "danger"} />
                   </Row>
                   <T variant="caption" color="textTertiary">{c.portionBasis}</T>
                 </View>
-                <Switch value={ch.include} onValueChange={(v) => setChoice((s) => ({ ...s, [c.id]: { ...ch, include: v } }))} trackColor={{ true: th.c.accent, false: th.c.track }} accessibilityLabel={t("Include {item}", { item: c.label })} />
+                <Switch value={ch.include} onValueChange={(v) => setChoice((s) => ({ ...s, [c.id]: { ...ch, include: v } }))} trackColor={{ true: th.c.accent, false: th.c.track }} thumbColor={th.c.text} accessibilityLabel={t("Include {item}", { item: c.label })} />
               </Row>
               {c.candidates.length ? (
                 <Row gap={6} wrap>

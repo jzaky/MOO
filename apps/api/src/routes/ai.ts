@@ -142,6 +142,7 @@ export function registerAiRoutes(app: FastifyInstance, ctx: AppContext): void {
           portionBasis: c.ai.portionBasis,
           identityConfidence: c.ai.identityConfidence,
           portionConfidence: c.ai.portionConfidence,
+          region: photoRegion(c.ai.region),
           tier: e.tier,
           needsUserInput: e.needsUserInput,
           grams: { estimate: Math.round(c.grams.estimate), low: Math.round(c.grams.low), high: Math.round(c.grams.high) },
@@ -270,6 +271,16 @@ export function registerAiRoutes(app: FastifyInstance, ctx: AppContext): void {
     // Audio is never stored.
     return { text, draft: await parseAndMatch(ctx, req.userId, text) };
   });
+}
+
+/** Keep a model-given region only when it is a real box inside the image (clamped to the frame). */
+export function photoRegion(r: { x: number; y: number; w: number; h: number } | null | undefined): { x: number; y: number; w: number; h: number } | null {
+  if (!r) return null;
+  const x = Math.min(Math.max(r.x, 0), 1), y = Math.min(Math.max(r.y, 0), 1);
+  const w = Math.min(r.w, 1 - x), h = Math.min(r.h, 1 - y);
+  if (!(w >= 0.02 && h >= 0.02)) return null;
+  const q = (v: number) => Math.round(v * 1000) / 1000;
+  return { x: q(x), y: q(y), w: q(w), h: q(h) };
 }
 
 export function buildLabelDraft(data: LabelAnalysis, barcode: string | null) {

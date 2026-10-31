@@ -8,7 +8,7 @@ What exists, what has been verified, and what has not. Updated 2026-10-29.
 - **Partial:** usable, but part of the specified behaviour is missing. The note says what.
 - **Planned:** not built.
 
-**Test suites.** `@stoke/core` has 113 unit tests. `@stoke/api` has 107 integration tests against Postgres, including row-level-security isolation. `@stoke/mobile` has 57 unit tests covering the command-bar intent rules, the Today timeline, the live-workout store, the offline outbox, the recipe editor, the form-check session, deep links, widget layouts, the watch and Live Activity bridges, and Arabic translation coverage. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
+**Test suites.** `@stoke/core` has 113 unit tests. `@stoke/api` has 108 integration tests against Postgres, including row-level-security isolation. `@stoke/mobile` has 68 unit tests covering the command-bar intent rules, the Today timeline, workout focus and record rules, the goal forecast and planned sets per muscle, the live-workout store, the offline outbox, the recipe editor, the form-check session, deep links, widget layouts, the watch and Live Activity bridges, and Arabic translation coverage. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
 
 ## Verification limits in this environment
 
@@ -31,6 +31,11 @@ These could not be exercised here and must be verified on hardware or with crede
 | Hold "+" for a quick-action wheel (scan, plate photo, voice, workout, weigh-in) | Verified in browser | Long-press on the web; on iOS also exposed as an accessibility action. |
 | Command bar: one input that logs food/weight/water/sets, starts a workout by name, or sends a question to the coach | Tested (intent rules) + verified in browser | Intent is decided on-device. Logging uses the existing parser and shows per-item kcal (computed by core code), a match/check tag and calories left; nothing is saved until "Log". |
 | Today: calorie ring, LED macro meters, day timeline (weigh-in, meals, workout, now marker, next meal), habit nudge | Tested (timeline) + verified in browser, English and Arabic | The nudge only appears for a food logged 3+ times at the same meal and logs your last amount on tap. |
+| Workout focus mode: one set at a time, weight/rep dials, plates drawn per side, rest ring with what's next; "All sets" keeps the list | Tested (focus rules) + verified in browser | Default view; the choice is remembered on the device. |
+| Live "new personal record" toast and heavy haptic | Tested (API + rules) + verified in browser | Fires when a set's estimated 1RM beats the best on record (recorded PRs and recent sessions, from the start payload) and today's earlier sets. Quiet on a first-ever session. |
+| Progress: trend hero, goal line, dashed projection at the current pace, goal date with a ±25% pace range; scrub reads the forecast | Tested (forecast) + verified in browser | Nothing is projected when the pace is uncertain, flat, heading away from the goal, or more than two years out. |
+| Sets-per-muscle body map (front and back) against the active program | Tested (plan counting) + verified in browser | Same counting rule as the server: secondary muscles count half a set. |
+| Meal photo review: a box on each recognised item with its gram range, coloured by confidence; tap to highlight the item | Tested (API: regions clamped, degenerate ones dropped) + layout verified in browser with sample data | Boxes are the model's approximate locations, for orientation only. Not yet seen with real model output (needs the Anthropic key). |
 
 ### Platform and security
 | Feature | State | Notes |

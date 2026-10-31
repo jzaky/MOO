@@ -230,8 +230,8 @@ describe("photo recognition", () => {
   const analysis = {
     isFood: true,
     components: [
-      { label: "Grilled chicken breast", searchQuery: "chicken breast", cookingMethod: "grilled", identityConfidence: 0.9, alternatives: ["turkey"], gramsEstimate: 150, gramsLow: 120, gramsHigh: 190, portionConfidence: 0.6, portionBasis: "palm-sized portion", hiddenIngredientRisk: "oil" },
-      { label: "White rice", searchQuery: "rice white cooked", cookingMethod: null, identityConfidence: 0.85, alternatives: [], gramsEstimate: 200, gramsLow: 250, gramsHigh: 150, portionConfidence: 0.6, portionBasis: "about one cup", hiddenIngredientRisk: null },
+      { label: "Grilled chicken breast", searchQuery: "chicken breast", cookingMethod: "grilled", identityConfidence: 0.9, alternatives: ["turkey"], gramsEstimate: 150, gramsLow: 120, gramsHigh: 190, portionConfidence: 0.6, portionBasis: "palm-sized portion", hiddenIngredientRisk: "oil", region: { x: 0.55, y: 0.4, w: 0.3, h: 0.25 } },
+      { label: "White rice", searchQuery: "rice white cooked", cookingMethod: null, identityConfidence: 0.85, alternatives: [], gramsEstimate: 200, gramsLow: 250, gramsHigh: 150, portionConfidence: 0.6, portionBasis: "about one cup", hiddenIngredientRisk: null, region: { x: 0.9, y: 0.5, w: 0.4, h: 0.01 } },
       { label: "Brown sauce", searchQuery: "sauce", cookingMethod: null, identityConfidence: 0.3, alternatives: ["gravy", "teriyaki"], gramsEstimate: 30, gramsLow: 10, gramsHigh: 60, portionConfidence: 0.3, portionBasis: "drizzle", hiddenIngredientRisk: "sugar" },
     ],
     leftoverFraction: null,
@@ -257,6 +257,8 @@ describe("photo recognition", () => {
     expect(r.components[1].grams).toEqual({ estimate: 200, low: 150, high: 250 }); // range re-ordered
     expect(r.components[0].suggested.foodId).toBe(ids.chicken);
     expect(r.components[2].needsUserInput).toBe(true);
+    // Regions are passed through (clamped); a degenerate one is dropped; none given stays null.
+    expect(r.components.map((c: { region: unknown }) => c.region)).toEqual([{ x: 0.55, y: 0.4, w: 0.3, h: 0.25 }, null, null]);
     expect(r.totals.energyKcal).toBeCloseTo(247.5 + 260);
     expect(r.energyRangeKcal.low).toBeLessThan(r.energyRangeKcal.high);
     // The image sent to the model is a re-encoded JPEG (metadata stripped).

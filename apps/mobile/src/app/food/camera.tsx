@@ -50,7 +50,8 @@ export default function MealCamera() {
       form.append("mode", mode);
       for (const [i, uri] of shots.entries()) await appendImage(form, `image${i}`, await compressForUpload(uri));
       const res = await api<{ recognitionId: string }>("/v1/ai/meal-photo", { method: "POST", form });
-      kv.set("recognition.current", { ...res, day: params.day ?? null, meal: params.meal ?? null });
+      // The first photo (the "before" one in before/after mode) is what the item boxes refer to.
+      kv.set("recognition.current", { ...res, day: params.day ?? null, meal: params.meal ?? null, photoUri: shots[0] ?? null });
       haptic("success");
       router.replace("/food/review");
     } catch (e) {

@@ -26,6 +26,8 @@ export const MealPhotoAnalysis = z.object({
         portionConfidence: z.number().min(0).max(1),
         portionBasis: z.string().max(200),
         hiddenIngredientRisk: z.string().max(200).nullable(),
+        // Approximate area in the (first) image, as fractions of width and height, for highlighting on screen.
+        region: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1), w: z.number().min(0).max(1), h: z.number().min(0).max(1) }).nullable().optional(),
       }),
     )
     .max(15),
@@ -42,6 +44,7 @@ Your task is perception only:
 - For each, give a short generic "searchQuery" suitable for a food database (e.g. "chicken breast, grilled", "rice, white, cooked").
 - Estimate the edible portion in grams as a best estimate plus a plausible low–high range. Base it on visible cues (plate size, utensils, hands, packaging) and say what you used in "portionBasis". Ranges should be honest: wide when cues are weak.
 - identityConfidence and portionConfidence are 0–1. Use < 0.5 when you are guessing. Do not inflate confidence.
+- Give each component's "region": its approximate area in the first image as fractions of the width and height (x, y = top-left corner; w, h = size; all 0–1). It is only used to highlight the item on screen. Use null when the item is not a distinct visible area (e.g. a sauce mixed in, oil).
 - Note likely hidden calories (cooking oil, butter, dressings, sugar in sauces) in "hiddenIngredientRisk" instead of silently adding them.
 - If the user provided a before and an after photo, estimate "leftoverFraction" (0 = everything eaten, 1 = nothing eaten); otherwise null.
 - Ask up to 4 short clarifying questions only when the answer would materially change the estimate (e.g. "Was this cooked in oil?").
