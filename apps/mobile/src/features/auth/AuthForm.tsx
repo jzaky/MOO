@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useRef, useState } from "react";
 import { t } from "../../i18n";
 import type { TextInputInstance } from "react-native";
@@ -52,6 +53,11 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           </T>
         ) : null}
         <Button title={mode === "sign-in" ? t("Sign in") : t("Create account")} onPress={submit} loading={busy} disabled={!email || !password || tooShort} />
+        {mode === "sign-in" ? (
+          <Button title={t("New here? Create an account")} kind="ghost" onPress={() => router.replace("/sign-up")} />
+        ) : (
+          <Button title={t("I already have an account")} kind="ghost" onPress={() => router.replace("/sign-in")} />
+        )}
       </Stack>
     </Screen>
   );

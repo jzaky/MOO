@@ -84,6 +84,7 @@ export const core: Dict = {
   "At least 10 characters": "10 أحرف على الأقل",
   "Use at least 10 characters": "استخدم 10 أحرف على الأقل",
   "Sign in": "تسجيل الدخول",
+  "New here? Create an account": "جديد هنا؟ أنشئ حسابًا",
 
   // Shared components
   "Couldn't load this": "تعذّر التحميل",
