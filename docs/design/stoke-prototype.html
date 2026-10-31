@@ -225,7 +225,7 @@ canvas.burst { position: absolute; inset: 0; z-index: 27; pointer-events: none; 
 <header class="hero wrap">
   <div class="eyebrow">Stoke · prototype v2 · tap it</div>
   <h1>One bar. <em>Everything else</em> is instant.</h1>
-  <p class="lede">A working prototype of the next version: type or say anything, point the camera at a plate, log a set without looking. Built on the Ember look with instrument-panel data. Tap the phone, or walk through the seven moments alongside it. Numbers are from a real fat-loss day (2,330 kcal, 185 g protein).</p>
+  <p class="lede">A working prototype of the next version: type or say anything, point the camera at a plate, log a set without looking. Built on the Ember look with instrument-panel data. Tap the phone, or walk through the seven moments alongside it. The day is a sample (fat-loss targets of 2,330 kcal and 185 g protein); food values in the mockup are illustrative, not from the catalogue.</p>
 </header>
 
 <main class="wrap stage">
@@ -453,7 +453,7 @@ canvas.burst { position: absolute; inset: 0; z-index: 27; pointer-events: none; 
     tl.insertBefore(ev, now);
   }
 
-  // Command bar: typed demo with parsed items (values from the food catalogue)
+  // Command bar: typed demo with parsed items (illustrative values; the app takes them from the food catalogue)
   const PARSES = {
     "2 eggs, labneh and karak": { items: [
       { n: "Egg, whole, boiled", s: "2 large · 100 g · USDA", k: 155, p: 13, c: 1, f: 11, conf: "high" },
