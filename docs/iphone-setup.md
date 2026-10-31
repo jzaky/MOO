@@ -12,7 +12,9 @@
 ## 1. Put the server online (Render)
 
 1. In Render: **New → Blueprint**, connect GitHub and pick this repository (branch `claude/beautiful-galileo-la7tue` until it is merged). Render reads `render.yaml` and creates the server (which also serves the website), a PostgreSQL 16 database and a 1 GB disk for photos. The first build takes several minutes because it also builds the website.
-2. When asked, paste your `ANTHROPIC_API_KEY`. Every other secret is generated.
+2. When asked, paste your `ANTHROPIC_API_KEY`, or leave it empty for now. Every other secret is generated. Without a key the app runs normally and the AI features (photo logging, label and menu reading, coach) say they aren't set up yet.
+
+   **Adding the key later:** in Render open the `stoke-api` service → **Environment** → set `ANTHROPIC_API_KEY` (create one at console.anthropic.com) → **Save changes**. Render restarts the service with the key; nothing else to do, and your data is kept.
 3. Wait for the first deploy. The server creates its database roles, applies migrations and loads the exercise catalogue, then downloads the USDA food catalogue and the UAE dishes in the background (a couple of minutes).
 4. Copy the service URL, e.g. `https://stoke-api.onrender.com`, and check `https://…/health` shows `{"ok":true}`. Opening the URL itself shows the app.
 

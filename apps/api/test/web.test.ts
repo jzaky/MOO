@@ -37,3 +37,14 @@ describe("website served with the API", () => {
     expect(escape.body).not.toContain("root:");
   });
 });
+
+describe("AI switched on without a key", () => {
+  it("still starts, with AI features reported as unavailable", async () => {
+    const { createContext } = await import("../src/app");
+    const { loadConfig } = await import("../src/config");
+    const cfg = loadConfig({ NODE_ENV: "test", AI_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "" } as NodeJS.ProcessEnv);
+    const ctx = createContext(cfg, { db: t.db });
+    expect(ctx.ai.available).toBe(false);
+    expect(ctx.ai.name).toBe("none");
+  });
+});

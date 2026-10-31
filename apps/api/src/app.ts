@@ -33,8 +33,9 @@ export function createContext(cfg: Config, o: AppOverrides = {}): AppContext {
   let ai: AiProvider = o.ai ?? new DisabledAiProvider();
   if (!o.ai) {
     if (cfg.AI_PROVIDER === "anthropic") {
-      if (!cfg.ANTHROPIC_API_KEY) throw new Error("AI_PROVIDER=anthropic requires ANTHROPIC_API_KEY");
-      ai = new AnthropicProvider(cfg.ANTHROPIC_API_KEY, cfg.AI_MODEL);
+      // A key can be added later: until then AI features answer "not configured" and everything else runs.
+      if (cfg.ANTHROPIC_API_KEY?.trim()) ai = new AnthropicProvider(cfg.ANTHROPIC_API_KEY.trim(), cfg.AI_MODEL);
+      else console.warn("AI_PROVIDER=anthropic but ANTHROPIC_API_KEY is empty: AI features are off until a key is set.");
     } else if (cfg.AI_PROVIDER === "fake") ai = new FakeAiProvider();
   }
   return {
