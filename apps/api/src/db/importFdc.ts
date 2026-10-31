@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { createDatabase } from "./client";
@@ -16,14 +16,58 @@ import { importStandardDishes } from "./importDishes";
  *
  * Re-running is safe: records are upserted by (source, fdcId).
  */
+/**
+ * Yields each food in an FDC bulk file (`{"SRLegacyFoods": [ {...}, ... ]}`)
+ * one at a time. The files are 200+ MB, so parsing them whole needs more
+ * memory than a small server has; this keeps only one food in memory.
+ */
+export async function* streamFdcFoods(file: string): AsyncGenerator<Parameters<typeof mapFdcFood>[0]> {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  let parts: string[] = [];
+  let capturing = false;
+  for await (const chunk of createReadStream(file, { encoding: "utf8", highWaterMark: 1 << 20 }) as AsyncIterable<string>) {
+    let start = capturing ? 0 : -1;
+    for (let i = 0; i < chunk.length; i++) {
+      const c = chunk[i];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (c === "\\") escaped = true;
+        else if (c === '"') inString = false;
+        continue;
+      }
+      if (c === '"') inString = true;
+      else if (c === "{" || c === "[") {
+        depth++;
+        // depth 1: the top-level object, 2: its food array, 3: one food.
+        if (depth === 3 && c === "{") {
+          capturing = true;
+          start = i;
+          parts = [];
+        }
+      } else if (c === "}" || c === "]") {
+        if (depth === 3 && capturing) {
+          parts.push(chunk.slice(start, i + 1));
+          capturing = false;
+          start = -1;
+          yield JSON.parse(parts.join(""));
+          parts = [];
+        }
+        depth--;
+      }
+    }
+    if (capturing && start >= 0) parts.push(chunk.slice(start));
+  }
+}
+
 export async function importFdcFile(file: string, ownerUrl: string, appUrl: string): Promise<{ imported: number; skipped: number }> {
-  const raw = JSON.parse(await readFile(file, "utf8")) as Record<string, unknown[]>;
-  const list = (raw.SRLegacyFoods ?? raw.FoundationFoods ?? raw.SurveyFoods ?? []) as Parameters<typeof mapFdcFood>[0][];
+  const list = streamFdcFoods(file);
   const db = createDatabase(appUrl, ownerUrl, { max: 4 });
   let imported = 0;
   let skipped = 0;
   try {
-    for (const item of list) {
+    for await (const item of list) {
       const n = mapFdcFood(item);
       if (!n || n.quality.completeness < 1) {
         skipped++;
