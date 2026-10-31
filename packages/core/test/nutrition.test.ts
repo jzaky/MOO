@@ -131,7 +131,7 @@ describe("starting targets", () => {
     expect(t.basis).toBe("estimated");
     expect(t.energyKcal).toBeLessThan(t.estimatedTdeeKcal);
     expect(t.energyKcal).toBeGreaterThan(t.estimatedTdeeKcal * 0.75);
-    expect(t.proteinG).toBe(170);
+    expect(t.proteinG).toBe(185); // 2.2 g/kg in a deficit
     const kcal = t.proteinG * 4 + t.carbsG * 4 + t.fatG * 9;
     expect(Math.abs(kcal - t.energyKcal)).toBeLessThan(25);
   });
@@ -147,6 +147,38 @@ describe("starting targets", () => {
     const small = { sex: "female" as const, ageYears: 60, heightCm: 150, weightKg: 45 };
     const t = generateTargets(small, "sedentary", { goal: "lose_fat", weeklyRatePct: -0.01 });
     expect(t.energyKcal).toBeGreaterThanOrEqual(Math.min(1200, t.estimatedTdeeKcal) - 10);
+  });
+
+  it("gives each goal its own split, with the reasons", () => {
+    const by = (goal: Parameters<typeof generateTargets>[2]["goal"], extra = {}) => generateTargets(body, "moderate", { goal, ...extra });
+    const cut = by("lose_fat"), bulk = by("build_muscle", { experience: "beginner" }), endur = by("endurance", { trainingDaysPerWeek: 5 }), strength = by("strength"), maint = by("maintain");
+    // Calories follow the goal; a beginner's surplus is larger than an advanced lifter's.
+    expect(cut.energyKcal).toBeLessThan(maint.energyKcal);
+    expect(bulk.energyKcal).toBeGreaterThan(by("build_muscle", { experience: "advanced" }).energyKcal);
+    // Protein highest when cutting, lowest for endurance.
+    expect(cut.proteinG / body.weightKg).toBeCloseTo(2.2, 1);
+    expect(endur.proteinG / body.weightKg).toBeCloseTo(1.6, 1);
+    // Endurance carbs come first: fat drops to its floor (20%) before carbs do, and the plan says if 6 g/kg isn't reachable.
+    expect(endur.fatG).toBe(Math.ceil((endur.energyKcal * 0.2) / 9 / 5) * 5);
+    expect(endur.carbsG).toBeGreaterThan(maint.carbsG + 50);
+    expect(endur.rationale.join(" ")).toMatch(/6 g\/kg/);
+    expect(strength.carbsG / body.weightKg).toBeGreaterThanOrEqual(3);
+    // Every plan explains itself, and the numbers add up.
+    for (const t of [cut, bulk, endur, strength, maint]) {
+      expect(t.rationale.length).toBeGreaterThanOrEqual(2);
+      expect(Math.abs(t.proteinG * 4 + t.carbsG * 4 + t.fatG * 9 - t.energyKcal)).toBeLessThan(25);
+    }
+    expect(cut.rationale[0]).toMatch(/Fat loss/);
+  });
+
+  it("lets a secondary goal adjust the primary one", () => {
+    const leanBulk = generateTargets(body, "moderate", { goal: "build_muscle", experience: "beginner", secondaryGoals: ["lose_fat"] });
+    const bulk = generateTargets(body, "moderate", { goal: "build_muscle", experience: "beginner" });
+    expect(leanBulk.energyKcal).toBeLessThan(bulk.energyKcal);
+    expect(leanBulk.proteinG).toBeGreaterThan(bulk.proteinG);
+    expect(leanBulk.rationale.join(" ")).toMatch(/halved/);
+    const cutKeepStrength = generateTargets(body, "moderate", { goal: "lose_fat", weeklyRatePct: undefined, secondaryGoals: ["strength"] });
+    expect(cutKeepStrength.weeklyRatePct).toBeGreaterThanOrEqual(-0.004);
   });
 
   it("validates inputs", () => {

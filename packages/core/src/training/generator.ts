@@ -48,12 +48,52 @@ export interface GeneratorInput {
   equipment: readonly string[];
   experience: Experience;
   sessionMinutes: number;
-  goal: "strength" | "hypertrophy" | "general";
+  goal: TrainingGoal;
   likedSlugs?: readonly string[];
   excludedSlugs?: readonly string[];
 }
 
 const S = (pattern: string, role: Slot["role"], muscle?: string): Slot => (muscle ? { pattern, role, muscle } : { pattern, role });
+
+export type TrainingGoal = "strength" | "hypertrophy" | "fat_loss" | "recomposition" | "endurance" | "general";
+
+interface Rx {
+  /** Sets for [new/beginner, intermediate/advanced]. */
+  sets: [number, number];
+  reps: [number, number];
+  rir: number;
+  restSec: number;
+}
+
+/**
+ * How each goal is trained. Rep ranges and rests follow the ACSM progression
+ * position stand (2009) and Schoenfeld et al. on volume (2017) and rest (2016):
+ * heavy, low-rep, long-rest work for strength; more sets in the 6–15 range for
+ * muscle; heavy work kept in a deficit to hold muscle, with denser sessions and
+ * conditioning for fat loss.
+ */
+export const GOAL_TRAINING: Record<TrainingGoal, { main: Rx; secondary: Rx; accessory: Rx; maxAccessories: number; extraIsolation: boolean; finisherDays: number; finisherMinutes: [number, number]; why: string }> = {
+  strength: { main: { sets: [3, 5], reps: [3, 5], rir: 2, restSec: 210 }, secondary: { sets: [3, 3], reps: [6, 8], rir: 2, restSec: 150 }, accessory: { sets: [2, 2], reps: [8, 12], rir: 2, restSec: 90 }, maxAccessories: 2, extraIsolation: false, finisherDays: 0, finisherMinutes: [0, 0], why: "Strength: heavy main lifts for 3–5 reps with long rests, a few supporting lifts, and little extra fatigue." },
+  hypertrophy: { main: { sets: [3, 4], reps: [6, 10], rir: 2, restSec: 150 }, secondary: { sets: [3, 4], reps: [8, 12], rir: 1, restSec: 120 }, accessory: { sets: [3, 3], reps: [10, 15], rir: 1, restSec: 75 }, maxAccessories: 5, extraIsolation: true, finisherDays: 0, finisherMinutes: [0, 0], why: "Muscle: more weekly sets per muscle in the 6–15 rep range, extra isolation work, and taking sets close to failure." },
+  fat_loss: { main: { sets: [3, 4], reps: [5, 8], rir: 2, restSec: 150 }, secondary: { sets: [3, 3], reps: [8, 12], rir: 2, restSec: 90 }, accessory: { sets: [2, 3], reps: [12, 15], rir: 1, restSec: 60 }, maxAccessories: 3, extraIsolation: false, finisherDays: 3, finisherMinutes: [10, 15], why: "Fat loss: keep lifting heavy so you hold on to muscle in a deficit, with shorter rests and a 10–15 minute conditioning finisher to burn more." },
+  recomposition: { main: { sets: [3, 4], reps: [6, 10], rir: 2, restSec: 150 }, secondary: { sets: [3, 3], reps: [8, 12], rir: 1, restSec: 105 }, accessory: { sets: [2, 3], reps: [10, 15], rir: 1, restSec: 75 }, maxAccessories: 4, extraIsolation: true, finisherDays: 2, finisherMinutes: [10, 12], why: "Recomposition: muscle-building volume with two short conditioning finishers a week." },
+  endurance: { main: { sets: [3, 3], reps: [6, 10], rir: 3, restSec: 120 }, secondary: { sets: [2, 3], reps: [10, 15], rir: 2, restSec: 75 }, accessory: { sets: [2, 2], reps: [12, 15], rir: 2, restSec: 60 }, maxAccessories: 2, extraIsolation: false, finisherDays: 0, finisherMinutes: [0, 0], why: "Endurance: full-body strength on alternate days to support running or riding, kept short so conditioning days stay fresh." },
+  general: { main: { sets: [3, 3], reps: [6, 10], rir: 2, restSec: 120 }, secondary: { sets: [3, 3], reps: [8, 12], rir: 2, restSec: 90 }, accessory: { sets: [2, 2], reps: [10, 15], rir: 2, restSec: 60 }, maxAccessories: 3, extraIsolation: false, finisherDays: 1, finisherMinutes: [10, 15], why: "General fitness: a balance of strength, muscle and one conditioning finisher a week." },
+};
+
+/** Extra isolation work for muscle-focused goals, by day type. */
+const EXTRA_ISOLATION: Record<string, Slot[]> = {
+  full_body: [S("isolation", "accessory", "chest"), S("isolation", "accessory", "hamstrings")],
+  upper: [S("isolation", "accessory", "chest"), S("isolation", "accessory", "lats")],
+  lower: [S("isolation", "accessory", "glutes")],
+  push: [S("isolation", "accessory", "triceps")],
+  pull: [S("isolation", "accessory", "biceps")],
+  legs: [S("isolation", "accessory", "glutes")],
+};
+
+export function goalTrainingRationale(goal: TrainingGoal): string {
+  return GOAL_TRAINING[goal].why;
+}
 
 export const DAY_SLOTS: Record<string, Slot[]> = {
   full_body_a: [S("squat", "main"), S("horizontal_push", "main"), S("horizontal_pull", "secondary"), S("hinge", "secondary"), S("vertical_pull", "accessory"), S("isolation", "accessory", "side_delts"), S("core", "accessory")],
@@ -81,16 +121,21 @@ export function slotsForDay(dayName: string, index: number): Slot[] {
 const DIFFICULTY_RANK: Record<string, number> = { beginner: 0, intermediate: 1, advanced: 2 };
 const EXPERIENCE_RANK: Record<Experience, number> = { new: 0, beginner: 0, intermediate: 1, advanced: 2 };
 
-function prescriptionFor(ex: CatalogueExercise, role: Slot["role"], goal: GeneratorInput["goal"], experience: Experience): GeneratedPrescription {
+function prescriptionFor(ex: CatalogueExercise, role: Slot["role"], goal: TrainingGoal, experience: Experience): GeneratedPrescription {
   const loadProfile = (["barbell", "dumbbell", "machine", "cable", "bodyweight"].includes(ex.loadProfile) ? ex.loadProfile : "machine") as GeneratedPrescription["loadProfile"];
   const novice = experience === "new" || experience === "beginner";
-  if (ex.category === "cardio") return { scheme: "double_progression", sets: 1, repRange: { min: 15, max: 30 }, targetRir: 3, restSec: 0, loadProfile: "bodyweight" };
+  // Cardio "reps" are minutes: conditioning days are long and steady.
+  if (ex.category === "cardio") return { scheme: "double_progression", sets: 1, repRange: { min: 30, max: 45 }, targetRir: 3, restSec: 0, loadProfile: "bodyweight" };
+  const p = GOAL_TRAINING[goal];
+  const rx = p[role];
+  const sets = rx.sets[novice ? 0 : 1];
+  // Novices on strength progress session to session on a fixed 5; trained lifters use the 3–5 range.
   if (role === "main" && goal === "strength" && ex.mechanics === "compound" && loadProfile === "barbell") {
-    return { scheme: "linear", sets: novice ? 3 : 4, repRange: { min: 5, max: 5 }, targetRir: 2, restSec: 180, loadProfile };
+    return { scheme: "linear", sets, repRange: novice ? { min: 5, max: 5 } : { min: rx.reps[0], max: rx.reps[1] }, targetRir: rx.rir, restSec: rx.restSec, loadProfile };
   }
-  if (role === "main") return { scheme: "double_progression", sets: novice ? 3 : 4, repRange: { min: 6, max: 10 }, targetRir: 2, restSec: 150, loadProfile };
-  if (role === "secondary") return { scheme: "double_progression", sets: 3, repRange: { min: 8, max: 12 }, targetRir: 2, restSec: 120, loadProfile };
-  return { scheme: "double_progression", sets: novice ? 2 : 3, repRange: { min: 10, max: 15 }, targetRir: 1, restSec: 75, loadProfile };
+  // Very low reps suit barbell lifts; on dumbbell or machine variants a beginner works in 5–8.
+  if (role === "main" && goal === "strength" && novice) return { scheme: "double_progression", sets, repRange: { min: 5, max: 8 }, targetRir: rx.rir, restSec: rx.restSec, loadProfile };
+  return { scheme: "double_progression", sets, repRange: { min: rx.reps[0], max: rx.reps[1] }, targetRir: rx.rir, restSec: rx.restSec, loadProfile };
 }
 
 /** Rough session duration: working time + rest per set + 5 min warm-up. */
@@ -111,7 +156,13 @@ export function generateProgram(input: GeneratorInput): GeneratedDay[] {
   const maxExercises = Math.max(3, Math.min(8, Math.floor(input.sessionMinutes / 9)));
 
   return input.split.dayNames.map((dayName, di) => {
-    const slots = slotsForDay(dayName, di).slice(0, maxExercises);
+    const profile = GOAL_TRAINING[input.goal];
+    const type = dayKind(dayName);
+    let slots = slotsForDay(dayName, di);
+    if (profile.extraIsolation && type !== "conditioning") slots = [...slots, ...(EXTRA_ISOLATION[type] ?? [])];
+    // Keep the goal's accessory budget, then the session-length budget.
+    let accessories = 0;
+    slots = slots.filter((sl) => sl.role !== "accessory" || type === "conditioning" || ++accessories <= profile.maxAccessories).slice(0, maxExercises + (profile.extraIsolation ? 2 : 0));
     const usedToday = new Set<string>();
     const dayType = dayName.replace(/\s+[AB]$/, "");
     const usedSameType = usedByDayType.get(dayType) ?? new Set<string>();
@@ -142,9 +193,30 @@ export function generateProgram(input: GeneratorInput): GeneratedDay[] {
       exercises.push({ exerciseId: pick.id, slug: pick.slug, name: pick.name, role: slot.role, prescription: prescriptionFor(pick, slot.role, input.goal, input.experience) });
     }
     usedByDayType.set(dayType, usedSameType);
-    const fitted = fitToTime(exercises, input.sessionMinutes);
-    return { name: dayName, weekday: input.split.weekdays[di] ?? null, exercises: fitted, estimatedMinutes: estimateMinutes(fitted.map((e) => e.prescription)) };
+    // A conditioning finisher on the first N lifting days; its minutes are set aside before fitting the lifting.
+    const liftingIndex = input.split.dayNames.slice(0, di + 1).filter((n) => dayKind(n) !== "conditioning").length - 1;
+    const finisher = type !== "conditioning" && liftingIndex < profile.finisherDays ? pickFinisher(input.catalogue, equipment, excluded, di) : null;
+    const finisherMin = finisher ? profile.finisherMinutes[1] : 0;
+    const fitted = fitToTime(exercises, input.sessionMinutes - finisherMin);
+    if (finisher) fitted.push({ exerciseId: finisher.id, slug: finisher.slug, name: finisher.name, role: "accessory", prescription: { scheme: "double_progression", sets: 1, repRange: { min: profile.finisherMinutes[0], max: profile.finisherMinutes[1] }, targetRir: 2, restSec: 0, loadProfile: "bodyweight" } });
+    const cardioMinutes = fitted.filter((e) => input.catalogue.find((c) => c.id === e.exerciseId)?.category === "cardio").reduce((a, e) => a + e.prescription.repRange.max, 0);
+    const lifting = fitted.filter((e) => input.catalogue.find((c) => c.id === e.exerciseId)?.category !== "cardio");
+    return { name: dayName, weekday: input.split.weekdays[di] ?? null, exercises: fitted, estimatedMinutes: (lifting.length ? estimateMinutes(lifting.map((e) => e.prescription)) : 0) + cardioMinutes };
   });
+}
+
+function dayKind(dayName: string): string {
+  const n = dayName.toLowerCase();
+  if (n.includes("conditioning")) return "conditioning";
+  if (n.includes("full body") || n.includes("strength")) return "full_body";
+  for (const k of ["upper", "lower", "push", "pull", "legs"]) if (n.startsWith(k)) return k;
+  return "full_body";
+}
+
+/** A cardio option the user has the equipment for, rotating across days for variety. */
+function pickFinisher(catalogue: readonly CatalogueExercise[], equipment: Set<string>, excluded: Set<string>, dayIndex: number): CatalogueExercise | null {
+  const options = catalogue.filter((e) => e.category === "cardio" && equipment.has(e.equipment) && !excluded.has(e.slug)).sort((a, b) => a.slug.localeCompare(b.slug));
+  return options.length ? options[dayIndex % options.length]! : null;
 }
 
 /**

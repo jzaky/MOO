@@ -11,7 +11,7 @@ import {
   TrainingPreferences,
   type OnboardingPlanRequest as PlanReq,
 } from "@stoke/contracts";
-import { ageFromBirthDate, dayKeyInZone, DEFAULT_MEASUREMENT_SCHEDULE, generateTargets, isValidTimeZone, suggestSplit, type PrimaryGoal } from "@stoke/core";
+import { ageFromBirthDate, dayKeyInZone, DEFAULT_MEASUREMENT_SCHEDULE, generateTargets, goalTrainingRationale, isValidTimeZone, suggestSplit, type PrimaryGoal, type TrainingGoal } from "@stoke/core";
 import { and, desc, eq } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -69,6 +69,43 @@ export function targetsToDto(t: typeof nutritionTargets.$inferSelect) {
   };
 }
 
+/** Targets for the user's stored goals, body and training, as onboarding would compute them today. */
+async function recommendedTargets(tx: Tx, userId: string, now: Date) {
+  const p = await getProfile(tx, userId);
+  if (!p.birthDate || !p.sex || !p.heightCm || !p.activityLevel) throw badRequest("Finish your profile (birth date, sex, height, activity) first.");
+  const active = await tx.select().from(goals).where(and(eq(goals.userId, userId), eq(goals.status, "active"))).orderBy(goals.priority);
+  const [w] = await tx.select().from(bodyMeasurements).where(and(eq(bodyMeasurements.userId, userId), eq(bodyMeasurements.kind, "weight"))).orderBy(desc(bodyMeasurements.measuredAt)).limit(1);
+  const [bf] = await tx.select().from(bodyMeasurements).where(and(eq(bodyMeasurements.userId, userId), eq(bodyMeasurements.kind, "body_fat_pct"))).orderBy(desc(bodyMeasurements.measuredAt)).limit(1);
+  if (!w) throw badRequest("Log your weight first.");
+  const training = TrainingPreferences.parse(p.training ?? {});
+  const primary = active[0];
+  const goalKind = (primary?.kind ?? "maintain") as PrimaryGoal;
+  const targets = generateTargets(
+    { sex: p.sex as "male" | "female", ageYears: ageFromBirthDate(p.birthDate, now), heightCm: p.heightCm, weightKg: w.value, bodyFatPct: bf?.value ?? null },
+    p.activityLevel as Parameters<typeof generateTargets>[1],
+    {
+      goal: goalKind,
+      ...(primary?.weeklyRatePct != null ? { weeklyRatePct: primary.weeklyRatePct } : {}),
+      experience: training.experience,
+      secondaryGoals: active.slice(1).map((g) => g.kind as PrimaryGoal),
+      trainingDaysPerWeek: training.preferredDays.length || 3,
+    },
+  );
+  return { goal: goalKind, weightKg: w.value, targets: { ...targets, waterMl: Math.round((w.value * 33) / 50) * 50 } };
+}
+
+/** How a body-composition or performance goal is trained. */
+export function trainingGoalFor(kind: string): TrainingGoal {
+  switch (kind) {
+    case "strength": return "strength";
+    case "build_muscle": return "hypertrophy";
+    case "lose_fat": return "fat_loss";
+    case "recomposition": return "recomposition";
+    case "endurance": return "endurance";
+    default: return "general";
+  }
+}
+
 function primaryGoal(req: Pick<PlanReq, "goals">): PlanReq["goals"][number] {
   return [...req.goals].sort((a, b) => a.priority - b.priority)[0]!;
 }
@@ -80,14 +117,21 @@ export function buildPlan(req: PlanReq, now: Date) {
   const targets = generateTargets(
     { sex: req.sex, ageYears: age, heightCm: req.heightCm, weightKg: req.weightKg, bodyFatPct: req.bodyFatPct ?? null },
     req.activityLevel,
-    { goal: goal.kind as PrimaryGoal, ...(goal.weeklyRatePct != null ? { weeklyRatePct: goal.weeklyRatePct } : {}) },
+    {
+      goal: goal.kind as PrimaryGoal,
+      ...(goal.weeklyRatePct != null ? { weeklyRatePct: goal.weeklyRatePct } : {}),
+      experience: TrainingPreferences.parse(req.training ?? {}).experience,
+      secondaryGoals: req.goals.filter((g) => g !== goal).map((g) => g.kind as PrimaryGoal),
+      trainingDaysPerWeek: TrainingPreferences.parse(req.training ?? {}).preferredDays.length || 3,
+    },
   );
   const training = TrainingPreferences.parse(req.training ?? {});
   const split = suggestSplit(training.preferredDays, training.experience, goal.kind === "endurance");
+  const focus = trainingGoalFor(goal.kind);
   const stepsTarget = req.activityLevel === "sedentary" ? 7000 : req.activityLevel === "light" ? 8000 : 9000;
   return {
     targets: { ...targets, waterMl: Math.round((req.weightKg * 33) / 50) * 50 },
-    training: { ...split, sessionMinutes: training.sessionMinutes },
+    training: { ...split, rationale: `${split.rationale} ${goalTrainingRationale(focus)}`, focus, sessionMinutes: training.sessionMinutes },
     activity: {
       dailyStepsTarget: stepsTarget,
       note: "A gradual daily step target supports energy expenditure and general health; increase it only if it stays comfortable.",
@@ -215,6 +259,25 @@ export function registerProfileRoutes(app: FastifyInstance, ctx: AppContext): vo
       const history = await tx.select().from(nutritionTargets).where(eq(nutritionTargets.userId, req.userId)).orderBy(desc(nutritionTargets.effectiveFrom), desc(nutritionTargets.createdAt)).limit(50);
       const current = await currentTargets(tx, req.userId, today);
       return { current: current ? targetsToDto(current) : null, history: history.map(targetsToDto) };
+    }),
+  );
+
+  /** What the targets would be for the current goals, body and training, with the reasons. Changes nothing. */
+  app.get("/v1/nutrition/targets/recommended", auth, async (req) => ctx.db.asUser(req.userId, (tx) => recommendedTargets(tx, req.userId, ctx.now())));
+
+  /** Apply the recommendation as a new version from today (after the user has seen it). */
+  app.post("/v1/nutrition/targets/recalculate", auth, async (req, reply) =>
+    ctx.db.asUser(req.userId, async (tx) => {
+      const r = await recommendedTargets(tx, req.userId, ctx.now());
+      const p = await getProfile(tx, req.userId);
+      const today = dayKeyInZone(ctx.now(), p.timeZone);
+      const t = r.targets;
+      const [row] = await tx
+        .insert(nutritionTargets)
+        .values({ userId: req.userId, effectiveFrom: today, energyKcal: t.energyKcal, proteinG: t.proteinG, carbsG: t.carbsG, fatG: t.fatG, fiberG: t.fiberG, waterMl: t.waterMl, basis: "estimated", estimatedTdeeKcal: t.estimatedTdeeKcal, note: `Recalculated for goal: ${r.goal}` })
+        .returning();
+      await tx.insert(auditEvents).values({ userId: req.userId, event: "targets.recalculated", targetType: "nutrition_targets", targetId: row!.id, metadata: { goal: r.goal } });
+      return reply.status(201).send(targetsToDto(row!));
     }),
   );
 

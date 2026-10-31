@@ -8,7 +8,7 @@ What exists, what has been verified, and what has not. Updated 2026-10-29.
 - **Partial:** usable, but part of the specified behaviour is missing. The note says what.
 - **Planned:** not built.
 
-**Test suites.** `@stoke/core` has 111 unit tests. `@stoke/api` has 100 integration tests against Postgres, including row-level-security isolation. `@stoke/mobile` has 47 unit tests covering the live-workout store, the offline outbox, the recipe editor, the form-check session, deep links, widget layouts, the watch and Live Activity bridges, and Arabic translation coverage. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
+**Test suites.** `@stoke/core` has 113 unit tests. `@stoke/api` has 107 integration tests against Postgres, including row-level-security isolation. `@stoke/mobile` has 47 unit tests covering the live-workout store, the offline outbox, the recipe editor, the form-check session, deep links, widget layouts, the watch and Live Activity bridges, and Arabic translation coverage. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
 
 ## Verification limits in this environment
 
@@ -39,6 +39,7 @@ These could not be exercised here and must be verified on hardware or with crede
 ### Onboarding and targets
 | Feature | State | Notes |
 | --- | --- | --- |
+| Goal-specific macros: calories, protein, fat and carbs set per goal (fat loss, muscle, recomposition, strength, endurance, maintain), muscle-gain surplus by training age, secondary goals adjust the primary, endurance carbs by training days; each plan lists its reasons | Tested | Ranges from the ISSN protein and body-composition position stands and ACSM sports nutrition; fat never below 20% of energy or 0.6 g/kg. "Recalculate for my goal" in Settings previews before saving. |
 | Plan preview: Mifflin–St Jeor or Katch–McArdle, activity, goal rate | Tested | Calorie floor (1,200 kcal female, 1,500 kcal male) and a 25% maximum deficit are enforced. |
 | Onboarding completion (profile, goals, targets, first weigh-in) | Tested | |
 | Seven-step mobile onboarding | Implemented | Rendered on web. |
@@ -71,6 +72,7 @@ These could not be exercised here and must be verified on hardware or with crede
 | --- | --- | --- |
 | Original exercise catalogue: 83 exercises, aliases, alternatives, equipment | Tested | Written in-house. See the licensing notes in `repository-evaluation.md`. |
 | Deterministic program generator: split, equipment, time budget | Tested | |
+| Goal-specific programs: strength (3–5 reps, long rests, few accessories), muscle (extra isolation, 6–15 reps), fat loss (heavy mains, shorter rests, 10–15 min conditioning finishers), recomposition, endurance (strength/conditioning days), general | Tested | "Rebuild for my goal" on the Train tab shows the new program before switching; the old one stays in history. |
 | Programs with versioning; edits create new versions | Tested | |
 | Live workout: local-first, rest timer, set types, RIR, substitutions, pause and resume, offline | Tested (store) | The store has unit tests for: no pre-applied load increases, local persistence, rest timer and finish snapshot. Server sync of the session is tested. The UI was rendered on web. |
 | Progression (double, linear and RPE) with equipment-aware load steps | Tested | Load changes are never applied without the user tapping "Use suggestion". |

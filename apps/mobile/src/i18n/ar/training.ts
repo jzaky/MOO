@@ -339,4 +339,7 @@ export const training: Dict = {
   "Use match": "استخدام المطابقة",
   "Create new": "إنشاء جديد",
   "Choose a different file": "اختيار ملف آخر",
+  "Rebuild for my goal": "إعادة بناء البرنامج حسب هدفي",
+  "Your current program stays in your history.": "يبقى برنامجك الحالي في السجل.",
+  "{min}–{max} min": "{min}–{max} دقيقة",
 };

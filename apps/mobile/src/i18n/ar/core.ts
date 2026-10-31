@@ -232,4 +232,12 @@ export const core: Dict = {
   "Body fat should be a percentage between 3 and 70, or left empty.": "يجب أن تكون نسبة الدهون بين 3 و70، أو اتركها فارغة.",
   "Calories should be between 800 and 10,000 kcal.": "يجب أن تكون السعرات بين 800 و10,000 kcal.",
   "That macro target looks too high. Check the numbers.": "هدف العناصر الغذائية هذا يبدو مرتفعًا جدًا. تحقّق من الأرقام.",
+  "Your goal": "هدفك",
+  "Tap in order of importance; the first is your main goal. Up to three.": "اضغط بالترتيب حسب الأهمية؛ الأول هو هدفك الرئيسي. حتى ثلاثة أهداف.",
+  "Saving changes your goal only. Then recalculate your targets below, and rebuild your program on the Train tab.": "الحفظ يغيّر هدفك فقط. بعدها أعد حساب أهدافك الغذائية أدناه، وأعد بناء برنامجك من تبويب التدريب.",
+  "Save goal": "حفظ الهدف",
+  "Recalculate for my goal": "إعادة الحساب حسب هدفي",
+  "{kcal} kcal · {p} g protein · {c} g carbs · {f} g fat": "{kcal} kcal · {p} غ بروتين · {c} غ كربوهيدرات · {f} غ دهون",
+  "Keep current": "الإبقاء على الحالي",
+  "Use these": "استخدام هذه القيم",
 };

@@ -1,4 +1,5 @@
 import { CALORIE_FLOOR } from "@stoke/core";
+import { goalOptions, type Goal } from "../features/onboarding/goals";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { File, Paths } from "expo-file-system";
@@ -131,6 +132,78 @@ function ProfileSection({ profile }: { profile: Profile }) {
   );
 }
 
+interface Recommended {
+  goal: string;
+  targets: { energyKcal: number; proteinG: number; carbsG: number; fatG: number; rationale: string[]; notes: string[] };
+}
+
+function GoalSection() {
+  const current = useQuery({ queryKey: ["goals"], queryFn: () => api<{ goals: { kind: Goal; priority: number }[] }>("/v1/goals") });
+  const [picked, setPicked] = useState<Goal[] | null>(null);
+  const chosen = picked ?? (current.data?.goals ?? []).map((g) => g.kind);
+  const save = useMutation({
+    mutationFn: () => api("/v1/goals", { method: "PUT", body: { goals: chosen.map((kind, i) => ({ kind, priority: i + 1 })) } }),
+    onSuccess: () => {
+      haptic("success");
+      setPicked(null);
+      void queryClient.invalidateQueries({ queryKey: ["goals"] });
+      void queryClient.invalidateQueries({ queryKey: ["targets-recommended"] });
+    },
+  });
+  const changed = picked !== null && picked.join() !== (current.data?.goals ?? []).map((g) => g.kind).join();
+  return (
+    <Card>
+      <Stack gap={10}>
+        <T variant="footnote" color="textSecondary">{t("Tap in order of importance; the first is your main goal. Up to three.")}</T>
+        <Row gap={6} wrap>
+          {goalOptions().map((g) => {
+            const idx = chosen.indexOf(g.value);
+            return <Chip key={g.value} label={idx >= 0 ? `${idx + 1}. ${g.label}` : g.label} selected={idx >= 0} onPress={() => setPicked(idx >= 0 ? chosen.filter((x) => x !== g.value) : [...chosen, g.value].slice(0, 3))} />;
+          })}
+        </Row>
+        {changed ? (
+          <>
+            <T variant="caption" color="textTertiary">{t("Saving changes your goal only. Then recalculate your targets below, and rebuild your program on the Train tab.")}</T>
+            <Button title={t("Save goal")} size="md" disabled={!chosen.length} loading={save.isPending} onPress={() => save.mutate()} />
+          </>
+        ) : null}
+        {save.error ? <T variant="footnote" color="danger">{errMsg(save.error)}</T> : null}
+      </Stack>
+    </Card>
+  );
+}
+
+function RecalculateTargets() {
+  const [open, setOpen] = useState(false);
+  const rec = useQuery({ queryKey: ["targets-recommended"], queryFn: () => api<Recommended>("/v1/nutrition/targets/recommended"), enabled: open });
+  const apply = useMutation({
+    mutationFn: () => api("/v1/nutrition/targets/recalculate", { method: "POST" }),
+    onSuccess: () => {
+      haptic("success");
+      setOpen(false);
+      for (const k of [qk.targets, qk.today, ["diary"]]) void queryClient.invalidateQueries({ queryKey: k });
+    },
+  });
+  if (!open) return <Button title={t("Recalculate for my goal")} kind="secondary" size="md" icon="sync" onPress={() => setOpen(true)} />;
+  const r = rec.data?.targets;
+  return (
+    <Stack gap={8}>
+      {rec.isPending ? <Skeleton height={80} /> : rec.isError ? <T variant="footnote" color="danger">{errMsg(rec.error)}</T> : r ? (
+        <>
+          <T variant="headline">{t("{kcal} kcal · {p} g protein · {c} g carbs · {f} g fat", { kcal: fmtNum(r.energyKcal), p: r.proteinG, c: r.carbsG, f: r.fatG })}</T>
+          {r.rationale.map((line) => <T key={line} variant="footnote" color="textSecondary">{line}</T>)}
+          {r.notes.map((line) => <T key={line} variant="footnote" color="warning">{line}</T>)}
+          <Row gap={8}>
+            <Button title={t("Keep current")} kind="secondary" size="md" onPress={() => setOpen(false)} style={{ flex: 1 }} />
+            <Button title={t("Use these")} size="md" loading={apply.isPending} onPress={() => apply.mutate()} style={{ flex: 1.3 }} />
+          </Row>
+        </>
+      ) : null}
+      {apply.error ? <T variant="footnote" color="danger">{errMsg(apply.error)}</T> : null}
+    </Stack>
+  );
+}
+
 function TargetsSection({ profile }: { profile: Profile }) {
   const targets = useQuery({ queryKey: qk.targets, queryFn: () => api<{ current: Targets | null }>("/v1/nutrition/targets") });
   const [editing, setEditing] = useState(false);
@@ -172,6 +245,7 @@ function TargetsSection({ profile }: { profile: Profile }) {
             <T variant="subhead" color="textSecondary">{t("No targets yet.")}</T>
           )}
           <Button title={t("Edit targets")} kind="secondary" size="md" icon="edit" onPress={() => setEditing(true)} />
+          <RecalculateTargets />
         </Stack>
       ) : (
         <Stack gap={10}>
@@ -422,6 +496,8 @@ export default function Settings() {
           <LanguageSection />
           <SectionHeader title={t("Profile")} />
           <ProfileSection profile={profile.data} />
+          <SectionHeader title={t("Your goal")} />
+          <GoalSection />
           <SectionHeader title={t("Nutrition targets")} />
           <TargetsSection profile={profile.data} />
           <Card padded={false} style={{ paddingHorizontal: 14 }}>

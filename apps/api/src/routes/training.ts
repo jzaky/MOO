@@ -12,6 +12,7 @@ import {
   detectPersonalRecords,
   fitToTime,
   generateProgram,
+  goalTrainingRationale,
   isWorkSet,
   recommendProgression,
   sessionsPerWeek,
@@ -20,6 +21,7 @@ import {
   summarizeWorkout,
   weeklySetsPerMuscle,
   type CatalogueExercise,
+  type TrainingGoal,
   type LoggedSet,
   type Prescription,
   type ReadinessSignal,
@@ -35,7 +37,7 @@ import { badRequest, conflict, notFound, parse } from "../http/errors";
 import { makeRequireAuth, type AppContext } from "../http/context";
 import { recoverySnapshot } from "../services/recovery";
 import { isUniqueViolation } from "../util/ids";
-import { getProfile } from "./profile";
+import { getProfile, trainingGoalFor } from "./profile";
 
 type ExerciseRow = typeof exercises.$inferSelect;
 
@@ -430,7 +432,7 @@ export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): v
         preferredDays: z.array(z.number().int().min(1).max(7)).max(7).optional(),
         sessionMinutes: z.number().int().min(20).max(180).optional(),
         equipment: z.array(z.string().max(40)).max(20).optional(),
-        goal: z.enum(["strength", "hypertrophy", "general"]).optional(),
+        goal: z.enum(["strength", "hypertrophy", "fat_loss", "recomposition", "endurance", "general"]).optional(),
       }),
       req.body ?? {},
     );
@@ -620,11 +622,11 @@ export function registerTrainingRoutes(app: FastifyInstance, ctx: AppContext): v
 
 }
 
-export async function buildProgramProposal(tx: Tx, userId: string, body: { preferredDays?: number[]; sessionMinutes?: number; equipment?: string[]; goal?: "strength" | "hypertrophy" | "general" }) {
+export async function buildProgramProposal(tx: Tx, userId: string, body: { preferredDays?: number[]; sessionMinutes?: number; equipment?: string[]; goal?: TrainingGoal }) {
   const p = await getProfile(tx, userId);
   const training = TrainingPreferences.parse(p.training ?? {});
   const [primaryGoal] = await tx.select().from(goals).where(and(eq(goals.userId, userId), eq(goals.status, "active"))).orderBy(asc(goals.priority)).limit(1);
-  const goal = body.goal ?? (primaryGoal?.kind === "strength" ? "strength" : primaryGoal?.kind === "build_muscle" || primaryGoal?.kind === "recomposition" ? "hypertrophy" : "general");
+  const goal = body.goal ?? trainingGoalFor(primaryGoal?.kind ?? "general_fitness");
   const split = suggestSplit(body.preferredDays ?? training.preferredDays, training.experience, primaryGoal?.kind === "endurance");
   const allEquipment = ["barbell", "dumbbell", "kettlebell", "machine", "cable", "bodyweight", "band", "smith_machine", "cardio_machine", "pullup_bar"];
   const equipment = body.equipment ?? (training.gymAccess === "commercial_gym" ? allEquipment : training.equipment.length ? training.equipment : ["bodyweight", "dumbbell"]);
@@ -640,11 +642,12 @@ export async function buildProgramProposal(tx: Tx, userId: string, body: { prefe
       split: splitKind,
       // 4 build weeks then a deload week; the user can change or switch this off.
       blockWeeks: 5,
-      notes: split.rationale,
+      notes: `${split.rationale} ${goalTrainingRationale(goal)}`,
       days: days.map((d) => ({ name: d.name, weekday: d.weekday, exercises: d.exercises.map((e) => ({ exerciseId: e.exerciseId, prescription: PrescriptionSchema.parse(e.prescription) })) })),
     },
     preview: days,
-    rationale: split.rationale,
+    rationale: `${split.rationale} ${goalTrainingRationale(goal)}`,
+    focus: goal,
     limitationsNote: training.limitations ? "You listed movement limitations. Review each exercise and swap anything that is uncomfortable; the generator does not interpret medical conditions." : null,
   };
 }

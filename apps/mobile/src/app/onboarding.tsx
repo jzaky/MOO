@@ -1,4 +1,5 @@
 import type { OnboardingPlanRequest } from "@stoke/contracts";
+import { goalOptions, type Goal } from "../features/onboarding/goals";
 import { bodyProblems, metricHeightCm, normalizeTime, parseNumber, type BodyProblem } from "../features/onboarding/parse";
 import { lbToKg, round, toCm } from "@stoke/core";
 import { useMutation } from "@tanstack/react-query";
@@ -14,18 +15,8 @@ import { Button, Card, Chip, Field, Icon, Row, Segmented, Stack, T } from "../ui
 import { Screen } from "../ui/Screen";
 import { locale, t } from "../i18n";
 
-type Goal = "lose_fat" | "build_muscle" | "maintain" | "recomposition" | "strength" | "general_fitness" | "endurance";
 type Activity = "sedentary" | "light" | "moderate" | "very" | "extra";
-// Labels are built when rendering so they follow the current language.
-const goalOptions = (): { value: Goal; label: string; body: string }[] => [
-  { value: "lose_fat", label: t("Lose body fat"), body: t("A moderate deficit with high protein") },
-  { value: "build_muscle", label: t("Build muscle"), body: t("A small surplus and progressive training") },
-  { value: "recomposition", label: t("Recomposition"), body: t("Lose fat and gain muscle slowly") },
-  { value: "strength", label: t("Get stronger"), body: t("Focus on main lifts") },
-  { value: "maintain", label: t("Maintain weight"), body: t("Hold steady, improve habits") },
-  { value: "general_fitness", label: t("General fitness"), body: t("Feel better, move more") },
-  { value: "endurance", label: t("Improve endurance"), body: t("Conditioning alongside strength") },
-];
+
 const activityOptions = (): { value: Activity; label: string; body: string }[] => [
   { value: "sedentary", label: t("Mostly sitting"), body: t("Desk work, little walking") },
   { value: "light", label: t("Lightly active"), body: t("Some walking most days") },
@@ -76,7 +67,7 @@ const stepTitles = () => [t("Goals"), t("Body"), t("Lifestyle"), t("Training"), 
 const STEP_COUNT = 7;
 
 interface Plan {
-  targets: { energyKcal: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; waterMl: number; estimatedTdeeKcal: number; bmrKcal: number; notes: string[]; weeklyRatePct: number };
+  targets: { energyKcal: number; proteinG: number; carbsG: number; fatG: number; fiberG: number; waterMl: number; estimatedTdeeKcal: number; bmrKcal: number; notes: string[]; rationale?: string[]; weeklyRatePct: number };
   training: { split: string; daysPerWeek: number; dayNames: string[]; weekdays: number[]; rationale: string; sessionMinutes: number };
   activity: { dailyStepsTarget: number; note: string };
   measurementSchedule: Record<string, string>;
@@ -427,6 +418,11 @@ export default function Onboarding() {
                   <T variant="footnote" color="textSecondary">
                     {t("Estimated maintenance ≈ {kcal} kcal. Targets adapt to your logged intake and weight trend after a few weeks, and only with your approval.", { kcal: plan.targets.estimatedTdeeKcal.toLocaleString(locale()) })}
                   </T>
+                  {plan.targets.rationale?.map((n) => (
+                    <T key={n} variant="footnote" color="textSecondary">
+                      {n}
+                    </T>
+                  ))}
                   {plan.targets.notes.map((n) => (
                     <T key={n} variant="footnote" color="warning">
                       {n}

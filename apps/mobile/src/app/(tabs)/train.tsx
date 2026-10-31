@@ -127,7 +127,7 @@ function BlockCard({ program }: { program: Program }) {
 
 interface Proposal {
   draft: unknown;
-  preview: { name: string; weekday: number | null; exercises: { name: string; prescription: { sets: number; repRange: { min: number; max: number } } }[]; estimatedMinutes: number }[];
+  preview: { name: string; weekday: number | null; exercises: { name: string; prescription: { sets: number; restSec: number; repRange: { min: number; max: number } } }[]; estimatedMinutes: number }[];
   rationale: string;
   limitationsNote: string | null;
 }
@@ -166,6 +166,30 @@ export default function Train() {
         </Card>
       ) : null}
 
+      {proposal ? (
+        <>
+          <SectionHeader title={t("Suggested program")} />
+          <Card>
+            <Stack gap={12}>
+              <T variant="footnote" color="textSecondary">{proposal.rationale}</T>
+              {proposal.preview.map((d) => (
+                <View key={d.name} style={{ gap: 4 }}>
+                  <Row justify="space-between"><T variant="headline">{d.name}</T><T variant="caption" color="textTertiary">{t("~{m} min", { m: d.estimatedMinutes })}</T></Row>
+                  {d.exercises.map((e) => <T key={e.name} variant="footnote" color="textSecondary">{e.name} · {e.prescription.restSec === 0 && e.prescription.sets === 1 ? t("{min}–{max} min", { min: e.prescription.repRange.min, max: e.prescription.repRange.max }) : `${e.prescription.sets} × ${e.prescription.repRange.min}${e.prescription.repRange.max !== e.prescription.repRange.min ? `–${e.prescription.repRange.max}` : ""}`}</T>)}
+                </View>
+              ))}
+              {proposal.limitationsNote ? <T variant="footnote" color="warning">{proposal.limitationsNote}</T> : null}
+              {program ? <T variant="caption" color="textTertiary">{t("Your current program stays in your history.")}</T> : null}
+              <Row gap={8}>
+                {program ? <Button title={t("Cancel")} kind="ghost" size="md" onPress={() => setProposal(null)} /> : null}
+                <Button title={t("Regenerate")} kind="secondary" size="md" onPress={() => generate.mutate()} style={{ flex: 1 }} />
+                <Button title={t("Use this program")} size="md" onPress={() => save.mutate()} loading={save.isPending} style={{ flex: 1.4 }} />
+              </Row>
+            </Stack>
+          </Card>
+        </>
+      ) : null}
+
       {programs.isPending ? <Skeleton height={160} /> : programs.isError ? <ErrorState error={programs.error} onRetry={() => void programs.refetch()} /> : program ? (
         <>
           <SectionHeader title={program.name} />
@@ -182,27 +206,8 @@ export default function Train() {
             ))}
           </Card>
           <BlockCard program={program} />
+          {!proposal ? <Button title={generate.isPending ? t("Building…") : t("Rebuild for my goal")} kind="ghost" size="sm" icon="sync" loading={generate.isPending} onPress={() => generate.mutate()} /> : null}
           <T variant="caption" color="textTertiary">{program.createdBy === "ai" ? t("Version {v} · suggested by coach. Edits create a new version; history is kept.", { v: program.version }) : t("Version {v}. Edits create a new version; history is kept.", { v: program.version })}</T>
-        </>
-      ) : proposal ? (
-        <>
-          <SectionHeader title={t("Suggested program")} />
-          <Card>
-            <Stack gap={12}>
-              <T variant="footnote" color="textSecondary">{proposal.rationale}</T>
-              {proposal.preview.map((d) => (
-                <View key={d.name} style={{ gap: 4 }}>
-                  <Row justify="space-between"><T variant="headline">{d.name}</T><T variant="caption" color="textTertiary">{t("~{m} min", { m: d.estimatedMinutes })}</T></Row>
-                  {d.exercises.map((e) => <T key={e.name} variant="footnote" color="textSecondary">{e.name} · {e.prescription.sets} × {e.prescription.repRange.min}{e.prescription.repRange.max !== e.prescription.repRange.min ? `–${e.prescription.repRange.max}` : ""}</T>)}
-                </View>
-              ))}
-              {proposal.limitationsNote ? <T variant="footnote" color="warning">{proposal.limitationsNote}</T> : null}
-              <Row gap={8}>
-                <Button title={t("Regenerate")} kind="secondary" size="md" onPress={() => generate.mutate()} style={{ flex: 1 }} />
-                <Button title={t("Use this program")} size="md" onPress={() => save.mutate()} loading={save.isPending} style={{ flex: 1.4 }} />
-              </Row>
-            </Stack>
-          </Card>
         </>
       ) : (
         <Card>

@@ -82,8 +82,36 @@ describe("program generation", () => {
   it("uses linear 5s on barbell main lifts for strength goals and fits short sessions", () => {
     const days = generateProgram({ split: suggestSplit([1, 3, 5], "intermediate"), catalogue, equipment: ["barbell", "dumbbell", "cable", "machine", "pullup_bar"], experience: "intermediate", sessionMinutes: 35, goal: "strength" });
     const main = days[0]!.exercises[0]!;
-    expect(main.prescription).toMatchObject({ scheme: "linear", repRange: { min: 5, max: 5 } });
+    // Trained lifters work in the 3–5 range; beginners progress on a fixed 5.
+    expect(main.prescription).toMatchObject({ scheme: "linear", repRange: { min: 3, max: 5 } });
     expect(days.every((d) => d.estimatedMinutes <= 35)).toBe(true);
+    const novice = generateProgram({ split: suggestSplit([1, 3, 5], "beginner"), catalogue, equipment: ["barbell", "dumbbell", "cable", "machine"], experience: "beginner", sessionMinutes: 60, goal: "strength" });
+    for (const e of novice.flatMap((d) => d.exercises.filter((x) => x.role === "main"))) {
+      if (e.prescription.loadProfile === "barbell") expect(e.prescription).toMatchObject({ scheme: "linear", repRange: { min: 5, max: 5 }, sets: 3 });
+      else expect(e.prescription.repRange).toEqual({ min: 5, max: 8 });
+    }
+  });
+
+  it("builds a different program for each goal", () => {
+    const gen = (goal: Parameters<typeof generateProgram>[0]["goal"]) =>
+      generateProgram({ split: suggestSplit([1, 2, 4, 5], "intermediate"), catalogue, equipment: ["barbell", "dumbbell", "cable", "machine", "cardio_machine", "pullup_bar"], experience: "intermediate", sessionMinutes: 75, goal });
+    const isCardio = (id: string) => catalogue.find((c) => c.id === id)?.category === "cardio";
+    const strength = gen("strength"), muscle = gen("hypertrophy"), cut = gen("fat_loss");
+    const mains = (d: ReturnType<typeof gen>) => d.flatMap((x) => x.exercises.filter((e) => e.role === "main"));
+    const accessories = (d: ReturnType<typeof gen>) => d.flatMap((x) => x.exercises.filter((e) => e.role === "accessory" && !isCardio(e.exerciseId)));
+    // Strength: heavy mains with long rests and few accessories.
+    expect(mains(strength).every((e) => e.prescription.repRange.max <= 5 && e.prescription.restSec >= 180)).toBe(true);
+    // Muscle: the most accessory (isolation) work, in higher rep ranges.
+    expect(accessories(muscle).length).toBeGreaterThan(accessories(strength).length);
+    expect(accessories(muscle).every((e) => e.prescription.repRange.max >= 15)).toBe(true);
+    // Fat loss: conditioning finishers on three days, shorter accessory rests, heavy mains kept.
+    const finisherDays = cut.filter((d) => d.exercises.some((e) => isCardio(e.exerciseId)));
+    expect(finisherDays).toHaveLength(3);
+    expect(finisherDays[0]!.exercises.at(-1)!.prescription.repRange).toEqual({ min: 10, max: 15 });
+    expect(mains(cut).every((e) => e.prescription.repRange.min <= 6)).toBe(true);
+    expect(strength.some((d) => d.exercises.some((e) => isCardio(e.exerciseId)))).toBe(false);
+    // Finishers fit inside the session length.
+    expect(cut.every((d) => d.estimatedMinutes <= 75)).toBe(true);
   });
 
   it("returns an API draft that can be saved as a program", async () => {
