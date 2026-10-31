@@ -74,6 +74,12 @@ importers:
       '@bacons/apple-targets':
         specifier: ~5.0.0
         version: 5.0.0(expo@58.0.21)(typescript@6.0.3)
+      '@expo-google-fonts/big-shoulders-display':
+        specifier: 0.2.3
+        version: 0.2.3
+      '@expo-google-fonts/jetbrains-mono':
+        specifier: 0.4.1
+        version: 0.4.1
       '@expo/ui':
         specifier: ~58.0.25
         version: 58.0.25(@babel/core@7.29.7)(expo@58.0.21)(react-dom@19.3.0(react@19.3.0))(react-native-worklets@0.13.0(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))(react-native@0.88.1(@babel/core@7.29.7)(@react-native/metro-config@0.88.1(@babel/core@7.29.7))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0)
@@ -1113,6 +1119,13 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@expo-google-fonts/big-shoulders-display@0.2.3':
+    resolution: {integrity: sha512-inKhKz/42DhH27R7RyKc4Ff/bF4LmGzc3kwo+w0jKHw90K/ljQ+nkp1DwNx6y+/PfxhX30f6DwSy0CWZu7XZWg==}
+    deprecated: This font has been removed from Google Fonts and will no longer receive updates.
+
+  '@expo-google-fonts/jetbrains-mono@0.4.1':
+    resolution: {integrity: sha512-CslACrtMOcRwoWXCO7OMEI+9w3fukWSoBtvNz46OqPoogEuuoY0tkDY1O8sFumk8t0pC6Cx0Xr95O0TOQhpkug==}
 
   '@expo-google-fonts/material-symbols@0.4.52':
     resolution: {integrity: sha512-iC9GRpj7WV0GENbHTYPtJqGjyy/7yI3soG9SrKTY1ta19cbMZm2HA0nUdIK8d6OD9uv1BZHAh3Zn/UWV57IeWg==}
@@ -5368,6 +5381,10 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
+
+  '@expo-google-fonts/big-shoulders-display@0.2.3': {}
+
+  '@expo-google-fonts/jetbrains-mono@0.4.1': {}
 
   '@expo-google-fonts/material-symbols@0.4.52': {}
 

@@ -36,10 +36,10 @@ function foodSubtitle(f: Food): string {
 }
 
 export default function FoodSearch() {
-  const params = useLocalSearchParams<{ day?: string; meal?: string }>();
+  const params = useLocalSearchParams<{ day?: string; meal?: string; q?: string }>();
   const day = params.day ?? todayKey();
   const [meal, setMeal] = useState(params.meal ?? defaultMealForNow());
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(params.q ?? "");
   const dq = useDebounced(q.trim());
   const recent = useRecentFoods();
   const favorites = useFavorites();

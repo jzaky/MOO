@@ -2,6 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { useFonts } from "expo-font";
 import { useEffect } from "react";
 import { ActivityIndicator, AppState, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -15,6 +16,7 @@ import { useProfile } from "../lib/data";
 import { flush, startOutboxLoop } from "../lib/outbox";
 import { queryClient, restoreCache, startCachePersistence, wireOnlineManager } from "../lib/query";
 import { ThemeProvider, useTheme } from "../theme/theme";
+import { FONT_FILES } from "../theme/tokens";
 import { onlineManager } from "@tanstack/react-query";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -29,7 +31,14 @@ function Gate() {
   const signedIn = status === "signedIn";
   const profile = useProfile(signedIn);
   const onboarded = !!profile.data?.onboardingCompletedAt;
-  const resolving = status === "loading" || (signedIn && !profile.data && profile.isPending && !profile.isError);
+  // Display and mono faces (OFL). A failed load falls back to the system font rather than blocking.
+  const [fontsLoaded, fontError] = useFonts({
+    [FONT_FILES.display]: require("@expo-google-fonts/big-shoulders-display/BigShouldersDisplay_800ExtraBold.ttf"),
+    [FONT_FILES.displayBlack]: require("@expo-google-fonts/big-shoulders-display/BigShouldersDisplay_900Black.ttf"),
+    [FONT_FILES.mono]: require("@expo-google-fonts/jetbrains-mono/500Medium/JetBrainsMono_500Medium.ttf"),
+    [FONT_FILES.monoBold]: require("@expo-google-fonts/jetbrains-mono/700Bold/JetBrainsMono_700Bold.ttf"),
+  });
+  const resolving = (!fontsLoaded && !fontError) || status === "loading" || (signedIn && !profile.data && profile.isPending && !profile.isError);
 
   useEffect(() => {
     if (!resolving) SplashScreen.hideAsync().catch(() => {});
@@ -87,6 +96,7 @@ function Gate() {
         <Stack.Screen name="food/camera" options={{ presentation: "fullScreenModal" }} />
         <Stack.Screen name="food/review" options={modal} />
         <Stack.Screen name="food/voice" options={sheet} />
+        <Stack.Screen name="log" options={{ ...modal, animation: "fade_from_bottom" }} />
         <Stack.Screen name="food/custom" options={modal} />
         <Stack.Screen name="food/quick-add" options={sheet} />
         <Stack.Screen name="workout/active" options={{ presentation: "fullScreenModal", gestureEnabled: false }} />

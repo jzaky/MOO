@@ -33,6 +33,31 @@ export interface TProps extends TextProps {
 // on the left of an Arabic screen. Align to the right by default there; native follows the layout.
 const WEB_RTL_ALIGN = (): TextStyle | null => (Platform.OS === "web" && isRTL() ? { textAlign: "right" } : null);
 
+// Arabic letters must join: tracked styles drop their letter-spacing, and the monospace styles
+// (whose font has no Arabic, and whose fallbacks draw unjoined letters) use the system face.
+const SPACED = new Set<TypeVariant>(["label", "display", "mono", "monoBold"]);
+const MONO = new Set<TypeVariant>(["label", "mono", "monoBold", "metricS"]);
+const SYSTEM_FACE = Platform.select({ ios: "System", android: "sans-serif", default: "system-ui, sans-serif" });
+const arabicText = (variant: TypeVariant): TextStyle | null => (!isRTL() ? null : MONO.has(variant) ? { letterSpacing: 0, fontFamily: SYSTEM_FACE, fontVariant: ["tabular-nums"] } : SPACED.has(variant) ? { letterSpacing: 0 } : null);
+
+/** Padding on the leading edge (see startOffset). */
+export function startPadding(v: number): ViewStyle {
+  if (Platform.OS !== "web") return { paddingStart: v };
+  return isRTL() ? { paddingRight: v } : { paddingLeft: v };
+}
+
+/** Margin on the leading edge (see startOffset). */
+export function startMargin(v: number): ViewStyle {
+  if (Platform.OS !== "web") return { marginStart: v };
+  return isRTL() ? { marginRight: v } : { marginLeft: v };
+}
+
+/** Absolute offset from the leading edge. Native flips `start` in right-to-left layouts; the web needs the side spelled out. */
+export function startOffset(v: number): ViewStyle {
+  if (Platform.OS !== "web") return { start: v };
+  return isRTL() ? { right: v } : { left: v };
+}
+
 export function T({ variant = "body", color = "text", align, weight, style, maxFontSizeMultiplier, ...rest }: TProps) {
   const th = useTheme();
   const c = (th.c as Record<string, string>)[color] ?? color;
@@ -40,7 +65,7 @@ export function T({ variant = "body", color = "text", align, weight, style, maxF
   return (
     <RNText
       maxFontSizeMultiplier={maxFontSizeMultiplier ?? (isMetric ? 1.3 : 1.8)}
-      style={[th.type[variant], { color: c }, align ? { textAlign: align } : WEB_RTL_ALIGN(), weight ? { fontWeight: weight } : null, style]}
+      style={[th.type[variant], { color: c }, align ? { textAlign: align } : WEB_RTL_ALIGN(), weight ? { fontWeight: weight } : null, arabicText(variant), style]}
       {...rest}
     />
   );
@@ -111,7 +136,7 @@ export function Icon({ name, size = 20, color = "text", style }: { name: IconNam
 
 export function Card({ children, style, padded = true, onPress, accessibilityLabel }: { children: ReactNode; style?: StyleProp<ViewStyle>; padded?: boolean; onPress?: () => void; accessibilityLabel?: string }) {
   const th = useTheme();
-  const base: ViewStyle = { backgroundColor: th.c.surface, borderRadius: th.radius.lg, borderWidth: 1, borderColor: th.c.hairline, padding: padded ? th.space.lg : 0, overflow: "hidden" };
+  const base: ViewStyle = { backgroundColor: th.c.surface, borderRadius: th.radius.xl, borderWidth: 1, borderColor: th.c.border, padding: padded ? th.space.lg : 0, overflow: "hidden" };
   if (!onPress) return <View style={[base, style]}>{children}</View>;
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={onPress} style={({ pressed }) => [base, pressed && { backgroundColor: th.c.surfacePressed }, style]}>
@@ -150,6 +175,13 @@ export function SectionHeader({ title, action, onAction }: { title: string; acti
   );
 }
 
+/* ───────── Ember surfaces ───────── */
+
+/** Gold → fire → rose fill for the primary action, the ring and the "+". Falls back to the flat accent. */
+export function fireFill(th: ReturnType<typeof useTheme>, angle = 100): ViewStyle {
+  return { backgroundColor: th.c.accent, backgroundImage: `linear-gradient(${angle}deg, ${th.c.accentGold}, ${th.c.accent} 58%, ${th.c.accentRose})` } as ViewStyle;
+}
+
 /* ───────── Buttons ───────── */
 
 type ButtonKind = "primary" | "secondary" | "ghost" | "danger";
@@ -179,14 +211,15 @@ export function Button({ title, kind = "primary", icon, loading, size = "lg", st
         onPress?.(e);
       }}
       style={({ pressed }) => [
-        { height: h, minWidth: h, borderRadius: size === "sm" ? th.radius.md : th.radius.lg, backgroundColor: bg, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: size === "sm" ? 12 : 18, opacity: disabled ? 0.45 : pressed ? 0.85 : 1, borderWidth: kind === "secondary" ? 1 : 0, borderColor: th.c.border },
+        kind === "primary" ? fireFill(th) : null,
+        { height: h, minWidth: h, borderRadius: size === "sm" ? th.radius.md : th.radius.lg, ...(kind === "primary" ? null : { backgroundColor: bg }), alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8, paddingHorizontal: size === "sm" ? 12 : size === "md" ? 14 : 18, opacity: disabled ? 0.45 : pressed ? 0.85 : 1, borderWidth: kind === "secondary" ? 1 : 0, borderColor: th.c.border },
         style,
       ]}
       {...rest}
     >
       {loading ? <ActivityIndicator color={fg} /> : icon ? <Icon name={icon} size={size === "sm" ? 15 : 18} color={fg} /> : null}
       {!loading || size !== "sm" ? (
-        <T variant={size === "sm" ? "footnote" : "headline"} weight="600" style={{ color: fg }} numberOfLines={1}>
+        <T variant={size === "sm" ? "footnote" : size === "md" ? "subhead" : "headline"} weight={kind === "primary" ? "800" : "600"} style={{ color: fg }} numberOfLines={1}>
           {title}
         </T>
       ) : null}
@@ -356,7 +389,7 @@ export function Badge({ label, tone = "neutral" }: { label: string; tone?: "neut
   const fg = { neutral: th.c.textSecondary, accent: th.c.accent, warning: th.c.warning, danger: th.c.danger, info: th.c.info }[tone];
   return (
     <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: th.radius.pill, backgroundColor: th.c.surfaceRaised, borderWidth: 1, borderColor: th.c.hairline, alignSelf: "flex-start" }}>
-      <T variant="caption" style={{ color: fg }}>
+      <T variant="label" style={{ color: fg, fontSize: 10, letterSpacing: 0.8 }}>
         {label}
       </T>
     </View>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { t, tn } from "../i18n";
 import { View, type GestureResponderEvent, type LayoutChangeEvent } from "react-native";
-import Svg, { Circle, G, Line, Path, Rect } from "react-native-svg";
+import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop } from "react-native-svg";
 import { useTheme } from "../theme/theme";
 import { T } from "./primitives";
 
@@ -30,6 +30,67 @@ export function ProgressRing({ value, target, color, size = 132, stroke = 10, la
         </G>
       </Svg>
       <View style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>{center}</View>
+    </View>
+  );
+}
+
+/* ───────── Ember ring (energy: gold → fire → rose) ───────── */
+
+export function EmberRing({ value, target, size = 140, stroke = 12, label, center }: { value: number; target: number; size?: number; stroke?: number; label: string; center?: React.ReactNode }) {
+  const th = useTheme();
+  const r = (size - stroke) / 2 - 3;
+  const circ = 2 * Math.PI * r;
+  const frac = target > 0 ? value / target : 0;
+  const shown = Math.min(frac, 1);
+  const c = size / 2;
+  const ticks = [0, 90, 180, 270];
+  return (
+    <View accessible accessibilityRole="progressbar" accessibilityLabel={label} accessibilityValue={{ min: 0, max: Math.round(target), now: Math.round(value) }} style={{ width: size, height: size, direction: "ltr" }}>
+      <Svg width={size} height={size}>
+        <Defs>
+          <LinearGradient id="ember" x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={th.c.accentGold} />
+            <Stop offset="0.55" stopColor={th.c.accent} />
+            <Stop offset="1" stopColor={th.c.accentRose} />
+          </LinearGradient>
+        </Defs>
+        {ticks.map((a) => {
+          const rad = (a * Math.PI) / 180;
+          return <Line key={a} x1={c + Math.sin(rad) * (c - 1)} y1={c - Math.cos(rad) * (c - 1)} x2={c + Math.sin(rad) * (c - 6)} y2={c - Math.cos(rad) * (c - 6)} stroke={th.c.border} strokeWidth={2} />;
+        })}
+        <G rotation={-90} origin={`${c}, ${c}`}>
+          <Circle cx={c} cy={c} r={r} stroke={th.c.track} strokeWidth={stroke} fill="none" />
+          {shown > 0 ? <Circle cx={c} cy={c} r={r} stroke={frac > 1.02 ? th.c.warning : "url(#ember)"} strokeWidth={stroke} fill="none" strokeDasharray={`${circ * shown} ${circ}`} strokeLinecap="round" /> : null}
+        </G>
+      </Svg>
+      <View style={{ position: "absolute", inset: 0, alignItems: "center", justifyContent: "center" }}>{center}</View>
+    </View>
+  );
+}
+
+/* ───────── LED segment meter ───────── */
+
+/** A macro as a row of lit segments (instrument style). Over target, the lit segments turn amber. */
+export function SegmentMeter({ label, consumed, target, unit, color, segments = 16 }: { label: string; consumed: number; target: number; unit: string; color: string; segments?: number }) {
+  const th = useTheme();
+  const frac = target > 0 ? consumed / target : 0;
+  const lit = Math.round(Math.min(frac, 1) * segments);
+  const over = frac > 1.05;
+  return (
+    <View accessible accessibilityLabel={t("{label}: {consumed} of {target} {unit}", { label, consumed: Math.round(consumed), target: Math.round(target), unit })} style={{ gap: 5 }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+        <T variant="caption" weight="700">
+          {label}
+        </T>
+        <T variant="mono" color={over ? "warning" : "textSecondary"}>
+          {Math.round(consumed)}/{Math.round(target)} {unit}
+        </T>
+      </View>
+      <View style={{ flexDirection: "row", gap: 2, height: 8, direction: "ltr" }}>
+        {Array.from({ length: segments }, (_, i) => (
+          <View key={i} style={{ flex: 1, borderRadius: 2, backgroundColor: i < lit ? (over ? th.c.warning : color) : th.c.track }} />
+        ))}
+      </View>
     </View>
   );
 }

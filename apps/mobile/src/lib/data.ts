@@ -68,7 +68,7 @@ function patchDiary(day: string, fn: (d: Diary) => Diary) {
   queryClient.setQueryData<Diary>(qk.diary(day), (old) => fn(old ?? { day, entries: [], targets: null, water: { totalMl: 0, targetMl: null, entries: [] }, status: null }));
 }
 
-function describePortion(food: Food, p: PortionDto): string {
+export function describePortion(food: Food, p: PortionDto): string {
   if (p.kind === "serving") return `${p.quantity} × ${food.servings.find((s) => s.id === p.servingId)?.label ?? "serving"}`;
   return `${Math.round(p.quantity * 10) / 10} ${p.unit}`;
 }

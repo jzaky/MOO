@@ -1,31 +1,16 @@
-import type { PortionDto } from "@stoke/contracts";
 import { AudioModule, RecordingPresets, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from "expo-audio";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Platform, Pressable, View } from "react-native";
 import { normalizeLogText } from "../../features/native/deepLinks";
-import { addExercise, addSet, getActiveWorkout, removeSet, updateSet } from "../../features/workout/store";
+import { canCommit, commitDraft, defaultPick, foodStatus, type Draft } from "../../features/command/draft";
 import { api, ApiError } from "../../lib/api";
-import { defaultMealForNow, logFood, logWater, logWeight } from "../../lib/data";
 import { haptic } from "../../lib/haptics";
 import { todayKey } from "../../lib/ids";
-import type { Exercise, Food } from "../../lib/types";
 import { t, tn } from "../../i18n";
 import { useTheme } from "../../theme/theme";
 import { Badge, Button, Card, Field, Icon, Row, Stack, T } from "../../ui/primitives";
 import { Screen } from "../../ui/Screen";
-
-interface FoodDraftItem {
-  parsed: { name: string; quantity: number; quantityAssumed: boolean };
-  candidates: { food: Food; portion: PortionDto | null }[];
-  suggestion: { food: Food; portion: PortionDto | null } | null;
-}
-type Draft =
-  | { kind: "food"; parser: string; meal: string | null; items: FoodDraftItem[]; issues: string[] }
-  | { kind: "exercise"; parser: string; entries: { parsed: { exerciseName: string; sets: number; reps: number | null; weightKg: number | null }; matches: { id: string; name: string }[] }[]; issues: string[] }
-  | { kind: "body_weight"; parser: string; weightKg: number; issues: string[] }
-  | { kind: "water"; parser: string; ml: number; issues: string[] }
-  | { kind: "unrecognized"; parser: string; issues: string[] };
 
 /**
  * Voice/text logging: speech → text (server Whisper when configured, or the
@@ -101,44 +86,18 @@ export default function VoiceLog() {
     }
   };
 
-  // Pre-select the server's suggestion only; a look-alike candidate must be chosen by the user.
-  const pick = (i: number) => chosen[i] ?? (draft?.kind === "food" && draft.items[i]?.suggestion ? 0 : -1);
+  const pick = (i: number) => (draft ? defaultPick(draft, i, chosen) : -1);
 
   const commit = () => {
     if (!draft) return;
-    if (draft.kind === "food") {
-      const meal = draft.meal ?? defaultMealForNow();
-      draft.items.forEach((it, i) => {
-        if (off[i]) return;
-        const c = it.candidates[pick(i)];
-        // Only the chosen food's own portion; never another candidate's.
-        if (c?.portion) logFood({ food: c.food, portion: c.portion, day, meal });
-      });
-    } else if (draft.kind === "body_weight") logWeight(day, draft.weightKg);
-    else if (draft.kind === "water") logWater(day, draft.ml);
-    else if (draft.kind === "exercise") {
-      if (!getActiveWorkout()) return setError(t("Start a workout first; these sets will be added to it."));
-      for (const e of draft.entries) {
-        const m = e.matches[0];
-        if (!m) continue;
-        addExercise({ id: m.id, name: m.name, loadProfile: "machine", equipment: "", primaryMuscles: [] } as unknown as Exercise);
-        const rowId = getActiveWorkout()!.exercises.at(-1)!.id;
-        for (let s = getActiveWorkout()!.exercises.at(-1)!.sets.length; s < e.parsed.sets; s++) addSet(rowId);
-        const row = getActiveWorkout()!.exercises.find((x) => x.id === rowId)!;
-        // Keep exactly the spoken number of sets, prefilled with the spoken load and reps (not yet marked done).
-        row.sets.slice(0, e.parsed.sets).forEach((set) => updateSet(rowId, set.id, { ...(e.parsed.weightKg != null ? { weightKg: e.parsed.weightKg } : {}), ...(e.parsed.reps != null ? { reps: e.parsed.reps } : {}) }));
-        row.sets.slice(e.parsed.sets).forEach((set) => removeSet(rowId, set.id));
-      }
-    }
+    const err = commitDraft(draft, day, chosen, off);
+    if (err) return setError(err);
     haptic("success");
     router.back();
   };
 
-  // Every included item must have an amount, so nothing is silently dropped.
-  const included = draft?.kind === "food" ? draft.items.filter((_, i) => !off[i]) : [];
-  const needsAmount = draft?.kind === "food" ? draft.items.filter((it, i) => !off[i] && !it.candidates[pick(i)]?.portion).length : 0;
-  const foodReady = included.length > 0 && needsAmount === 0;
-  const canLog = draft && draft.kind !== "unrecognized" && (draft.kind !== "food" || foodReady);
+  const { needsAmount } = draft ? foodStatus(draft, chosen, off) : { needsAmount: 0 };
+  const canLog = canCommit(draft, chosen, off);
 
   return (
     <Screen close title={t("Say or type it")} subtitle={t("“Two eggs and toast”, “weighed 82.4 kg”, “3 sets of bench at 80 kg”")} footer={draft ? <Button title={t("Log")} onPress={commit} disabled={!canLog} /> : undefined}>

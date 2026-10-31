@@ -8,7 +8,7 @@ What exists, what has been verified, and what has not. Updated 2026-10-29.
 - **Partial:** usable, but part of the specified behaviour is missing. The note says what.
 - **Planned:** not built.
 
-**Test suites.** `@stoke/core` has 113 unit tests. `@stoke/api` has 107 integration tests against Postgres, including row-level-security isolation. `@stoke/mobile` has 47 unit tests covering the live-workout store, the offline outbox, the recipe editor, the form-check session, deep links, widget layouts, the watch and Live Activity bridges, and Arabic translation coverage. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
+**Test suites.** `@stoke/core` has 113 unit tests. `@stoke/api` has 107 integration tests against Postgres, including row-level-security isolation. `@stoke/mobile` has 57 unit tests covering the command-bar intent rules, the Today timeline, the live-workout store, the offline outbox, the recipe editor, the form-check session, deep links, widget layouts, the watch and Live Activity bridges, and Arabic translation coverage. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
 
 ## Verification limits in this environment
 
@@ -22,6 +22,15 @@ These could not be exercised here and must be verified on hardware or with crede
 | whisper.cpp transcription server | Not installed | The client is tested against a local stub server that checks the multipart contract. Transcription-to-draft is tested with a fake speech-to-text service. |
 
 ## Feature ledger
+
+### Redesign (Ember), round 1
+| Feature | State | Notes |
+| --- | --- | --- |
+| Ember theme: fire accent, cyan for measured data, condensed display numbers, monospace data labels (OFL fonts bundled) | Verified in browser | Macro colours re-validated for colour-blind separation on the dark surface. Arabic falls back to the system face. |
+| Tab bar: Today, Food, raised "+", Train, Progress; coach opens from Today and the command bar | Verified in browser | Replaces the iOS system tab bar (Liquid Glass), so one bar works the same everywhere. Not yet seen on a device. |
+| Hold "+" for a quick-action wheel (scan, plate photo, voice, workout, weigh-in) | Verified in browser | Long-press on the web; on iOS also exposed as an accessibility action. |
+| Command bar: one input that logs food/weight/water/sets, starts a workout by name, or sends a question to the coach | Tested (intent rules) + verified in browser | Intent is decided on-device. Logging uses the existing parser and shows per-item kcal (computed by core code), a match/check tag and calories left; nothing is saved until "Log". |
+| Today: calorie ring, LED macro meters, day timeline (weigh-in, meals, workout, now marker, next meal), habit nudge | Tested (timeline) + verified in browser, English and Arabic | The nudge only appears for a food logged 3+ times at the same meal and logs your last amount on tap. |
 
 ### Platform and security
 | Feature | State | Notes |

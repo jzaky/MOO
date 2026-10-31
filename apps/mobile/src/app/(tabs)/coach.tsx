@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 import { api, ApiError } from "../../lib/api";
 import { qk } from "../../lib/data";
@@ -117,6 +118,17 @@ export default function Coach() {
     setText("");
     send.mutate(msg.trim());
   };
+
+  // A question typed into the command bar arrives as ?ask=… and is sent once.
+  const { ask } = useLocalSearchParams<{ ask?: string }>();
+  const asked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ask || asked.current === ask) return;
+    asked.current = ask;
+    setTab("chat");
+    submit(ask);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- send each incoming question once
+  }, [ask]);
 
   return (
     <Screen tabBar title={t("Coach")} right={tab === "chat" && conversationId ? <IconButton icon="add" label={t("New conversation")} onPress={() => { kv.remove("coach.conversation"); setConversationId(null); }} /> : undefined}>
