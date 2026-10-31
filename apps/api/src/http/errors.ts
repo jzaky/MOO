@@ -33,6 +33,8 @@ export function parse<S extends z.ZodType>(schema: S, value: unknown): z.infer<S
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((err, req: FastifyRequest, reply) => {
     if (err instanceof HttpError) {
+      // Field paths and rule messages only (never values), so logs say what was rejected without holding user data.
+      if (err.code === "validation_error") req.log.warn({ url: req.routeOptions?.url ?? req.url, fields: err.details }, "validation failed");
       return reply.status(err.status).send({ error: { code: err.code, message: err.message, details: err.details } });
     }
     if (err instanceof AiUnavailableError) {

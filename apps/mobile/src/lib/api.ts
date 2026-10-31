@@ -105,10 +105,47 @@ export async function api<T = unknown>(path: string, opts: RequestOptions = {}):
   }
   if (res.status === 204) return undefined as T;
   const text = await res.text();
-  const json = text ? (JSON.parse(text) as unknown) : undefined;
+  let json: unknown;
+  try {
+    json = text ? (JSON.parse(text) as unknown) : undefined;
+  } catch {
+    // Not our JSON: a host or proxy page, e.g. while the server restarts after a deploy.
+    throw new ApiError(res.status, "unavailable", res.status >= 500 ? t("The server is restarting. Try again in a moment.") : t("Something went wrong. Try again."));
+  }
   if (!res.ok) {
     const err = (json as { error?: { code?: string; message?: string; details?: unknown } } | undefined)?.error;
-    throw new ApiError(res.status, err?.code ?? "http_error", err?.message ?? `Request failed (${res.status})`, err?.details);
+    const message = err?.code === "validation_error" ? validationMessage(err.details) : (err?.message ?? `Request failed (${res.status})`);
+    throw new ApiError(res.status, err?.code ?? "http_error", message, err?.details);
   }
   return json as T;
+}
+
+/** Names the fields the server rejected instead of a bare "Request validation failed". */
+function validationMessage(details: unknown): string {
+  const paths = Array.isArray(details) ? details.map((d) => String((d as { path?: unknown }).path ?? "")).filter(Boolean) : [];
+  const fields = [...new Set(paths.map((p) => fieldLabel(p.split(".").filter((x) => !/^\d+$/.test(x)).at(-1) ?? p)))];
+  return fields.length ? t("Please check: {fields}.", { fields: fields.slice(0, 3).join(t(", ")) }) : t("Some of what was entered isn't valid. Please check and try again.");
+}
+
+function fieldLabel(key: string): string {
+  switch (key) {
+    case "heightCm": return t("height");
+    case "weightKg": case "value": case "kg": return t("weight");
+    case "birthDate": return t("date of birth");
+    case "bodyFatPct": return t("body fat");
+    case "sleepStart": return t("usual bedtime");
+    case "sleepEnd": return t("usual wake time");
+    case "energyKcal": return t("calories");
+    case "proteinG": return t("protein");
+    case "carbsG": return t("carbs");
+    case "fatG": return t("fat");
+    case "quantity": case "amount": case "grams": return t("amount");
+    case "reps": return t("reps");
+    case "weightUnit": return t("units");
+    case "email": return t("email");
+    case "password": return t("password");
+    case "name": case "displayName": return t("name");
+    case "day": return t("date");
+    default: return key;
+  }
 }

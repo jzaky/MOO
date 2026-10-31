@@ -8,7 +8,7 @@ What exists, what has been verified, and what has not. Updated 2026-10-29.
 - **Partial:** usable, but part of the specified behaviour is missing. The note says what.
 - **Planned:** not built.
 
-**Test suites.** `@stoke/core` has 111 unit tests. `@stoke/api` has 100 integration tests against Postgres, including row-level-security isolation. `@stoke/mobile` has 44 unit tests covering the live-workout store, the offline outbox, the recipe editor, the form-check session, deep links, widget layouts, the watch and Live Activity bridges, and Arabic translation coverage. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
+**Test suites.** `@stoke/core` has 111 unit tests. `@stoke/api` has 100 integration tests against Postgres, including row-level-security isolation. `@stoke/mobile` has 47 unit tests covering the live-workout store, the offline outbox, the recipe editor, the form-check session, deep links, widget layouts, the watch and Live Activity bridges, and Arabic translation coverage. Run all of them with `pnpm test`. **CI** (GitHub Actions) runs typecheck, all three suites against a Postgres 16 service, and the web bundle on every push.
 
 ## Verification limits in this environment
 

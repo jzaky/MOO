@@ -1,4 +1,5 @@
 import type { OnboardingPlanRequest } from "@stoke/contracts";
+import { bodyProblems, metricHeightCm, normalizeTime, parseNumber, type BodyProblem } from "../features/onboarding/parse";
 import { lbToKg, round, toCm } from "@stoke/core";
 import { useMutation } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
@@ -84,18 +85,36 @@ interface Plan {
 
 const list = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean).slice(0, 30);
 
+/** Weight in kg and height in cm from what was typed, in the user's units. */
+function bodySize(d: Draft): { weightKg: number; heightCm: number } {
+  const w = parseNumber(d.weight);
+  return {
+    weightKg: d.units === "metric" ? w : lbToKg(w),
+    heightCm: d.units === "metric" ? metricHeightCm(d.height) : toCm((parseNumber(d.height || "0") || 0) * 12 + (parseNumber(d.heightIn || "0") || 0), "in"),
+  };
+}
+
+function problemText(p: BodyProblem): string {
+  switch (p) {
+    case "birth_date": return t("Check your date of birth.");
+    case "age": return t("Stoke is for ages 13 to 100.");
+    case "height": return t("Height should be between 100 and 250 cm (3'4\" to 8'2\").");
+    case "weight": return t("Weight should be between 30 and 350 kg (66 to 770 lb).");
+    case "body_fat": return t("Body fat should be a percentage between 3 and 70, or left empty.");
+  }
+}
+
 function toRequest(d: Draft): OnboardingPlanRequest | null {
   const pad = (s: string) => s.padStart(2, "0");
   const birthDate = `${d.birthYear}-${pad(d.birthMonth)}-${pad(d.birthDay)}`;
-  const weightKg = d.units === "metric" ? Number(d.weight) : lbToKg(Number(d.weight));
-  const heightCm = d.units === "metric" ? Number(d.height) : toCm(Number(d.height || 0) * 12 + Number(d.heightIn || 0), "in");
-  if (!d.sex || !d.activity || !d.goals.length || !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || !(weightKg > 0) || !(heightCm > 0)) return null;
+  const { weightKg, heightCm } = bodySize(d);
+  if (!d.sex || !d.activity || !d.goals.length || !/^\d{4}-\d{2}-\d{2}$/.test(birthDate) || bodyProblems({ ...d, heightCm, weightKg }).length) return null;
   return {
     sex: d.sex,
     birthDate,
     heightCm: round(heightCm, 1),
     weightKg: round(weightKg, 1),
-    bodyFatPct: d.bodyFat ? Number(d.bodyFat) : null,
+    bodyFatPct: d.bodyFat.trim() ? parseNumber(d.bodyFat) : null,
     activityLevel: d.activity,
     goals: d.goals.map((g, i) => ({ kind: g, priority: i + 1 })),
     training: { experience: d.experience, gymAccess: d.gymAccess, equipment: d.equipment as never, preferredDays: d.days, sessionMinutes: d.sessionMinutes, limitations: d.limitations || null, currentRoutine: null, likedExercises: [], dislikedExercises: [] },
@@ -156,7 +175,7 @@ export default function Onboarding() {
           timeZone: deviceTimeZone(),
           unitSystem: d.units,
           dietary: { pattern: d.diet, allergies: list(d.allergies), dislikedFoods: list(d.dislikes), mealsPerDay: d.mealsPerDay, restrictions: [], preferredFoods: [] },
-          lifestyle: { sleepStart: d.sleepStart || null, sleepEnd: d.sleepEnd || null },
+          lifestyle: { sleepStart: normalizeTime(d.sleepStart), sleepEnd: normalizeTime(d.sleepEnd) },
           ...(Object.keys(overrides).length ? { targetOverrides: overrides } : {}),
         },
       });
@@ -168,9 +187,12 @@ export default function Onboarding() {
     onError: (e) => setError(e instanceof ApiError ? e.message : t("Could not save. Check your connection and try again.")),
   });
 
+  const size = bodySize(d);
+  // Only complain once every body field has something in it.
+  const bodyIssues = d.birthYear && d.birthMonth && d.birthDay && d.weight && d.height ? bodyProblems({ ...d, ...size }) : [];
   const canContinue = [
     d.goals.length > 0,
-    !!d.sex && !!d.birthYear && !!d.birthMonth && !!d.birthDay && Number(d.weight) > 0 && Number(d.height) > 0,
+    !!d.sex && !!d.birthYear && !!d.birthMonth && !!d.birthDay && !!d.weight && !!d.height && bodyIssues.length === 0,
     !!d.activity,
     d.days.length > 0,
     true,
@@ -253,6 +275,7 @@ export default function Onboarding() {
           )}
           <Field label={t("Current weight")} value={d.weight} onChangeText={(v) => set("weight", v)} keyboardType="decimal-pad" suffix={units === "metric" ? "kg" : "lb"} placeholder={units === "metric" ? "82.5" : "182"} />
           <Field label={t("Body fat (optional)")} value={d.bodyFat} onChangeText={(v) => set("bodyFat", v)} keyboardType="decimal-pad" suffix="%" placeholder={t("Only if measured")} />
+          {bodyIssues.map((p) => <T key={p} variant="footnote" color="warning">{problemText(p)}</T>)}
         </Stack>
       ) : null}
 
