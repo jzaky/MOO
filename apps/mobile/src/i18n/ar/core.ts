@@ -230,4 +230,6 @@ export const core: Dict = {
   "Height should be between 100 and 250 cm (3'4\" to 8'2\").": "يجب أن يكون الطول بين 100 و250 سم (‎3'4\" إلى 8'2\"‎).",
   "Weight should be between 30 and 350 kg (66 to 770 lb).": "يجب أن يكون الوزن بين 30 و350 كغ (66 إلى 770 رطلًا).",
   "Body fat should be a percentage between 3 and 70, or left empty.": "يجب أن تكون نسبة الدهون بين 3 و70، أو اتركها فارغة.",
+  "Calories should be between 800 and 10,000 kcal.": "يجب أن تكون السعرات بين 800 و10,000 kcal.",
+  "That macro target looks too high. Check the numbers.": "هدف العناصر الغذائية هذا يبدو مرتفعًا جدًا. تحقّق من الأرقام.",
 };

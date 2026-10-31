@@ -187,6 +187,17 @@ export default function Onboarding() {
     onError: (e) => setError(e instanceof ApiError ? e.message : t("Could not save. Check your connection and try again.")),
   });
 
+  // Same limits as the server (contracts NutritionTargetsSchema), checked before Start.
+  const editNum = (k: keyof typeof edits) => (edits[k] === undefined ? null : Number(edits[k] || "0"));
+  const targetIssue = (() => {
+    const e = editNum("energyKcal");
+    if (e !== null && (e < 800 || e > 10000)) return t("Calories should be between 800 and 10,000 kcal.");
+    for (const [k, max] of [["proteinG", 600], ["carbsG", 1500], ["fatG", 500]] as const) {
+      const v = editNum(k);
+      if (v !== null && v > max) return t("That macro target looks too high. Check the numbers.");
+    }
+    return null;
+  })();
   const size = bodySize(d);
   // Only complain once every body field has something in it.
   const bodyIssues = d.birthYear && d.birthMonth && d.birthDay && d.weight && d.height ? bodyProblems({ ...d, ...size }) : [];
@@ -220,7 +231,7 @@ export default function Onboarding() {
         d.step < 6 ? (
           <Button title={t("Continue")} onPress={next} disabled={!canContinue} />
         ) : (
-          <Button title={t("Start")} onPress={() => complete.mutate()} loading={complete.isPending} disabled={!plan} />
+          <Button title={t("Start")} onPress={() => complete.mutate()} loading={complete.isPending} disabled={!plan || !!targetIssue} />
         )
       }
     >
@@ -404,13 +415,15 @@ export default function Onboarding() {
                       {t("Estimated")}
                     </T>
                   </Row>
-                  <Row gap={8}>
+                  {/* Two per row so a four-digit calorie target is never cut off on a phone. */}
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                     {([["energyKcal", t("Energy"), "kcal"], ["proteinG", t("Protein"), "g"], ["carbsG", t("Carbs"), "g"], ["fatG", t("Fat"), "g"]] as const).map(([k, l, u]) => (
-                      <View key={k} style={{ flex: 1 }}>
+                      <View key={k} style={{ flexBasis: "47%", flexGrow: 1 }}>
                         <Field label={l} value={edits[k] ?? String(plan.targets[k])} onChangeText={(v) => setEdits((e) => ({ ...e, [k]: v.replace(/[^\d]/g, "") }))} keyboardType="number-pad" suffix={u} />
                       </View>
                     ))}
-                  </Row>
+                  </View>
+                  {targetIssue ? <T variant="footnote" color="warning">{targetIssue}</T> : null}
                   <T variant="footnote" color="textSecondary">
                     {t("Estimated maintenance ≈ {kcal} kcal. Targets adapt to your logged intake and weight trend after a few weeks, and only with your approval.", { kcal: plan.targets.estimatedTdeeKcal.toLocaleString(locale()) })}
                   </T>
