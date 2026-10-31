@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stoke Redesign Concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800;900&family=Manrope:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* Board: one warm-black world (single theme by choice); each concept brings its own palette inside its phones.
+   Layout: hero → three concept rows (phones scroll sideways on small screens) → idea list → recommendation. */
+:root {
+  --board: #0f0d0c;
+  --panel: #191614;
+  --ink: #f4ede6;
+  --muted: #a89d93;
+  --line: #2c2723;
+  --ember: #ff6a2b;
+  --display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --body: "Manrope", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--board); color: var(--ink); font-family: var(--body); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+a { color: var(--ember); }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+header.hero { padding: 56px 0 28px; border-bottom: 1px solid var(--line); }
+.eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+h1 { font-family: var(--display); font-weight: 900; font-size: clamp(44px, 8vw, 92px); line-height: .92; margin: 10px 0 14px; letter-spacing: .01em; text-transform: uppercase; text-wrap: balance; }
+h1 .hot { background: linear-gradient(95deg, #ffb347, #ff6a2b 45%, #e8344a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lede { max-width: 62ch; color: var(--muted); font-size: 17px; margin: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.legend a { text-decoration: none; color: var(--ink); border: 1px solid var(--line); padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 14px; }
+.legend a:hover, .legend a:focus-visible { border-color: var(--ember); outline: none; }
+
+section.concept { padding: 52px 0 36px; border-bottom: 1px solid var(--line); }
+.concept-head { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; align-items: baseline; }
+.letter { font-family: var(--display); font-weight: 900; font-size: 72px; line-height: .8; grid-row: span 2; }
+.concept h2 { font-family: var(--display); font-size: 38px; font-weight: 800; margin: 0; text-transform: uppercase; letter-spacing: .02em; }
+.concept .sum { margin: 0; color: var(--muted); max-width: 70ch; }
+.tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 0; padding: 0; list-style: none; }
+.tags li { font-size: 13px; padding: 4px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); }
+.phones { display: flex; gap: 28px; overflow-x: auto; padding: 30px 4px 22px; scroll-snap-type: x mandatory; }
+.shot { flex: 0 0 auto; scroll-snap-align: start; display: grid; gap: 12px; }
+.shot figcaption { font-size: 13px; color: var(--muted); max-width: 300px; }
+.shot figcaption b { color: var(--ink); }
+figure { margin: 0; }
+
+/* Phone shell shared by all concepts */
+.phone { width: 300px; height: 640px; border-radius: 46px; padding: 9px; background: #050505; box-shadow: 0 0 0 1px #3a3530, 0 30px 60px -20px rgba(0,0,0,.7); position: relative; }
+.screen { width: 100%; height: 100%; border-radius: 38px; overflow: hidden; position: relative; }
+.island { position: absolute; top: 9px; left: 50%; transform: translateX(-50%); width: 92px; height: 26px; background: #000; border-radius: 20px; z-index: 5; }
+.sbar { display: flex; justify-content: space-between; padding: 13px 24px 0 26px; font-size: 12px; font-weight: 700; height: 40px; }
+
+/* ── A · EMBER ── */
+.A { --a-bg: #120e0c; --a-card: #1d1714; --a-line: #2e2520; --a-ink: #fff4ea; --a-mute: #b49f8f; --a-hot: #ff6a2b; --a-gold: #ffb347; --a-red: #e8344a; --a-cool: #6fd3ff; font-family: var(--body); color: var(--a-ink); background: radial-gradient(120% 60% at 50% -10%, #3a1a0d 0%, var(--a-bg) 55%); }
+.A .pad { padding: 4px 18px; display: grid; gap: 12px; }
+.A .date { font-size: 12px; color: var(--a-mute); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.A .streak { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; color: var(--a-gold); font-weight: 800; }
+.A .gauge { position: relative; height: 196px; display: grid; place-items: center; }
+.A .gauge svg { position: absolute; inset: 0; margin: auto; filter: drop-shadow(0 0 16px rgba(255,106,43,.45)); }
+.A .big { font-family: var(--display); font-weight: 900; font-size: 64px; line-height: .85; letter-spacing: .01em; text-align: center; }
+.A .big small { display: block; font-family: var(--body); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--a-mute); font-weight: 700; margin-top: 6px; }
+.A .cells { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.A .cell { background: var(--a-card); border: 1px solid var(--a-line); border-radius: 14px; padding: 9px 10px; }
+.A .cell .k { font-size: 10px; color: var(--a-mute); text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+.A .cell .v { font-family: var(--display); font-size: 24px; font-weight: 800; line-height: 1.1; }
+.A .cell .v span { font-size: 13px; color: var(--a-mute); font-weight: 600; }
+.A .bar { height: 5px; background: #2b211c; border-radius: 4px; margin-top: 6px; overflow: hidden; }
+.A .bar i { display: block; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--a-gold), var(--a-hot)); }
+.A .nudge { display: flex; gap: 10px; align-items: center; background: linear-gradient(100deg, rgba(255,179,71,.14), rgba(255,106,43,.06)); border: 1px solid rgba(255,140,60,.35); border-radius: 16px; padding: 10px 12px; font-size: 12.5px; }
+.A .nudge b { display: block; font-size: 13px; }
+.A .nudge .add { margin-left: auto; background: var(--a-hot); color: #1a0d06; font-weight: 800; border-radius: 10px; padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+.A .next { background: var(--a-card); border: 1px solid var(--a-line); border-radius: 18px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+.A .next .t { font-family: var(--display); font-size: 22px; font-weight: 800; line-height: 1; text-transform: uppercase; }
+.A .next .s { font-size: 11.5px; color: var(--a-mute); }
+.A .go { margin-left: auto; width: 44px; height: 44px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, var(--a-gold), var(--a-hot) 60%, var(--a-red)); display: grid; place-items: center; box-shadow: 0 6px 20px rgba(255,106,43,.45); }
+.A .tabbar { position: absolute; left: 12px; right: 12px; bottom: 14px; height: 62px; border-radius: 24px; background: rgba(32,25,21,.86); backdrop-filter: blur(14px); border: 1px solid var(--a-line); display: flex; align-items: center; justify-content: space-around; font-size: 10px; color: var(--a-mute); font-weight: 600; }
+.A .tabbar .on { color: var(--a-ink); }
+.A .tabbar .plus { width: 54px; height: 54px; margin-top: -26px; border-radius: 18px; background: linear-gradient(140deg, var(--a-gold), var(--a-hot) 55%, var(--a-red)); display: grid; place-items: center; box-shadow: 0 10px 26px rgba(255,90,40,.55); }
+.A .tab { display: grid; justify-items: center; gap: 3px; }
+
+.A.dim::after { content: ""; position: absolute; inset: 0; background: rgba(8,5,3,.62); z-index: 6; }
+.A .sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 77%; background: #1b1512; border-radius: 30px 30px 38px 38px; z-index: 7; padding: 10px 16px 16px; display: grid; gap: 10px; align-content: start; border-top: 1px solid #3a2c24; }
+.A .grab { width: 40px; height: 5px; border-radius: 4px; background: #4a3a31; margin: 0 auto 2px; }
+.A .search { display: flex; align-items: center; gap: 8px; background: #120e0c; border: 1px solid #4a3426; border-radius: 14px; padding: 10px 12px; font-size: 14px; }
+.A .caret { width: 2px; height: 16px; background: var(--a-hot); margin-left: -6px; }
+.A .modes { display: flex; gap: 6px; }
+.A .mode { flex: 1; font-size: 10.5px; font-weight: 700; text-align: center; padding: 7px 0; border-radius: 10px; background: var(--a-card); border: 1px solid var(--a-line); color: var(--a-mute); }
+.A .result { background: var(--a-card); border: 1px solid #5a3a26; border-radius: 16px; padding: 11px 12px; display: grid; gap: 7px; }
+.A .result .n { font-weight: 800; font-size: 14px; }
+.A .result .ar { color: var(--a-mute); font-size: 12px; }
+.A .pill { font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: rgba(111,211,255,.14); color: var(--a-cool); }
+.A .slider { position: relative; height: 34px; }
+.A .slider .track { position: absolute; top: 15px; left: 0; right: 0; height: 4px; background: #33271f; border-radius: 3px; }
+.A .slider .fill { position: absolute; top: 15px; left: 0; width: 50%; height: 4px; background: linear-gradient(90deg, var(--a-gold), var(--a-hot)); border-radius: 3px; }
+.A .slider .knob { position: absolute; top: 5px; left: calc(50% - 12px); width: 24px; height: 24px; border-radius: 50%; background: #fff4ea; box-shadow: 0 0 0 5px rgba(255,106,43,.3); }
+.A .ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--a-mute); font-weight: 700; }
+.A .preview { display: flex; gap: 12px; font-size: 12px; color: var(--a-mute); }
+.A .preview b { color: var(--a-ink); font-family: var(--display); font-size: 18px; }
+.A .cta { background: linear-gradient(100deg, var(--a-gold), var(--a-hot) 60%); color: #1a0d06; border-radius: 16px; text-align: center; font-weight: 800; padding: 13px 0; font-size: 15px; }
+.A .rec { display: flex; gap: 6px; flex-wrap: wrap; }
+.A .rec span { font-size: 11px; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--a-line); color: var(--a-ink); background: #150f0c; }
+
+.A .wk { padding: 2px 16px; display: grid; gap: 12px; }
+.A .wk-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--a-mute); }
+.A .timer { font-family: var(--display); font-size: 20px; font-weight: 800; color: var(--a-ink); }
+.A .setcard { background: linear-gradient(170deg, #2a1a12, #1b1411 60%); border: 1px solid #4a2e1f; border-radius: 22px; padding: 14px; display: grid; gap: 10px; }
+.A .setcard .ex { font-family: var(--display); font-size: 26px; font-weight: 900; text-transform: uppercase; line-height: .95; }
+.A .setcard .meta { font-size: 11.5px; color: var(--a-mute); }
+.A .dials { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.A .dial { background: #120d0b; border: 1px solid var(--a-line); border-radius: 16px; padding: 8px; text-align: center; }
+.A .dial .v { font-family: var(--display); font-size: 46px; font-weight: 900; line-height: 1; }
+.A .dial .u { font-size: 10px; letter-spacing: .12em; color: var(--a-mute); font-weight: 700; text-transform: uppercase; }
+.A .dial .pm { display: flex; justify-content: space-between; color: var(--a-mute); font-weight: 800; font-size: 18px; padding: 0 6px; margin-top: -30px; }
+.A .bar-vis { display: flex; align-items: center; justify-content: center; gap: 2px; height: 46px; }
+.A .bar-vis .rod { width: 70px; height: 6px; background: #8d8478; border-radius: 3px; }
+.A .bar-vis .sleeve { width: 18px; height: 10px; background: #8d8478; }
+.A .plate { border-radius: 3px; }
+.A .done { display: flex; gap: 8px; }
+.A .done .ok { flex: 1; background: linear-gradient(100deg, var(--a-gold), var(--a-hot)); color: #1a0d06; font-weight: 900; border-radius: 16px; padding: 14px 0; text-align: center; font-size: 15px; letter-spacing: .02em; }
+.A .sets { display: flex; gap: 6px; }
+.A .sets span { flex: 1; height: 6px; border-radius: 4px; background: #33261f; }
+.A .sets span.d { background: var(--a-hot); }
+.A .pr { position: absolute; left: 14px; right: 14px; top: 48px; z-index: 4; background: linear-gradient(100deg, #ffcf6b, #ff8a3d); color: #2a1104; border-radius: 18px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 13px; box-shadow: 0 12px 30px rgba(255,130,50,.45); }
+.A .pr small { display: block; font-weight: 600; font-size: 11px; }
+.A .rest { display: flex; align-items: center; gap: 12px; background: var(--a-card); border: 1px solid var(--a-line); border-radius: 18px; padding: 10px 12px; }
+.A .rest .lab { font-size: 11px; color: var(--a-mute); }
+.A .rest .nx { font-weight: 700; font-size: 13px; }
+
+/* ── B · GLASS ── */
+.B { --b-ink: #0f1a2b; --b-mute: #5b6b80; --b-glass: rgba(255,255,255,.52); --b-edge: rgba(255,255,255,.75); --b-mint: #12c79a; --b-blue: #3d7bff; --b-peach: #ff8e6b; font-family: "Outfit", system-ui, sans-serif; color: var(--b-ink); background: #eef3fb; }
+.B .mesh { position: absolute; inset: 0; background:
+  radial-gradient(40% 30% at 15% 12%, #9ff0d7 0%, transparent 70%),
+  radial-gradient(45% 35% at 90% 20%, #b8ccff 0%, transparent 70%),
+  radial-gradient(50% 40% at 70% 85%, #ffd2c2 0%, transparent 70%),
+  radial-gradient(40% 30% at 10% 80%, #d9c6ff 0%, transparent 70%), #f3f6fb; }
+.B .content { position: relative; padding: 4px 16px; display: grid; gap: 12px; }
+.B .glass { background: var(--b-glass); border: 1px solid var(--b-edge); border-radius: 26px; backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); box-shadow: 0 10px 30px -12px rgba(30,50,90,.25); }
+.B h3 { font-weight: 600; font-size: 30px; margin: 4px 2px 0; letter-spacing: -.02em; }
+.B .sub { font-size: 13px; color: var(--b-mute); margin: -8px 2px 0; }
+.B .rings { display: flex; gap: 14px; align-items: center; padding: 14px; }
+.B .rings ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 13px; }
+.B .rings li b { font-weight: 600; font-size: 17px; display: block; line-height: 1.1; }
+.B .rings li span { color: var(--b-mute); font-size: 11px; }
+.B .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.B .tile { padding: 12px 14px; display: grid; gap: 2px; }
+.B .tile .k { font-size: 11px; color: var(--b-mute); font-weight: 500; }
+.B .tile .v { font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+.B .tile .d { font-size: 11px; color: var(--b-mint); font-weight: 600; }
+.B .spark { height: 30px; }
+.B .meal { padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+.B .dot { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; }
+.B .meal .n { font-weight: 600; font-size: 14px; }
+.B .meal .s { font-size: 11.5px; color: var(--b-mute); }
+.B .meal .k { margin-left: auto; font-weight: 600; }
+.B .dock { position: absolute; left: 50%; transform: translateX(-50%); bottom: 16px; display: flex; gap: 6px; padding: 7px; border-radius: 30px; background: rgba(255,255,255,.6); border: 1px solid var(--b-edge); backdrop-filter: blur(20px); box-shadow: 0 10px 30px -10px rgba(30,50,90,.3); }
+.B .dock span { width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; }
+.B .dock .on { background: var(--b-ink); }
+.B .chat { padding: 4px 16px; display: grid; gap: 10px; position: relative; }
+.B .bub { padding: 11px 13px; font-size: 13px; line-height: 1.45; border-radius: 20px; max-width: 86%; }
+.B .me { justify-self: end; background: var(--b-ink); color: #fff; border-bottom-right-radius: 6px; }
+.B .ai { border-bottom-left-radius: 6px; }
+.B .card-in { margin-top: 8px; padding: 10px; border-radius: 14px; background: rgba(255,255,255,.7); display: grid; gap: 6px; font-size: 12px; }
+.B .card-in .row { display: flex; justify-content: space-between; }
+.B .btns { display: flex; gap: 6px; margin-top: 2px; }
+.B .btns span { flex: 1; text-align: center; font-weight: 600; font-size: 12px; padding: 8px 0; border-radius: 12px; background: var(--b-ink); color: #fff; }
+.B .btns span.ghost { background: transparent; color: var(--b-ink); border: 1px solid rgba(15,26,43,.2); }
+.B .composer { position: absolute; left: 14px; right: 14px; bottom: 16px; padding: 10px 10px 10px 16px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--b-mute); border-radius: 24px; }
+.B .composer .mic { margin-left: auto; width: 34px; height: 34px; border-radius: 17px; background: var(--b-ink); display: grid; place-items: center; }
+
+/* ── C · MISSION CONTROL ── */
+.C { --c-bg: #070b0e; --c-panel: #0d1418; --c-line: #1c2a31; --c-ink: #d8f3ff; --c-mute: #5f7f8c; --c-cyan: #38e1ff; --c-lime: #b6ff5c; --c-amber: #ffc046; --c-red: #ff5c7a; font-family: "Sora", system-ui, sans-serif; color: var(--c-ink); background: var(--c-bg);
+  background-image: linear-gradient(var(--c-line) 1px, transparent 1px), linear-gradient(90deg, var(--c-line) 1px, transparent 1px); background-size: 20px 20px; background-position: -1px -1px; }
+.C .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+.C .content { padding: 2px 14px; display: grid; gap: 9px; }
+.C .hdr { display: flex; justify-content: space-between; align-items: baseline; }
+.C .hdr b { font-size: 18px; letter-spacing: .02em; }
+.C .hdr span { font-size: 10px; color: var(--c-mute); }
+.C .panel { background: rgba(13,20,24,.92); border: 1px solid var(--c-line); border-radius: 10px; padding: 9px 10px; position: relative; }
+.C .panel::before { content: ""; position: absolute; top: -1px; left: 10px; width: 26px; height: 2px; background: var(--c-cyan); }
+.C .lbl { font-size: 9.5px; color: var(--c-mute); text-transform: uppercase; letter-spacing: .14em; display: flex; justify-content: space-between; }
+.C .kpi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.C .kpi .n { font-size: 22px; font-weight: 700; }
+.C .kpi .n.good { color: var(--c-lime); }
+.C .kpi .n.warn { color: var(--c-amber); }
+.C .kpi .s { font-size: 9.5px; color: var(--c-mute); }
+.C .macro { display: grid; gap: 6px; margin-top: 4px; }
+.C .macro .r { display: grid; grid-template-columns: 40px 1fr 62px; gap: 8px; align-items: center; font-size: 10.5px; }
+.C .segs { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; height: 9px; }
+.C .segs i { background: #16232a; border-radius: 1px; }
+.C .segs i.on { background: var(--c-cyan); box-shadow: 0 0 6px rgba(56,225,255,.6); }
+.C .segs.p i.on { background: var(--c-lime); box-shadow: 0 0 6px rgba(182,255,92,.5); }
+.C .segs.f i.on { background: var(--c-amber); box-shadow: 0 0 6px rgba(255,192,70,.45); }
+.C .heat { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-top: 6px; }
+.C .heat i { height: 14px; border-radius: 2px; background: #12202a; }
+.C .readiness { display: flex; gap: 10px; align-items: center; }
+.C .feed { display: grid; gap: 5px; font-size: 10.5px; }
+.C .feed div { display: flex; gap: 8px; }
+.C .feed .t { color: var(--c-mute); width: 34px; flex: none; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow">Stoke · design directions · 3 concepts</div>
+    <h1>Make it feel <span class="hot">alive</span></h1>
+    <p class="lede">Three ways the app could look and feel, each shown on the screens you use most: Today, logging food, and a live workout. The numbers are a real fat-loss day from the new goal-based targets (2,330 kcal, 185 g protein), with UAE food from the catalogue. Pick one, or mix: tell me which letter, and what you'd steal from the others.</p>
+    <nav class="legend" aria-label="Concepts">
+      <a href="#ember">A · Ember</a>
+      <a href="#glass">B · Glass</a>
+      <a href="#mission">C · Mission control</a>
+      <a href="#ideas">Ideas list</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ───────── A · EMBER ───────── -->
+<section class="concept" id="ember">
+  <div class="wrap">
+    <div class="concept-head">
+      <div class="letter" style="color:#ff6a2b">A</div>
+      <h2>Ember</h2>
+      <p class="sum">Built around the Stoke name and the flame icon. Warm dark, bold condensed numbers like a scoreboard, and one fire gradient that marks anything you can act on. Calories read as fuel left in the tank. The fastest-feeling of the three, and the most distinctive on a home screen.</p>
+    </div>
+    <ul class="tags">
+      <li>Fuel-gauge calories</li><li>One-tap smart nudges</li><li>Raised "+" log button</li><li>Bottom-sheet logging</li><li>Giant set-logging dials</li><li>Live plate picture</li><li>PR celebration</li>
+    </ul>
+    <div class="phones">
+
+      <figure class="shot">
+        <div class="phone"><div class="screen A">
+          <div class="island"></div>
+          <div class="sbar"><span>16:05</span><span>●●● 5G</span></div>
+          <div class="pad">
+            <div class="date">Thursday 31 Oct
+              <span class="streak"><svg width="12" height="14" viewBox="0 0 12 14" aria-hidden="true"><path d="M6 0c1 3 5 4.5 5 8.5A5 5 0 0 1 1 8.5C1 6 2.5 5 3 3c1 1.5 1.5 2 2 2.3C5.4 4 5.6 2 6 0Z" fill="#ffb347"/></svg>12-day streak</span>
+            </div>
+            <div class="gauge">
+              <svg width="196" height="196" viewBox="0 0 196 196" aria-hidden="true">
+                <defs><linearGradient id="ag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb347"/><stop offset=".55" stop-color="#ff6a2b"/><stop offset="1" stop-color="#e8344a"/></linearGradient></defs>
+                <circle cx="98" cy="98" r="84" fill="none" stroke="#2a201b" stroke-width="16" stroke-dasharray="395.8 527.8" transform="rotate(135 98 98)" stroke-linecap="round"/>
+                <circle cx="98" cy="98" r="84" fill="none" stroke="url(#ag)" stroke-width="16" stroke-dasharray="205 527.8" transform="rotate(135 98 98)" stroke-linecap="round"/>
+              </svg>
+              <div class="big">1,124<small>kcal left · of 2,330</small></div>
+            </div>
+            <div class="cells">
+              <div class="cell"><div class="k">Protein</div><div class="v">142<span>/185g</span></div><div class="bar"><i style="width:77%"></i></div></div>
+              <div class="cell"><div class="k">Carbs</div><div class="v">160<span>/250g</span></div><div class="bar"><i style="width:64%"></i></div></div>
+              <div class="cell"><div class="k">Fat</div><div class="v">41<span>/65g</span></div><div class="bar"><i style="width:63%"></i></div></div>
+            </div>
+            <div class="nudge"><div><b>Karak at 4 pm again?</b>You've had one 9 of the last 14 days</div><span class="add">+115</span></div>
+            <div class="next">
+              <div><div class="t">Upper A</div><div class="s">Fat loss · 5 lifts + 12 min finisher · 55 min</div></div>
+              <div class="go"><svg width="16" height="18" viewBox="0 0 16 18" aria-hidden="true"><path d="M2 1.5v15L15 9 2 1.5Z" fill="#1a0d06"/></svg></div>
+            </div>
+          </div>
+          <div class="tabbar">
+            <div class="tab on"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7" fill="none" stroke="#fff4ea" stroke-width="2"/></svg>Today</div>
+            <div class="tab"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2v16M15 2v16M2 10h16" stroke="#b49f8f" stroke-width="2"/></svg>Train</div>
+            <div class="plus"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 3v16M3 11h16" stroke="#1a0d06" stroke-width="3" stroke-linecap="round"/></svg></div>
+            <div class="tab"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M2 16l5-6 4 3 7-9" fill="none" stroke="#b49f8f" stroke-width="2"/></svg>Progress</div>
+            <div class="tab"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2l2 5 5 1-4 4 1 6-4-3-4 3 1-6-4-4 5-1z" fill="none" stroke="#b49f8f" stroke-width="1.8"/></svg>Coach</div>
+          </div>
+        </div></div>
+        <figcaption><b>Today.</b> Calories as a fuel gauge; macros as three cells. The nudge learns your habits (here: karak most afternoons) and logs it in one tap. Your next workout is one tap away.</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen A dim">
+          <div class="island"></div>
+          <div class="sbar"><span>20:41</span><span>●●● 5G</span></div>
+          <div class="pad" style="opacity:.9">
+            <div class="gauge" style="height:150px"><div class="big" style="font-size:52px">1,124<small>kcal left</small></div></div>
+          </div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="search"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="6" cy="6" r="4.5" fill="none" stroke="#b49f8f" stroke-width="1.6"/><path d="M9.5 9.5 13 13" stroke="#b49f8f" stroke-width="1.6"/></svg>shawarma<span class="caret"></span></div>
+            <div class="modes"><span class="mode">Scan</span><span class="mode">Photo</span><span class="mode">Voice</span><span class="mode">Menu</span></div>
+            <div class="result">
+              <div style="display:flex;justify-content:space-between;align-items:center"><span class="n">Chicken shawarma wrap</span><span class="pill">estimate</span></div>
+              <div class="ar">شاورما دجاج · UAE standard recipe · 505 kcal / wrap</div>
+              <div class="slider"><div class="track"></div><div class="fill"></div><div class="knob"></div></div>
+              <div class="ticks"><span>½</span><span>1 wrap</span><span>1½</span><span>2</span></div>
+              <div class="preview"><span><b>505</b> kcal</span><span><b>31</b> g P</span><span><b>43</b> g C</span><span><b>22</b> g F</span></div>
+            </div>
+            <div class="rec"><span>Fattoush 232</span><span>Laban 50</span><span>Hummus 166</span><span>Karak 115</span></div>
+            <div class="cta">Add to dinner · 619 left after</div>
+          </div>
+        </div></div>
+        <figcaption><b>Logging as a sheet.</b> The "+" opens this over Today instead of a new page. Drag the slider (with haptic ticks) and the calories left update before you confirm. Scan, photo, voice and menu are one tap away.</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen A">
+          <div class="island"></div>
+          <div class="sbar"><span>18:22</span><span>●●● 5G</span></div>
+          <div class="pr"><svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 1l3 6.5 7 .8-5.2 4.8 1.5 7L11 16.5 4.7 20l1.5-7L1 8.3 8 7.5z" fill="#2a1104"/></svg><div>New personal record<small>Bench press e1RM 101 kg (+3)</small></div></div>
+          <div class="wk" style="padding-top:74px">
+            <div class="wk-top"><span>Upper A · set 3 of 4</span><span class="timer">32:10</span></div>
+            <div class="setcard">
+              <div><div class="ex">Barbell bench press</div><div class="meta">Last time 80 kg × 7 · today's suggestion 80 kg × 8</div></div>
+              <div class="dials">
+                <div class="dial"><div class="v">80</div><div class="u">kg</div><div class="pm"><span>−</span><span>+</span></div></div>
+                <div class="dial"><div class="v">8</div><div class="u">reps</div><div class="pm"><span>−</span><span>+</span></div></div>
+              </div>
+              <div class="bar-vis" aria-label="Per side: 25, 5">
+                <span class="plate" style="width:9px;height:40px;background:#e8344a"></span><span class="plate" style="width:6px;height:22px;background:#f4ede6"></span><span class="sleeve"></span><span class="rod"></span><span class="sleeve"></span><span class="plate" style="width:6px;height:22px;background:#f4ede6"></span><span class="plate" style="width:9px;height:40px;background:#e8344a"></span>
+              </div>
+              <div class="sets"><span class="d"></span><span class="d"></span><span class="d"></span><span></span></div>
+            </div>
+            <div class="done"><div class="ok">SET DONE</div></div>
+            <div class="rest">
+              <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="18" fill="none" stroke="#2e2520" stroke-width="5"/><circle cx="22" cy="22" r="18" fill="none" stroke="#6fd3ff" stroke-width="5" stroke-dasharray="80 113" transform="rotate(-90 22 22)" stroke-linecap="round"/></svg>
+              <div><div class="lab">Rest · 1:42 left (also on lock screen + watch)</div><div class="nx">Next: barbell row 4 × 5–8</div></div>
+            </div>
+          </div>
+        </div></div>
+        <figcaption><b>Live workout.</b> One set at a time with big dials you can hit mid-set. The bar shows the plates to load. Hitting a record triggers a short burst and a haptic.</figcaption>
+      </figure>
+
+    </div>
+  </div>
+</section>
+
+<!-- ───────── B · GLASS ───────── -->
+<section class="concept" id="glass">
+  <div class="wrap">
+    <div class="concept-head">
+      <div class="letter" style="color:#3d7bff">B</div>
+      <h2>Glass</h2>
+      <p class="sum">Feels native to iOS 26: frosted, translucent cards over a soft colour wash, Apple-style concentric rings, and a floating dock. Calm, light and premium, with the coach front and centre. The closest to Apple Fitness.</p>
+    </div>
+    <ul class="tags">
+      <li>Liquid-glass cards</li><li>Concentric rings</li><li>Floating dock</li><li>Coach as a chat with action cards</li><li>Light first, dark too</li>
+    </ul>
+    <div class="phones">
+      <figure class="shot">
+        <div class="phone"><div class="screen B">
+          <div class="mesh"></div>
+          <div class="island"></div>
+          <div class="sbar" style="position:relative"><span>09:14</span><span>●●● 5G</span></div>
+          <div class="content">
+            <h3>Morning</h3>
+            <p class="sub">Thursday · fat loss · week 3 of 5</p>
+            <div class="glass rings">
+              <svg width="112" height="112" viewBox="0 0 112 112" aria-hidden="true">
+                <circle cx="56" cy="56" r="48" fill="none" stroke="rgba(18,199,154,.18)" stroke-width="12"/><circle cx="56" cy="56" r="48" fill="none" stroke="#12c79a" stroke-width="12" stroke-dasharray="155 301.6" transform="rotate(-90 56 56)" stroke-linecap="round"/>
+                <circle cx="56" cy="56" r="33" fill="none" stroke="rgba(61,123,255,.18)" stroke-width="12"/><circle cx="56" cy="56" r="33" fill="none" stroke="#3d7bff" stroke-width="12" stroke-dasharray="160 207.3" transform="rotate(-90 56 56)" stroke-linecap="round"/>
+                <circle cx="56" cy="56" r="18" fill="none" stroke="rgba(255,142,107,.2)" stroke-width="12"/><circle cx="56" cy="56" r="18" fill="none" stroke="#ff8e6b" stroke-width="12" stroke-dasharray="70 113" transform="rotate(-90 56 56)" stroke-linecap="round"/>
+              </svg>
+              <ul>
+                <li><b>1,124 kcal</b><span>left of 2,330</span></li>
+                <li><b>142 / 185 g</b><span>protein</span></li>
+                <li><b>6,240 steps</b><span>of 9,000</span></li>
+              </ul>
+            </div>
+            <div class="grid2">
+              <div class="glass tile"><span class="k">Weight trend</span><span class="v">84.6 kg</span><svg class="spark" viewBox="0 0 120 30" aria-hidden="true"><path d="M0 8 L20 10 L40 9 L60 14 L80 16 L100 19 L120 22" fill="none" stroke="#12c79a" stroke-width="2.5" stroke-linecap="round"/></svg><span class="d">−0.5 kg / week</span></div>
+              <div class="glass tile"><span class="k">Readiness</span><span class="v">Good</span><span class="k">Slept 7 h 40 · HRV normal</span><span class="d">Train as planned</span></div>
+            </div>
+            <div class="glass meal"><span class="dot" style="background:#ff8e6b">B</span><div><div class="n">Breakfast</div><div class="s">Eggs, labneh, khubz</div></div><span class="k">540</span></div>
+            <div class="glass meal"><span class="dot" style="background:#3d7bff">L</span><div><div class="n">Lunch</div><div class="s">Chicken machboos</div></div><span class="k">731</span></div>
+          </div>
+          <div class="dock">
+            <span class="on"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="6" fill="none" stroke="#fff" stroke-width="2"/></svg></span>
+            <span><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 2v14M14 2v14M1 9h16" stroke="#0f1a2b" stroke-width="2"/></svg></span>
+            <span><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 3v12M3 9h12" stroke="#0f1a2b" stroke-width="2.4" stroke-linecap="round"/></svg></span>
+            <span><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 14l4-5 3 2 7-8" fill="none" stroke="#0f1a2b" stroke-width="2"/></svg></span>
+            <span><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 2l2 4.5 4.5.7-3.3 3.2.8 4.6L9 12.8 5 15l.8-4.6L2.5 7.2 7 6.5z" fill="none" stroke="#0f1a2b" stroke-width="1.6"/></svg></span>
+          </div>
+        </div></div>
+        <figcaption><b>Today.</b> Three rings for calories, protein and steps; weight trend and readiness as small glass tiles; meals as a simple list. Plenty of air.</figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="phone"><div class="screen B">
+          <div class="mesh"></div>
+          <div class="island"></div>
+          <div class="sbar" style="position:relative"><span>21:03</span><span>●●● 5G</span></div>
+          <div class="chat">
+            <h3 style="font-size:24px">Coach</h3>
+            <div class="bub me">Weight hasn't moved in 10 days. Should I cut more?</div>
+            <div class="bub ai glass">Your 7-day trend is down 0.3 kg; the scale is hiding it with water from Tuesday's machboos. You logged 11 of 14 days fully, so I'd hold calories and add steps instead.
+              <div class="card-in">
+                <div class="row"><b>Steps target</b><span>9,000 → 10,500</span></div>
+                <div class="row"><b>Calories</b><span>keep 2,330</span></div>
+                <div class="btns"><span>Apply</span><span class="ghost">Not now</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="composer glass">Ask about food, training, progress<span class="mic"><svg width="12" height="16" viewBox="0 0 12 16" aria-hidden="true"><rect x="3" y="1" width="6" height="9" rx="3" fill="#fff"/><path d="M1 7a5 5 0 0 0 10 0M6 12v3" stroke="#fff" stroke-width="1.6" fill="none"/></svg></span></div>
+        </div></div>
+        <figcaption><b>Coach.</b> Answers come with action cards you approve or skip, so nothing changes silently. Voice is one tap in the composer.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── C · MISSION CONTROL ───────── -->
+<section class="concept" id="mission">
+  <div class="wrap">
+    <div class="concept-head">
+      <div class="letter" style="color:#38e1ff">C</div>
+      <h2>Mission control</h2>
+      <p class="sum">For data lovers: an instrument panel on a fine grid, monospaced numbers, segmented bars that light up, a training heat-map and a live event feed. Dense and very "tech", like Whoop or a race-car dashboard. Best for Progress; heavy for everyday logging.</p>
+    </div>
+    <ul class="tags">
+      <li>Segmented LED bars</li><li>Weekly heat-map</li><li>Live event feed</li><li>Mono numerals</li><li>Neon status colours</li>
+    </ul>
+    <div class="phones">
+      <figure class="shot">
+        <div class="phone"><div class="screen C">
+          <div class="island"></div>
+          <div class="sbar"><span class="mono">16:05</span><span class="mono">5G</span></div>
+          <div class="content">
+            <div class="hdr"><b>STOKE / DAY 304</b><span class="mono">FAT LOSS · WK 3/5</span></div>
+            <div class="panel">
+              <div class="lbl"><span>Energy budget</span><span class="mono">2330 KCAL</span></div>
+              <div class="kpi" style="margin-top:6px">
+                <div><div class="n mono good">1124</div><div class="s">LEFT</div></div>
+                <div><div class="n mono">1206</div><div class="s">EATEN</div></div>
+                <div><div class="n mono warn">+212</div><div class="s">ACTIVE</div></div>
+              </div>
+              <div class="macro mono">
+                <div class="r"><span>PRO</span><div class="segs p"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div><span>142/185</span></div>
+                <div class="r"><span>CHO</span><div class="segs"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>160/250</span></div>
+                <div class="r"><span>FAT</span><div class="segs f"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>41/65</span></div>
+              </div>
+            </div>
+            <div class="panel readiness">
+              <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" fill="none" stroke="#16232a" stroke-width="6"/><circle cx="32" cy="32" r="26" fill="none" stroke="#b6ff5c" stroke-width="6" stroke-dasharray="128 163" transform="rotate(-90 32 32)"/><text x="32" y="37" text-anchor="middle" font-family="JetBrains Mono" font-size="15" fill="#d8f3ff" font-weight="700">78</text></svg>
+              <div style="flex:1"><div class="lbl"><span>Readiness</span><span>vs your 28-day</span></div><div class="mono" style="font-size:10.5px;margin-top:4px;line-height:1.6">SLEEP 7:40 <span style="color:#b6ff5c">▲</span> · RHR 54 <span style="color:#b6ff5c">▼</span><br>HRV 61 ms · STEPS 6.2K</div></div>
+            </div>
+            <div class="panel">
+              <div class="lbl"><span>Training load · 8 weeks</span><span class="mono">SETS/WK</span></div>
+              <div class="heat">
+                <i style="background:#0e3a4a"></i><i style="background:#13607a"></i><i style="background:#0e3a4a"></i><i style="background:#1b8fb3"></i><i style="background:#13607a"></i><i></i><i style="background:#0e3a4a"></i>
+                <i style="background:#13607a"></i><i style="background:#1b8fb3"></i><i></i><i style="background:#38e1ff"></i><i style="background:#13607a"></i><i style="background:#0e3a4a"></i><i></i>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="lbl"><span>Feed</span><span>today</span></div>
+              <div class="feed mono" style="margin-top:6px">
+                <div><span class="t">16:02</span><span>KARAK CHAI +115 KCAL</span></div>
+                <div><span class="t">13:20</span><span>MACHBOOS +731 · PRO +45G</span></div>
+                <div><span class="t">07:31</span><span style="color:#b6ff5c">WEIGHT 84.4 · TREND −0.5/WK</span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+        <figcaption><b>Today as a dashboard.</b> Everything at a glance: budget, macro LEDs, readiness against your own baseline, a training heat-map and a running feed of what you logged.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── IDEAS ───────── -->
+<section class="concept" id="ideas">
+  <div class="wrap">
+    <div class="concept-head">
+      <div class="letter" style="color:#f4ede6">+</div>
+      <h2>Ideas that work with any look</h2>
+      <p class="sum">These change how the app feels in the hand. Most fit whichever concept you choose.</p>
+    </div>
+    <style>
+      .idea-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; margin-top: 26px; }
+      .idea { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 6px; align-content: start; }
+      .idea h3 { margin: 0; font-size: 16px; }
+      .idea p { margin: 0; color: var(--muted); font-size: 14px; }
+      .idea .when { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 800; color: var(--ember); }
+      .rec-box { margin-top: 34px; border: 1px solid #5a2f1a; background: linear-gradient(120deg, rgba(255,106,43,.12), rgba(232,52,74,.05)); border-radius: 18px; padding: 22px; display: grid; gap: 8px; }
+      .rec-box h3 { margin: 0; font-family: var(--display); font-size: 30px; text-transform: uppercase; letter-spacing: .02em; }
+      .rec-box p { margin: 0; max-width: 70ch; }
+      @media (prefers-reduced-motion: no-preference) {
+        .A .gauge svg { animation: glow 3.2s ease-in-out infinite; }
+        @keyframes glow { 50% { filter: drop-shadow(0 0 24px rgba(255,120,50,.7)); } }
+      }
+    </style>
+    <div class="idea-grid">
+      <div class="idea"><span class="when">Logging</span><h3>Log from anywhere in two taps</h3><p>A raised "+" opens a sheet over the current screen: search, scan, photo, voice, menu. No page change, so it feels instant.</p></div>
+      <div class="idea"><span class="when">Logging</span><h3>Habits become one-tap nudges</h3><p>"Karak at 4 pm again?", "Same breakfast as yesterday?" Built from your own history, never a guess.</p></div>
+      <div class="idea"><span class="when">Logging</span><h3>Swipe actions</h3><p>Swipe a food left to delete, right to duplicate, long-press to move it to another meal.</p></div>
+      <div class="idea"><span class="when">Logging</span><h3>Amount slider with haptic ticks</h3><p>Drag between ½, 1, 1½ servings and feel each step; calories left update live before you confirm.</p></div>
+      <div class="idea"><span class="when">Training</span><h3>One set at a time</h3><p>A focus mode with huge weight and rep dials, the plates drawn on the bar, and rest on the lock screen and watch.</p></div>
+      <div class="idea"><span class="when">Training</span><h3>Record celebrations</h3><p>A short burst, a strong haptic and a shareable card when you beat an estimated 1-rep max or a rep record.</p></div>
+      <div class="idea"><span class="when">Motion</span><h3>Numbers that count</h3><p>Calories and macros roll to their new value after logging; rings sweep in on open. Turned off when "reduce motion" is on.</p></div>
+      <div class="idea"><span class="when">Motion</span><h3>Shared-element transitions</h3><p>Tap a food and its card grows into the detail sheet instead of a page sliding in.</p></div>
+      <div class="idea"><span class="when">Motivation</span><h3>Streak flame</h3><p>The Stoke flame grows with consecutive fully logged days and dims (never shames) when you miss one.</p></div>
+      <div class="idea"><span class="when">Progress</span><h3>Weekly story</h3><p>Every Monday a swipeable recap: trend weight, best lift, most-eaten food, adherence. Shareable.</p></div>
+      <div class="idea"><span class="when">Time of day</span><h3>A home that changes through the day</h3><p>Morning shows sleep and weigh-in, midday shows food, evening shows what's left and tomorrow's workout.</p></div>
+      <div class="idea"><span class="when">Polish</span><h3>Shimmer loading and empty states with art</h3><p>Skeletons that shimmer, and illustrated empty states that tell you the one thing to do next.</p></div>
+    </div>
+    <div class="rec-box">
+      <div class="eyebrow" style="color:#ffb347">My recommendation</div>
+      <h3>Ember as the base, with the best of B and C</h3>
+      <p>Ember gives Stoke its own identity and matches the flame icon. I'd borrow B's glass sheets for logging and the coach chat, and C's dashboard panels for the Progress tab, where data density helps. Then build in this order: Today and the log sheet, the live workout, motion and celebrations, the weekly story.</p>
+    </div>
+  </div>
+</section>
+
+<footer class="wrap" style="padding:28px 20px 48px;color:var(--muted);font-size:13px">Mockups use example data from a fat-loss day. Fonts and colours are proposals; everything here is built as real screens in the app after you pick a direction.</footer>
+</body>
+</html>
