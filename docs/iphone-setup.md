@@ -1,6 +1,8 @@
 # Getting Stoke onto your iPhone
 
-No Mac is needed. Expo's build service (EAS) compiles the iPhone app in the cloud, and the server runs on Render. You need about an hour the first time, a computer with Node 22 (Windows, Linux or Mac), and:
+**Quickest: the website.** Step 1 below (the Render deploy) also puts the whole app online as a website at your Render address, e.g. `https://stoke-api.onrender.com`. Open it in Safari on the iPhone, sign up, and use **Share → Add to Home Screen** for an app icon. It needs no Apple account and no build. In a browser, Apple Health, the widgets, the watch app and Siri are not available, and the camera features depend on the browser allowing the camera.
+
+**The native app** (steps 2–5) adds those. No Mac is needed. Expo's build service (EAS) compiles the iPhone app in the cloud, and the server runs on Render. You need about an hour the first time, a computer with Node 22 (Windows, Linux or Mac), and:
 
 - an **Apple Developer Program** membership (US$99/year), required to install your own app on a real iPhone;
 - a free **Expo** account (expo.dev);
@@ -9,10 +11,10 @@ No Mac is needed. Expo's build service (EAS) compiles the iPhone app in the clou
 
 ## 1. Put the server online (Render)
 
-1. In Render: **New → Blueprint**, connect GitHub and pick this repository (branch `claude/beautiful-galileo-la7tue` until it is merged). Render reads `render.yaml` and creates the API, a PostgreSQL 16 database and a 1 GB disk for photos.
+1. In Render: **New → Blueprint**, connect GitHub and pick this repository (branch `claude/beautiful-galileo-la7tue` until it is merged). Render reads `render.yaml` and creates the server (which also serves the website), a PostgreSQL 16 database and a 1 GB disk for photos. The first build takes several minutes because it also builds the website.
 2. When asked, paste your `ANTHROPIC_API_KEY`. Every other secret is generated.
 3. Wait for the first deploy. The server creates its database roles, applies migrations and loads the exercise catalogue, then downloads the USDA food catalogue and the UAE dishes in the background (a couple of minutes).
-4. Copy the service URL, e.g. `https://stoke-api.onrender.com`, and check `https://…/health` shows `{"ok":true}`.
+4. Copy the service URL, e.g. `https://stoke-api.onrender.com`, and check `https://…/health` shows `{"ok":true}`. Opening the URL itself shows the app.
 
 ## 2. Point the app at your server
 

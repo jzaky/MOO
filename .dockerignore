@@ -1,8 +1,10 @@
 **/node_modules
 .git
 .claude
-apps/mobile/*
-!apps/mobile/package.json
+apps/mobile/ios
+apps/mobile/android
+apps/mobile/dist
+apps/mobile/.expo
 apps/api/storage
 **/*.log
 docs

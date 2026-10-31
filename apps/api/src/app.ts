@@ -1,4 +1,5 @@
 import cors from "@fastify/cors";
+import { registerWebApp } from "./http/web";
 import helmet from "@fastify/helmet";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
@@ -74,6 +75,7 @@ export async function buildApp(cfg: Config, o: AppOverrides = {}): Promise<{ app
   await app.register(multipart, { limits: { fileSize: 12 * 1024 * 1024, files: 4 } });
   app.get("/health", async () => ({ ok: true }));
   registerRoutes(app, ctx);
+  if (cfg.WEB_DIR) registerWebApp(app, cfg.WEB_DIR);
   app.addHook("onClose", async () => {
     if (!o.db) await ctx.db.close();
   });

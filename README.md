@@ -4,7 +4,7 @@ A private, AI-native fitness and nutrition app: food logging (search, barcode, p
 
 | Doc | What it covers |
 | --- | --- |
-| [`docs/iphone-setup.md`](docs/iphone-setup.md) | **Getting the app onto your iPhone**: server on Render, cloud build with EAS |
+| [`docs/iphone-setup.md`](docs/iphone-setup.md) | **Using it**: one Render deploy gives a website (works on any phone); then the native iPhone app via EAS |
 | [`docs/STATUS.md`](docs/STATUS.md) | **What is implemented, tested, partial and planned**, and what could not be verified |
 | [`docs/architecture.md`](docs/architecture.md) | System design, decisions (ADRs), data model, AI, sync, security |
 | [`docs/repository-evaluation.md`](docs/repository-evaluation.md) | The 24-repository evaluation and licensing decisions |
@@ -63,6 +63,7 @@ cd apps/mobile && npx expo start
 | `USDA_API_KEY` | – | Optional live FDC lookups (the bulk import needs no key) |
 | `OFF_USER_AGENT` | `StokeFitness/0.1 (…)` | Open Food Facts requires an identifying User-Agent |
 | `CORS_ORIGINS` | `http://localhost:8081,http://localhost:19006` | Web build origins |
+| `WEB_DIR` | – | Exported web app to serve on the same address (the Docker image sets it) |
 | `STORAGE_DIR`, `PUBLIC_BASE_URL` | `./storage`, `http://localhost:4000` | Private media and signed-URL base |
 | `RATE_LIMIT_PER_MIN`, `AUTH_RATE_LIMIT_PER_MIN` | 240, 10 | Per IP |
 

@@ -1,4 +1,5 @@
-# Render blueprint: API (Docker) + PostgreSQL 16 + a disk for private photos.
+# Render blueprint: API and website (Docker) + PostgreSQL 16 + a disk for private photos.
+# The service URL opens the app; /v1 is the API.
 # Dashboard → New → Blueprint → pick this repository. You'll be asked for
 # ANTHROPIC_API_KEY; everything else is generated or derived.
 services:

@@ -2,7 +2,8 @@ import Constants from "expo-constants";
 import { currentLang, t } from "../i18n";
 import { secure } from "./storage";
 
-export const API_URL: string = process.env.EXPO_PUBLIC_API_URL ?? (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl ?? "http://localhost:4000";
+// "/" means the website and the API share an origin (the server hosts the web build).
+export const API_URL: string = (process.env.EXPO_PUBLIC_API_URL ?? (Constants.expoConfig?.extra as { apiUrl?: string } | undefined)?.apiUrl ?? "http://localhost:4000").replace(/\/+$/, "");
 
 export class ApiError extends Error {
   constructor(

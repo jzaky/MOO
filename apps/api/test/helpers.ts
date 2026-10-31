@@ -20,9 +20,9 @@ export interface TestApp {
   close(): Promise<void>;
 }
 
-export async function makeTestApp(o: AppOverrides = {}): Promise<TestApp> {
+export async function makeTestApp(o: AppOverrides = {}, env: Record<string, string> = {}): Promise<TestApp> {
   const storage = mkdtempSync(path.join(tmpdir(), "stoke-media-"));
-  const cfg = loadConfig({ NODE_ENV: "test", DATABASE_URL: TEST_APP_URL, DATABASE_OWNER_URL: TEST_OWNER_URL, STORAGE_DIR: storage, RATE_LIMIT_PER_MIN: "100000", AUTH_RATE_LIMIT_PER_MIN: "100000" } as NodeJS.ProcessEnv);
+  const cfg = loadConfig({ NODE_ENV: "test", DATABASE_URL: TEST_APP_URL, DATABASE_OWNER_URL: TEST_OWNER_URL, STORAGE_DIR: storage, RATE_LIMIT_PER_MIN: "100000", AUTH_RATE_LIMIT_PER_MIN: "100000", ...env } as NodeJS.ProcessEnv);
   const db = createDatabase(TEST_APP_URL, TEST_OWNER_URL, { max: 5 });
   const ai = (o.ai as FakeAiProvider | undefined) ?? new FakeAiProvider();
   const { app, ctx } = await buildApp(cfg, { db, ai, foodSources: new StaticFoodSources(), logger: false, ...o });

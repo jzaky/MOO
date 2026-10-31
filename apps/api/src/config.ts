@@ -26,6 +26,8 @@ const Env = z.object({
   USDA_BASE_URL: z.string().default("https://api.nal.usda.gov/fdc/v1"),
   /** Optional speech-to-text server (e.g. whisper.cpp server) for voice logging. */
   STT_URL: z.string().optional(),
+  /** Folder with the exported web app (expo export -p web). Served on the same origin as the API. */
+  WEB_DIR: z.string().optional(),
   RATE_LIMIT_PER_MIN: z.coerce.number().int().default(240),
   /** Stricter per-IP limit for credential endpoints. */
   AUTH_RATE_LIMIT_PER_MIN: z.coerce.number().int().default(10),
